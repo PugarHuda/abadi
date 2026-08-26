@@ -1,0 +1,10 @@
+market : ETH-0-27AUG26/tUSDC
+up/down: ETH-0-27AUG26/tUSDC#YES | ETH-0-27AUG26/tUSDC#NO
+book   : 0.729 / 0.756
+mine   : buy at 0.727 (1 tick inside, post-only)
+
+SDK ACCEPTED
+id     : 129127208515967136500
+status : open
+receipt: success 0x609ea381a240f6af3243b703a37bb9925c383875c9cc78b7bbbc6ae38aaef107
+cancelled

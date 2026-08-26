@@ -1,0 +1,81 @@
+=== settled market counts ===
+countBinaryMarkets: 10000
+
+=== one settled row, raw shape ===
+status=Finalized -> 3 rows
+{
+ "id": "0x0000000000000000000000000000000000000000000000000000000000009e19",
+ "poolAddress": "0xf501c195ecf6b15676cd6b5419986ac94b2022f3",
+ "lastPrice": "493000",
+ "lastTradeAt": "1787725005",
+ "cumulativeBaseVolume": "57361000",
+ "cumulativeQuoteVolume": "28278973",
+ "tradeCount": "1",
+ "baseDecimals": 6,
+ "quoteDecimals": 6,
+ "createdAtTimestamp": "1787724900",
+ "marketType": "BINARY",
+ "marketId": "0x0000000000000000000000000000000000000000000000000000000000009e19",
+ "marketAddress": "0x359ee62af1d4f2a283e98f8eb7628463548f51b7",
+ "yesTokenId": "6605371882259679547243277252366245679420304119134123553791209268867328",
+ "noTokenId": "6605371882259679547243277252366245679420304119134123553791209268867329",
+ "collateral": "0x70a86d8842fb63c4ad2b7cdddf530ebf1bb25d8e",
+ "asset": "BTC",
+ "question": "BTC closes at or above its opening price",
+ "status": "Finalized",
+ "oracleQuestion": null,
+ "oracleQuestionId": "45313",
+ "strike": "0",
+ "tradingStart": "1787724900",
+ "expiry": "1787725800",
+ "winningOutcome": 1,
+ "payoutNumerators": [
+  "0",
+  "10000000"
+ ],
+ "payoutDenominator": "10000000",
+ "resolvedAtBlock": "471528702",
+ "resolvedAtTimestamp": "1787725801",
+ "createdByTx": "0xbe78
+
+=== UP win rate by tier (calibration check) ===
+tier      n     UP wins   UP rate   void
+60        500   248         49.6%   0
+300       500   243         48.6%   0
+900       500   241         48.2%   0
+3600      500   255         51.0%   0
+14400     364   189         51.9%   0
+86400     58    34          58.6%   0
+
+=== resolution detail on one market ===
+{
+ "events": [
+  {
+   "id": "471528702_16",
+   "market": "0x0000000000000000000000000000000000000000000000000000000000009e19",
+   "kind": "Resolved",
+   "winningOutcome": 1,
+   "payoutNumerators": [
+    "0",
+    "10000000"
+   ],
+   "payoutDenominator": "10000000",
+   "voided": false,
+   "blockNumber": "471528702",
+   "timestamp": "1787725801",
+   "txHash": "0x387d18bbfba59d0bf8040f9fc389f43578fb76611cb78f8b9332c88134886a29"
+  }
+ ],
+ "reference": {
+  "id": "0x0000000000000000000000000000000000000000000000000000000000009e19",
+  "market": "0x0000000000000000000000000000000000000000000000000000000000009e19",
+  "oracleQuestionId": "45310",
+  "pending": false
+ },
+ "closingAnswer": {
+  "oracleQuestionId": "45313",
+  "numericValue": "7889417",
+  "outcomeLabel": ">= 0.00",
+  "voidReason": 0,
+  "resolvedAt": "1787725801",
+  "txHash": "0x8622f2b741f6f6fd6e6b64a0c12173c7a938f39beae4910d143ef1916e4e8

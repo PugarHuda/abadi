@@ -1,0 +1,19 @@
+vault    : 0xbcc310b25961bFd241646505c4baE18a518c0A77
+operator : 0x39D2bae5EAedA9283535dDC98F1991c81eD5Cd7E
+idle     : 5000.00 tUSDC
+minHalf  : 0.003
+
+candidates: ETH-0-27AUG26/tUSDC, BTC-0-27AUG26/tUSDC, BTC-0-01AUG26-0B73/tUSDC, ETH-0-01AUG26/tUSDC, ETH-0-28JUL26/tUSDC, BTC-0-28JUL26/tUSDC
+
+market   : ETH-0-27AUG26/tUSDC
+marketId : 0x0000000000000000000000000000000000000000000000000000000000009a50
+tier     : 86400s, 54755s left
+theirs   : 0.742 / 0.772   spread 0.030
+ours     : 0.744 / 0.770   spread 0.026  <-- inside
+escrow   : 97.40 tUSDC for 100 contracts/side
+           (= size x (1 - spread); a full pair settles at exactly 1)
+
+QUOTED  tx: 0x3a8b93bba2a39a35102d44f8005143dafb9317033003befec7b4c5fbe095a6dd
+status   : success  gas: 2784360
+escrowed : 97.40 tUSDC
+NAV      : 5000.00 tUSDC

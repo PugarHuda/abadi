@@ -1,0 +1,48 @@
+chain 50312 | venue 0x679795a019...
+
+markets total 557 | binary 548
+
+BTC-7904975-26AUG26-0540/tUSDC       status=Resolved interval=60s left=expired
+ETH-246374-26AUG26-0540/tUSDC        status=Resolved interval=60s left=expired
+BTC-7905585-26AUG26-0540/tUSDC       status=Resolved interval=300s left=expired
+ETH-246540-26AUG26-0540/tUSDC        status=Resolved interval=300s left=expired
+ETH-0-26AUG26-0545/tUSDC             status=Trading interval=900s left=300s
+   UP  bid 0.6650 ask 0.6930   |   DOWN bid 0.3070 ask 0.3350   depth 3/3
+   bid(UP)+bid(DOWN) = 0.9720 
+   ask(UP)+ask(DOWN) = 1.0280 
+BTC-0-26AUG26-0545/tUSDC             status=Trading interval=900s left=300s
+   UP  bid 0.8180 ask 0.8420   |   DOWN bid 0.1580 ask 0.1820   depth 3/3
+   bid(UP)+bid(DOWN) = 0.9760 
+   ask(UP)+ask(DOWN) = 1.0240 
+BTC-0-26AUG26-0600/tUSDC             status=Trading interval=3600s left=1200s
+   UP  bid 0.9530 ask 0.9740   |   DOWN bid 0.0260 ask 0.0470   depth 3/3
+   bid(UP)+bid(DOWN) = 0.9790 
+   ask(UP)+ask(DOWN) = 1.0210 
+ETH-0-26AUG26-0600/tUSDC             status=Trading interval=3600s left=1200s
+   UP  bid 0.9090 ask 0.9310   |   DOWN bid 0.0690 ask 0.0910   depth 3/3
+   bid(UP)+bid(DOWN) = 0.9780 
+   ask(UP)+ask(DOWN) = 1.0220 
+ETH-0-26AUG26-0800/tUSDC             status=Trading interval=14400s left=8400s
+   UP  bid 0.4220 ask 0.4520   |   DOWN bid 0.5480 ask 0.5780   depth 3/3
+   bid(UP)+bid(DOWN) = 0.9700 
+   ask(UP)+ask(DOWN) = 1.0300 
+BTC-0-26AUG26-0800/tUSDC             status=Trading interval=14400s left=8400s
+   UP  bid 0.4580 ask 0.4880   |   DOWN bid 0.5120 ask 0.5420   depth 3/3
+   bid(UP)+bid(DOWN) = 0.9700 
+   ask(UP)+ask(DOWN) = 1.0300 
+ETH-0-27AUG26/tUSDC                  status=Trading interval=86400s left=66000s
+   UP  bid 0.7120 ask 0.7390   |   DOWN bid 0.2610 ask 0.2880   depth 3/3
+   bid(UP)+bid(DOWN) = 0.9730 
+   ask(UP)+ask(DOWN) = 1.0270 
+BTC-0-27AUG26/tUSDC                  status=Trading interval=86400s left=66000s
+   UP  bid 0.7000 ask 0.7280   |   DOWN bid 0.2720 ask 0.3000   depth 3/3
+   bid(UP)+bid(DOWN) = 0.9720 
+   ask(UP)+ask(DOWN) = 1.0280 
+
+--- verdict ---
+intervals seen: 60, 300, 900, 3600, 14400, 86400
+books compared: 8 | harvestable deviations: 0
+best bid sum: 0.9790 (need > 1)
+best ask sum: 1.0210 (need < 1)
+No deviation in this snapshot. Either the book is thin, or Up/Down are
+mirrored mechanically -- in which case SteadyVault has no product.

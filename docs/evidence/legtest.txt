@@ -1,0 +1,14 @@
+market: ETH-0-27AUG26/tUSDC   pool: 0xf50f7a2D4beaEf6c875F6155a88A1348917c7F9F
+book  : bid 0.738 / ask 0.763
+
+approved pool for collateral
+
+kind      price   where            result
+BUY_YES   0.688   far below bid    PostOnlyWouldCross
+BUY_YES   0.813   far above ask    PostOnlyWouldCross
+SELL_YES  0.688   far below bid    0x6e4ba61d
+SELL_YES  0.813   far above ask    0x6e4ba61d
+BUY_NO    0.688   far below bid    0x6e4ba61d
+BUY_NO    0.813   far above ask    0x6e4ba61d
+SELL_NO   0.688   far below bid    PostOnlyWouldCross
+SELL_NO   0.813   far above ask    PostOnlyWouldCross

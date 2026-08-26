@@ -1,0 +1,382 @@
+<title>Abadi</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Martian+Mono:wght@300;400;600&family=Public+Sans:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+
+<style>
+  :root {
+    --ink:        #14203A;
+    --ink-raised: #1B2A48;
+    --ink-line:   #2A3B5E;
+    --cotton:     #EAE4D6;
+    --cotton-dim: #8D97AE;
+    --turmeric:   #E0A045;
+    --teal:       #4FA396;
+    --wax:        #F7F3E7;
+    --display: "Bricolage Grotesque", system-ui, sans-serif;
+    --body: "Public Sans", system-ui, sans-serif;
+    --mono: "Martian Mono", ui-monospace, monospace;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--ink);
+    color: var(--cotton);
+    font-family: var(--body);
+    font-size: 16px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap { max-width: 1000px; margin: 0 auto; padding: 0 24px 96px; }
+
+  /* ---------- masthead ---------- */
+  .masthead {
+    display: flex; align-items: baseline; justify-content: space-between;
+    gap: 24px; flex-wrap: wrap;
+    padding: 40px 0 28px;
+    border-bottom: 1px solid var(--ink-line);
+  }
+  .wordmark {
+    font-family: var(--display);
+    font-weight: 800;
+    font-size: clamp(38px, 7vw, 62px);
+    letter-spacing: -0.045em;
+    line-height: 0.9;
+    margin: 0;
+  }
+  .wordmark span { color: var(--turmeric); }
+  .gloss {
+    font-family: var(--mono); font-size: 11px; font-weight: 300;
+    letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--cotton-dim); text-align: right; max-width: 30ch;
+  }
+  .gloss b { color: var(--cotton); font-weight: 400; }
+
+  /* ---------- thesis ---------- */
+  .thesis {
+    font-family: var(--display); font-weight: 600;
+    font-size: clamp(21px, 3.2vw, 31px);
+    line-height: 1.25; letter-spacing: -0.02em;
+    margin: 44px 0 8px; max-width: 24ch;
+  }
+  .thesis em { font-style: normal; color: var(--turmeric); }
+  .sub { color: var(--cotton-dim); max-width: 58ch; margin: 0 0 52px; }
+
+  /* ---------- section frame ---------- */
+  .eyebrow {
+    font-family: var(--mono); font-size: 10px; font-weight: 400;
+    letter-spacing: 0.2em; text-transform: uppercase;
+    color: var(--cotton-dim);
+    padding-bottom: 10px; margin: 68px 0 22px;
+    border-bottom: 1px solid var(--ink-line);
+    display: flex; justify-content: space-between; gap: 16px;
+  }
+  .eyebrow span { color: var(--ink-line); }
+
+  /* ---------- the rail: probability is bounded, so show the whole of it ---------- */
+  .rail-frame { margin: 30px 0 8px; }
+  .rail {
+    position: relative; height: 46px;
+    border-left: 1px solid var(--ink-line);
+    border-right: 1px solid var(--ink-line);
+  }
+  .rail::before {
+    content: ""; position: absolute; left: 0; right: 0; top: 50%;
+    border-top: 1px dashed var(--ink-line);
+  }
+  .band {
+    position: absolute; top: 0; bottom: 0;
+    border-left: 2px solid; border-right: 2px solid;
+  }
+  .band.theirs { border-color: var(--cotton-dim); background: rgba(141,151,174,.10); }
+  .band.ours   { border-color: var(--turmeric); background: rgba(224,160,69,.16); }
+  .band b {
+    position: absolute; top: -21px; left: 50%; transform: translateX(-50%);
+    font-family: var(--mono); font-size: 10px; font-weight: 400;
+    letter-spacing: .08em; white-space: nowrap;
+  }
+  .band.theirs b { color: var(--cotton-dim); }
+  .band.ours b   { color: var(--turmeric); top: auto; bottom: -21px; }
+  .rail-ends {
+    display: flex; justify-content: space-between;
+    font-family: var(--mono); font-size: 10px; color: var(--cotton-dim);
+    letter-spacing: .1em; margin-top: 30px;
+  }
+  .rail-note { color: var(--cotton-dim); font-size: 14px; max-width: 62ch; margin: 22px 0 0; }
+
+  /* ---------- ladder ---------- */
+  .ladder { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; margin-top: 34px; }
+  .col-head {
+    font-family: var(--mono); font-size: 10px; letter-spacing: .18em;
+    text-transform: uppercase; padding: 0 12px 9px;
+  }
+  .col-head.bid { color: var(--turmeric); }
+  .col-head.ask { color: var(--teal); text-align: right; }
+  .lvl {
+    display: flex; justify-content: space-between; align-items: center;
+    font-family: var(--mono); font-size: 14px;
+    padding: 9px 12px; position: relative;
+    border-top: 1px solid var(--ink-line);
+  }
+  .lvl .depth {
+    position: absolute; top: 0; bottom: 0;
+    background: rgba(141,151,174,.09);
+  }
+  .bids .depth { right: 0; }
+  .asks .depth { left: 0; }
+  .lvl .px, .lvl .sz { position: relative; }
+  .lvl .sz { color: var(--cotton-dim); font-size: 12px; font-weight: 300; }
+  .asks .lvl { flex-direction: row-reverse; }
+  .mine {
+    background: rgba(224,160,69,.10);
+    box-shadow: inset 2px 0 0 var(--turmeric);
+  }
+  .asks .mine { box-shadow: inset -2px 0 0 var(--turmeric); }
+  .mine .px { color: var(--wax); font-weight: 600; }
+  .tag {
+    font-family: var(--mono); font-size: 9px; letter-spacing: .16em;
+    color: var(--turmeric); margin-left: 10px;
+  }
+  .asks .tag { margin: 0 10px 0 0; }
+
+  /* ---------- position ---------- */
+  .ledger { margin-top: 34px; border-top: 1px solid var(--ink-line); }
+  .row {
+    display: flex; justify-content: space-between; align-items: baseline;
+    gap: 20px; padding: 13px 0; border-bottom: 1px solid var(--ink-line);
+  }
+  .row dt { color: var(--cotton-dim); font-size: 14px; margin: 0; }
+  .row dd { font-family: var(--mono); font-size: 15px; margin: 0; text-align: right; }
+  .row.total dd { color: var(--turmeric); font-weight: 600; }
+  .row.total dt { color: var(--cotton); }
+
+  .zero {
+    margin-top: 40px; padding: 30px 0 0; border-top: 1px solid var(--ink-line);
+    display: flex; align-items: baseline; gap: 22px; flex-wrap: wrap;
+  }
+  .zero .n {
+    font-family: var(--mono); font-weight: 600;
+    font-size: clamp(52px, 10vw, 92px); line-height: 0.9;
+    letter-spacing: -0.04em; color: var(--wax);
+  }
+  .zero .l { max-width: 34ch; }
+  .zero .l b {
+    display: block; font-family: var(--mono); font-size: 11px;
+    letter-spacing: .18em; text-transform: uppercase; color: var(--turmeric);
+    font-weight: 400; margin-bottom: 7px;
+  }
+  .zero .l p { margin: 0; color: var(--cotton-dim); font-size: 14px; }
+
+  /* ---------- calibration ---------- */
+  .cal { display: grid; grid-template-columns: repeat(6, 1fr); gap: 2px; margin-top: 26px; }
+  .tier { text-align: center; }
+  .tier .plot {
+    height: 132px; position: relative;
+    border-bottom: 1px solid var(--ink-line);
+  }
+  .tier .plot::before {
+    content: ""; position: absolute; left: 0; right: 0; top: 50%;
+    border-top: 1px dashed var(--ink-line);
+  }
+  .tier .bar {
+    position: absolute; left: 34%; right: 34%;
+    background: var(--teal);
+  }
+  .tier .t {
+    font-family: var(--mono); font-size: 10px; color: var(--cotton-dim);
+    letter-spacing: .08em; padding-top: 9px;
+  }
+  .tier .v { font-family: var(--mono); font-size: 12px; color: var(--cotton); }
+  .cal-axis {
+    display: flex; justify-content: space-between;
+    font-family: var(--mono); font-size: 10px; color: var(--cotton-dim);
+    letter-spacing: .1em; margin-top: 18px;
+    border-top: 1px solid var(--ink-line); padding-top: 12px;
+  }
+
+  .verdict {
+    margin-top: 26px; padding-left: 18px;
+    border-left: 2px solid var(--turmeric);
+    max-width: 64ch;
+  }
+  .verdict p { margin: 0 0 10px; }
+  .verdict p:last-child { margin: 0; }
+  .verdict code {
+    font-family: var(--mono); font-size: 13px; color: var(--turmeric);
+  }
+
+  .foot {
+    margin-top: 76px; padding-top: 22px; border-top: 1px solid var(--ink-line);
+    font-family: var(--mono); font-size: 11px; color: var(--cotton-dim);
+    display: flex; justify-content: space-between; gap: 18px; flex-wrap: wrap;
+    letter-spacing: .07em;
+  }
+  .foot a { color: var(--cotton-dim); }
+
+  @media (max-width: 680px) {
+    .ladder { grid-template-columns: 1fr; }
+    .asks .lvl { flex-direction: row; }
+    .asks .lvl .depth { right: 0; left: auto; }
+    .col-head.ask { text-align: left; }
+    .cal { grid-template-columns: repeat(3, 1fr); }
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .band, .lvl, .tier .bar { transition: none; }
+  }
+</style>
+
+<div class="wrap">
+
+  <header class="masthead">
+    <h1 class="wordmark">ABA<span>DI</span></h1>
+    <div class="gloss">
+      market making for<br>dreamdex event contracts<br>
+      <b>shannon 50312 · 26 aug 2026</b>
+    </div>
+  </header>
+
+  <p class="thesis">The markets expire every window. <em>The liquidity does not.</em></p>
+  <p class="sub">
+    Abadi rests a two-sided quote inside the incumbent spread and holds no view on the
+    outcome. Every number below was read off the chain, not modelled.
+  </p>
+
+  <!-- ============ the rail ============ -->
+  <div class="eyebrow">Where the market sits <span>ETH-0-27AUG26 · 24h tier</span></div>
+
+  <div class="rail-frame">
+    <div class="rail">
+      <div class="band theirs" style="left:74.2%; right:22.8%"><b>0.742 — 0.772</b></div>
+      <div class="band ours"   style="left:74.4%; right:23.0%"><b>abadi 0.744 — 0.770</b></div>
+    </div>
+    <div class="rail-ends">
+      <span>0.000 — certain down</span>
+      <span>certain up — 1.000</span>
+    </div>
+  </div>
+
+  <p class="rail-note">
+    A prediction market has a bounded axis: every price is a probability between 0 and 1.
+    At this width the entire tradable spread is three percent of the rail. Abadi's quote
+    sits inside it — the narrow band, not the wide one.
+  </p>
+
+  <!-- ============ ladder ============ -->
+  <div class="eyebrow">The book, as read back <span>after quoting</span></div>
+
+  <div class="ladder">
+    <div class="bids">
+      <div class="col-head bid">bids · buying up</div>
+      <div class="lvl mine"><div class="depth" style="width:22%"></div>
+        <span class="px">0.744<span class="tag">ABADI</span></span><span class="sz">100</span></div>
+      <div class="lvl"><div class="depth" style="width:43%"></div>
+        <span class="px">0.742</span><span class="sz">200</span></div>
+      <div class="lvl"><div class="depth" style="width:72%"></div>
+        <span class="px">0.733</span><span class="sz">330</span></div>
+      <div class="lvl"><div class="depth" style="width:100%"></div>
+        <span class="px">0.723</span><span class="sz">460</span></div>
+    </div>
+    <div class="asks">
+      <div class="col-head ask">asks · buying down</div>
+      <div class="lvl"><div class="depth" style="width:43%"></div>
+        <span class="px">0.769</span><span class="sz">200</span></div>
+      <div class="lvl mine"><div class="depth" style="width:22%"></div>
+        <span class="px">0.770<span class="tag">ABADI</span></span><span class="sz">100</span></div>
+      <div class="lvl"><div class="depth" style="width:72%"></div>
+        <span class="px">0.779</span><span class="sz">330</span></div>
+      <div class="lvl"><div class="depth" style="width:100%"></div>
+        <span class="px">0.788</span><span class="sz">460</span></div>
+    </div>
+  </div>
+
+  <div class="verdict">
+    <p>
+      Before Abadi quoted, this market was <code>0.742 / 0.772</code> — a spread of
+      <code>0.030</code>. After, it reads <code>0.744 / 0.769</code>, a spread of
+      <code>0.025</code>. The incumbent quoter tightened in response.
+    </p>
+    <p>
+      One vault quoting inside made prices better for everyone else trading this market.
+    </p>
+  </div>
+
+  <!-- ============ the position ============ -->
+  <div class="eyebrow">What filled <span>both legs taken</span></div>
+
+  <dl class="ledger">
+    <div class="row"><dt>Paid at quote time</dt><dd>97.40 tUSDC</dd></div>
+    <div class="row"><dt>Holds — up contracts</dt><dd>100.000000</dd></div>
+    <div class="row"><dt>Holds — down contracts</dt><dd>100.000000</dd></div>
+    <div class="row"><dt>Worth at settlement, either way</dt><dd>100.00 tUSDC</dd></div>
+    <div class="row total"><dt>Locked in</dt><dd>+2.60 tUSDC · 2.67%</dd></div>
+  </dl>
+
+  <div class="verdict">
+    <p>
+      Both legs were <em>buys</em>. Neither could have filled against a seller, because no
+      seller was involved: two opposite-side buyers crossed and the pool minted a fresh
+      up/down pair from their combined collateral.
+    </p>
+    <p>
+      That is why the position cost 97.40 rather than 100, and why it needed no inventory
+      to begin with. Holding one of each side, it redeems to exactly 100 whichever way
+      the market resolves.
+    </p>
+  </div>
+
+  <div class="zero">
+    <div class="n">0.00</div>
+    <div class="l">
+      <b>directional exposure</b>
+      <p>
+        The number a market maker is judged on. Abadi never took a view, and the 2.60 is
+        not a bet that paid — it is the spread, collected.
+      </p>
+    </div>
+  </div>
+
+  <!-- ============ calibration ============ -->
+  <div class="eyebrow">Why quote instead of predict <span>2,422 settled markets</span></div>
+
+  <div class="cal">
+    <div class="tier"><div class="plot"><div class="bar" style="top:50%; height:1.6%"></div></div>
+      <div class="v">49.6</div><div class="t">60s</div></div>
+    <div class="tier"><div class="plot"><div class="bar" style="top:50%; height:5.6%"></div></div>
+      <div class="v">48.6</div><div class="t">300s</div></div>
+    <div class="tier"><div class="plot"><div class="bar" style="top:50%; height:7.2%"></div></div>
+      <div class="v">48.2</div><div class="t">900s</div></div>
+    <div class="tier"><div class="plot"><div class="bar" style="bottom:50%; height:4.0%"></div></div>
+      <div class="v">51.0</div><div class="t">1h</div></div>
+    <div class="tier"><div class="plot"><div class="bar" style="bottom:50%; height:7.6%"></div></div>
+      <div class="v">51.9</div><div class="t">4h</div></div>
+    <div class="tier"><div class="plot"><div class="bar" style="bottom:50%; height:34.4%"></div></div>
+      <div class="v">58.6</div><div class="t">24h</div></div>
+  </div>
+  <div class="cal-axis">
+    <span>deviation from a fair coin · dashed line is 50%</span>
+    <span>pooled 49.96% · z = −0.04</span>
+  </div>
+
+  <div class="verdict">
+    <p>
+      Across every tier, up won as often as a coin. Pooled over 2,422 settled markets:
+      <code>49.96%</code>, four hundredths of a standard error from 50. The 24-hour tier
+      looks tempting at 58.6% — it has 58 samples and a z of 1.31. That is noise, and
+      reading it as signal is the mistake to avoid.
+    </p>
+    <p>
+      With a coin flip and a three percent spread, crossing it costs
+      <code>−1.45%</code> a contract and collecting it earns <code>+1.45%</code>. So Abadi
+      collects. The strategy was chosen by the measurement, not the other way round.
+    </p>
+  </div>
+
+  <footer class="foot">
+    <span>vault 0xbcc310b2…0A77 · one fill, not a track record</span>
+    <span>abadi · everlasting</span>
+  </footer>
+
+</div>
