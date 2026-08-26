@@ -5,6 +5,7 @@ import {ERC4626} from "@openzeppelin/contracts/token/ERC20/extensions/ERC4626.so
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
 import {AbadiReactive} from "./AbadiReactive.sol";
@@ -36,7 +37,7 @@ import {IBinaryMarketsModule, MarketStatus} from "./interfaces/IBinaryMarketsMod
 ///      Custody follows the shape the DreamDEX team confirmed is the only one that works
 ///      today: BinaryPool has no operator gate, so the CONTRACT owns the orders and the
 ///      collateral. The operator key can quote and cancel; it can never move a token out.
-contract LiquidityVault is ERC4626, AbadiReactive {
+contract LiquidityVault is ERC4626, AbadiReactive, ReentrancyGuard {
     using SafeERC20 for IERC20;
     using MarketEngine for uint256;
 
@@ -60,6 +61,12 @@ contract LiquidityVault is ERC4626, AbadiReactive {
 
     /// @notice Governs the operator and the risk parameters. Not the assets.
     address public governor;
+
+    /// @dev Two-step, because a single-step transfer to a mistyped address hands the
+    ///      operator seat to nobody, permanently. Slither wanted `governor` immutable —
+    ///      which would make losing the key unrecoverable, so the answer is a transfer
+    ///      path, not a constant.
+    address public pendingGovernor;
 
     /// @notice 1.0 in price units = 10 ** collateral.decimals(). NOT 1e18.
     /// @dev Read from the token at construction, never hardcoded: tUSDC is 6 decimals on
@@ -113,6 +120,8 @@ contract LiquidityVault is ERC4626, AbadiReactive {
     event Settled(uint256 indexed slot, bytes32 indexed marketId, uint256 redeemed, bool voided);
     event Flattened(uint256 indexed slot, bytes32 indexed marketId, uint256 pairs, uint256 returned);
     event Swept(uint256 indexed firesAtMillis, uint256 slotsReleased);
+    event GovernanceOffered(address indexed from, address indexed to);
+    event GovernanceTransferred(address indexed from, address indexed to);
 
     // ----------------------------------------------------------------- errors
 
@@ -131,6 +140,8 @@ contract LiquidityVault is ERC4626, AbadiReactive {
     error NothingToRedeem(bytes32 marketId);
     error OnlyOperatorWhileTrading(bytes32 marketId);
     error NothingToFlatten(bytes32 marketId);
+    error OperatorGrantFailed();
+    error NotPendingGovernor(address caller);
 
     // ------------------------------------------------------------ constructor
 
@@ -146,7 +157,9 @@ contract LiquidityVault is ERC4626, AbadiReactive {
         outcomeToken = outcomeToken_;
         // The module PULLS winning outcome tokens on redemption. One grant covers every
         // id and every market, so redemption never needs a second approval later.
-        outcomeToken_.setOperator(address(module_), true);
+        // A token that answers false instead of reverting would leave the vault able to
+        // buy positions and unable to redeem them, discovered only at settlement.
+        if (!outcomeToken_.setOperator(address(module_), true)) revert OperatorGrantFailed();
         governor = governor_;
         tickSize = tickSize_;
         lotSize = lotSize_;
@@ -218,6 +231,7 @@ contract LiquidityVault is ERC4626, AbadiReactive {
     function quote(uint256 slot, bytes32 marketId, uint256 mid, uint256 halfSpread, uint256 size)
         external
         onlyOperator
+        nonReentrant
     {
         if (slot >= MAX_SLOTS) revert SlotOutOfRange(slot);
         if (_slots[slot].active) revert SlotBusy(slot);
@@ -270,7 +284,7 @@ contract LiquidityVault is ERC4626, AbadiReactive {
     }
 
     /// @notice Pull both legs of a slot and return its escrow to idle.
-    function cancelQuote(uint256 slot) external onlyOperator {
+    function cancelQuote(uint256 slot) external onlyOperator nonReentrant {
         if (slot >= MAX_SLOTS) revert SlotOutOfRange(slot);
         Slot storage s = _slots[slot];
         if (!s.active) revert SlotIdle(slot);
@@ -301,7 +315,7 @@ contract LiquidityVault is ERC4626, AbadiReactive {
     ///      flatten once the market can no longer trade. Past that point no fill is
     ///      possible, so there is no value left to destroy and no reason to let capital
     ///      sit behind a key that may have gone quiet.
-    function flatten(uint256 slot) external returns (uint256 returned) {
+    function flatten(uint256 slot) external nonReentrant returns (uint256 returned) {
         if (slot >= MAX_SLOTS) revert SlotOutOfRange(slot);
         Slot storage s = _slots[slot];
         if (!s.active) revert SlotIdle(slot);
@@ -356,7 +370,7 @@ contract LiquidityVault is ERC4626, AbadiReactive {
     ///
     ///      A settled market leaves the live list entirely, so nothing upstream will
     ///      remind the vault this position exists. Redemption has to be pulled.
-    function settle(uint256 slot) external returns (uint256 redeemed) {
+    function settle(uint256 slot) external nonReentrant returns (uint256 redeemed) {
         if (slot >= MAX_SLOTS) revert SlotOutOfRange(slot);
         Slot storage s = _slots[slot];
         if (!s.active) revert SlotIdle(slot);
@@ -366,13 +380,22 @@ contract LiquidityVault is ERC4626, AbadiReactive {
         bool voided = IBinaryMarket(market).isVoided();
         if (!resolved && !voided) revert MarketNotSettled(s.marketId, _statusOf(s.marketId));
 
+        // Effects before interactions. The slot is cleared up front so a reentrant call
+        // finds nothing to redeem twice; the values it needs are copied to memory first.
+        bytes32 id = s.marketId;
+        uint256 yesId = s.yesId;
+        uint256 noId = s.noId;
+        uint256 escrowed_ = s.escrowed;
+        delete _slots[slot];
+        totalEscrowed -= escrowed_;
+
         uint256 before = IERC20(asset()).balanceOf(address(this));
 
         if (voided) {
             // A voided market pays 0.5 on BOTH sides, so both must be redeemed. Redeeming
             // only the "winner" here would silently abandon half the position.
-            _redeemOutcome(s.marketId, 0, s.yesId);
-            _redeemOutcome(s.marketId, 1, s.noId);
+            _redeemOutcome(id, 0, yesId);
+            _redeemOutcome(id, 1, noId);
         } else {
             // `winningOutcome()` was removed in settlement v3 and now reverts. The winner
             // is the argmax of the payout vector.
@@ -381,15 +404,11 @@ contract LiquidityVault is ERC4626, AbadiReactive {
             for (uint256 i = 1; i < payouts.length; i++) {
                 if (payouts[i] > payouts[winner]) winner = uint8(i);
             }
-            _redeemOutcome(s.marketId, winner, winner == 0 ? s.yesId : s.noId);
+            _redeemOutcome(id, winner, winner == 0 ? yesId : noId);
         }
 
         redeemed = IERC20(asset()).balanceOf(address(this)) - before;
-        if (redeemed == 0) revert NothingToRedeem(s.marketId);
-
-        totalEscrowed -= s.escrowed;
-        bytes32 id = s.marketId;
-        delete _slots[slot];
+        if (redeemed == 0) revert NothingToRedeem(id); // reverts, so the clear above unwinds
 
         emit Settled(slot, id, redeemed, voided);
     }
@@ -424,8 +443,12 @@ contract LiquidityVault is ERC4626, AbadiReactive {
     ///      is no retry and no error surface — so every slot is handled independently and
     ///      a failure on one must not take down the rest. That is why this loop swallows
     ///      per-slot failures instead of propagating them.
-    function _onScheduled(uint256 firesAtMillis) internal override {
-        uint256 released;
+    ///
+    ///      It holds the reentrancy guard for the whole sweep. Without it the sweep is
+    ///      the one value-moving path that does not, and a reentrant `settle` during it
+    ///      would process a slot the sweep is already halfway through.
+    function _onScheduled(uint256 firesAtMillis) internal override nonReentrant {
+        uint256 released = 0;
         for (uint256 i = 0; i < MAX_SLOTS; i++) {
             Slot storage s = _slots[i];
             if (!s.active) continue;
@@ -479,6 +502,19 @@ contract LiquidityVault is ERC4626, AbadiReactive {
         headroomBps = headroomBps_;
         minHalfSpread = minHalfSpread_;
         emit RiskParamsSet(headroomBps_, minHalfSpread_);
+    }
+
+    /// @notice Nominate the next governor. Takes effect only when they accept.
+    function transferGovernance(address to) external onlyGovernor {
+        pendingGovernor = to;
+        emit GovernanceOffered(governor, to);
+    }
+
+    function acceptGovernance() external {
+        if (msg.sender != pendingGovernor) revert NotPendingGovernor(msg.sender);
+        emit GovernanceTransferred(governor, msg.sender);
+        governor = msg.sender;
+        pendingGovernor = address(0);
     }
 
     function setGrid(uint256 tickSize_, uint256 lotSize_) external onlyGovernor {

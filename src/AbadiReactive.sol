@@ -65,6 +65,10 @@ abstract contract AbadiReactive is SomniaEventHandler {
     {
         requireFunded();
         if (armed[firesAtMillis] != 0) revert AlreadyArmed(firesAtMillis);
+        // Claim the slot before calling out. The precompile is privileged code and a
+        // reentrant path through it would otherwise arm the same instant twice, and
+        // fire the same sweep twice.
+        armed[firesAtMillis] = type(uint256).max;
 
         subscriptionId = SomniaExtensions.scheduleSubscriptionAtTimestamp(
             address(this),

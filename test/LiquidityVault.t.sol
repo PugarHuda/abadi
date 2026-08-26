@@ -771,8 +771,81 @@ contract LiquidityVaultTest is Test {
         vm.expectRevert(abi.encodeWithSelector(LiquidityVault.NotOperator.selector, alice));
         vault.armSweep(uint64(block.timestamp + 600));
     }
+    // ------------------------------------------------------- governance handover
+
+    /// A single-step transfer to a mistyped address hands the operator seat to nobody,
+    /// permanently. Slither wanted `governor` immutable, which has the same effect the
+    /// first time a key is lost — so the answer is a transfer path, not a constant.
+    function test_governanceHandoverNeedsBothSides() public {
+        vm.prank(governor);
+        vault.transferGovernance(bob);
+
+        assertEq(vault.governor(), governor, "not handed over until accepted");
+        assertEq(vault.pendingGovernor(), bob);
+
+        // The old governor still governs in the meantime.
+        vm.prank(governor);
+        vault.setOperator(address(0xFEE));
+        assertEq(vault.operator(), address(0xFEE));
+
+        vm.prank(bob);
+        vault.acceptGovernance();
+        assertEq(vault.governor(), bob);
+        assertEq(vault.pendingGovernor(), address(0), "nomination consumed");
+    }
+
+    function test_onlyTheNomineeCanAccept() public {
+        vm.prank(governor);
+        vault.transferGovernance(bob);
+
+        vm.prank(alice);
+        vm.expectRevert(abi.encodeWithSelector(LiquidityVault.NotPendingGovernor.selector, alice));
+        vault.acceptGovernance();
+    }
+
+    function test_theOldGovernorLosesPowerOnHandover() public {
+        vm.prank(governor);
+        vault.transferGovernance(bob);
+        vm.prank(bob);
+        vault.acceptGovernance();
+
+        vm.prank(governor);
+        vm.expectRevert(abi.encodeWithSelector(LiquidityVault.NotGovernor.selector, governor));
+        vault.setOperator(alice);
+    }
+
+    /// The module pulls outcome tokens on redemption. A token answering false instead of
+    /// reverting would leave the vault able to buy positions and unable to redeem them —
+    /// discovered at settlement, which is far too late.
+    function test_deploymentFailsLoudlyIfTheOperatorGrantIsRefused() public {
+        RefusingOutcome bad = new RefusingOutcome();
+        vm.expectRevert(LiquidityVault.OperatorGrantFailed.selector);
+        new LiquidityVault(
+            IERC20(address(usdc)),
+            IBinaryMarketsModule(address(module)),
+            IOutcomeToken6909(address(bad)),
+            governor,
+            TICK,
+            LOT
+        );
+    }
 }
 
 interface ISomniaTicks {
     event Schedule(uint256 indexed timestampMillis);
+}
+
+/// An ERC-6909 that reports failure rather than reverting.
+contract RefusingOutcome {
+    function setOperator(address, bool) external pure returns (bool) {
+        return false;
+    }
+
+    function balanceOf(address, uint256) external pure returns (uint256) {
+        return 0;
+    }
+
+    function isOperator(address, address) external pure returns (bool) {
+        return false;
+    }
 }

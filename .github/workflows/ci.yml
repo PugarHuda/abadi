@@ -28,6 +28,16 @@ jobs:
       - name: Test
         run: forge test -vv
 
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Static analysis
+        run: |
+          pip install --quiet slither-analyzer
+          # Triage and the reasons each accepted finding stands: docs/SLITHER.md
+          slither . --filter-paths "lib|node_modules|test|script"             --exclude-informational --exclude-low             --exclude divide-before-multiply,incorrect-equality,unused-return,reentrancy-benign,reentrancy-events             --fail-high
+
       - name: Fail on any remaining TODO in contracts
         run: |
           if grep -rnE "TODO|FIXME|XXX" src/ ; then
