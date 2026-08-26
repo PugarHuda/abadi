@@ -1,0 +1,252 @@
+<title>Abadi Deck</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Martian+Mono:wght@300;400;600&family=Public+Sans:wght@400;500&display=swap" rel="stylesheet">
+
+<style>
+  :root {
+    --ink:        #14203A;
+    --ink-line:   #2A3B5E;
+    --cotton:     #EAE4D6;
+    --cotton-dim: #8D97AE;
+    --turmeric:   #E0A045;
+    --teal:       #4FA396;
+    --wax:        #F7F3E7;
+    --display: "Bricolage Grotesque", system-ui, sans-serif;
+    --body: "Public Sans", system-ui, sans-serif;
+    --mono: "Martian Mono", ui-monospace, monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--ink); color: var(--cotton);
+    font-family: var(--body); line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+    scroll-snap-type: y proximity;
+  }
+
+  .slide {
+    min-height: 100vh; scroll-snap-align: start;
+    display: flex; flex-direction: column; justify-content: center;
+    padding: 68px 40px; max-width: 940px; margin: 0 auto;
+    border-bottom: 1px solid var(--ink-line);
+    position: relative;
+  }
+  .n {
+    position: absolute; top: 34px; left: 40px;
+    font-family: var(--mono); font-size: 10px; letter-spacing: .2em;
+    color: var(--cotton-dim);
+  }
+  h2 {
+    font-family: var(--display); font-weight: 800;
+    font-size: clamp(30px, 5.4vw, 56px); line-height: 1.04;
+    letter-spacing: -0.035em; margin: 0 0 22px; max-width: 19ch;
+  }
+  h2 em { font-style: normal; color: var(--turmeric); }
+  p { font-size: clamp(16px, 1.9vw, 19px); margin: 0 0 16px; max-width: 60ch; }
+  p.dim { color: var(--cotton-dim); }
+  .kicker {
+    font-family: var(--mono); font-size: 11px; letter-spacing: .2em;
+    text-transform: uppercase; color: var(--turmeric); margin-bottom: 22px;
+  }
+  code, .mono { font-family: var(--mono); font-size: 0.88em; }
+  pre {
+    font-family: var(--mono); font-size: clamp(11px, 1.5vw, 14px);
+    line-height: 1.8; color: var(--cotton);
+    background: rgba(255,255,255,.03);
+    border-left: 2px solid var(--turmeric);
+    padding: 20px 22px; overflow-x: auto; margin: 0 0 20px;
+  }
+  pre b { color: var(--turmeric); font-weight: 600; }
+  pre i { color: var(--cotton-dim); font-style: normal; }
+
+  table { border-collapse: collapse; width: 100%; margin: 0 0 20px; }
+  th, td {
+    text-align: left; padding: 9px 12px 9px 0;
+    border-bottom: 1px solid var(--ink-line); font-size: 15px;
+  }
+  th {
+    font-family: var(--mono); font-size: 10px; font-weight: 400;
+    letter-spacing: .16em; text-transform: uppercase; color: var(--cotton-dim);
+  }
+  td.num { font-family: var(--mono); font-size: 14px; text-align: right; }
+  tr.hi td { color: var(--turmeric); }
+
+  /* cover */
+  .cover h1 {
+    font-family: var(--display); font-weight: 800;
+    font-size: clamp(64px, 17vw, 190px); line-height: 0.82;
+    letter-spacing: -0.055em; margin: 0 0 26px;
+  }
+  .cover h1 span { color: var(--turmeric); }
+  .cover .line {
+    font-family: var(--display); font-weight: 600;
+    font-size: clamp(20px, 3.2vw, 32px); letter-spacing: -0.02em;
+    max-width: 22ch; line-height: 1.2; margin: 0 0 30px;
+  }
+  .cover .meta {
+    font-family: var(--mono); font-size: 11px; letter-spacing: .14em;
+    color: var(--cotton-dim); text-transform: uppercase;
+  }
+
+  .big {
+    font-family: var(--mono); font-weight: 600;
+    font-size: clamp(56px, 13vw, 128px); line-height: 0.86;
+    letter-spacing: -0.05em; color: var(--wax); margin: 8px 0 14px;
+  }
+  .big.amber { color: var(--turmeric); }
+
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 34px; }
+  @media (max-width: 720px) { .two { grid-template-columns: 1fr; } }
+
+  .tick { color: var(--teal); }
+  .cross { color: var(--turmeric); }
+
+  ul { padding-left: 20px; margin: 0 0 16px; max-width: 60ch; }
+  li { margin-bottom: 9px; font-size: clamp(15px, 1.8vw, 18px); }
+  li::marker { color: var(--turmeric); }
+</style>
+
+<!-- 01 -->
+<section class="slide cover">
+  <span class="n">01</span>
+  <h1>ABA<span>DI</span></h1>
+  <p class="line">The markets expire every window. <span style="color:var(--turmeric)">The liquidity doesn't.</span></p>
+  <p class="meta">Somnia × DreamDEX Event Contracts Hackathon · Shannon testnet</p>
+</section>
+
+<!-- 02 -->
+<section class="slide">
+  <span class="n">02</span>
+  <div class="kicker">The problem</div>
+  <h2>Every position dies on a timer.</h2>
+  <p>DreamDEX runs six window tiers on two assets — sixty seconds through twenty-four hours. Twelve series live at once, each expiring and respawning on schedule.</p>
+  <p class="dim">Liquidity has to be re-placed every window, on every series, forever. Nobody does that by hand — and the book shows it: a flat 2.9% spread on every market regardless of tenor, volatility, or moneyness. That is the signature of one naive quoter, not a competitive book.</p>
+</section>
+
+<!-- 03 -->
+<section class="slide">
+  <span class="n">03</span>
+  <div class="kicker">What we measured first</div>
+  <h2>Does up win more often than the market prices it to?</h2>
+  <table>
+    <tr><th>Tier</th><th>n</th><th style="text-align:right">Up won</th><th style="text-align:right">z vs fair coin</th></tr>
+    <tr><td>60s</td><td class="num">500</td><td class="num">49.6%</td><td class="num">−0.18</td></tr>
+    <tr><td>300s</td><td class="num">500</td><td class="num">48.6%</td><td class="num">−0.63</td></tr>
+    <tr><td>900s</td><td class="num">500</td><td class="num">48.2%</td><td class="num">−0.80</td></tr>
+    <tr><td>1h</td><td class="num">500</td><td class="num">51.0%</td><td class="num">+0.45</td></tr>
+    <tr><td>4h</td><td class="num">364</td><td class="num">51.9%</td><td class="num">+0.73</td></tr>
+    <tr><td>24h</td><td class="num">58</td><td class="num">58.6%</td><td class="num">+1.31</td></tr>
+    <tr class="hi"><td><b>pooled</b></td><td class="num">2,422</td><td class="num">49.96%</td><td class="num">−0.04</td></tr>
+  </table>
+  <p class="dim">No. Four hundredths of a standard error from a coin flip, across every settled market on the venue.</p>
+</section>
+
+<!-- 04 -->
+<section class="slide">
+  <span class="n">04</span>
+  <div class="kicker">What that decides</div>
+  <h2>With a coin flip and a 3% spread, only one side of the trade is positive.</h2>
+  <pre>taker  crosses the spread   <b>−1.45%</b> per contract
+maker  collects the spread  <b>+1.45%</b> per fill</pre>
+  <p>Our first design was a directional vault that <em>took</em> liquidity every window. On the 900-second tier at 10% deployment:</p>
+  <pre>after 1 day   ( 96 rolls)   <b>87.0%</b> of deposit
+after 7 days  (672 rolls)   <b>37.7%</b></pre>
+  <p class="dim">Zero fees don't save it — the spread is the cost. We cut that product on the evidence and built the other side of the trade instead.</p>
+</section>
+
+<!-- 05 -->
+<section class="slide">
+  <span class="n">05</span>
+  <div class="kicker">The mechanism</div>
+  <h2>Quote both sides holding <em>nothing</em>.</h2>
+  <p>DreamDEX keeps one book with a fill path most venues don't have: two opposite-side <em>buyers</em> cross with no seller at all, and the pool mints a fresh up/down pair from their combined collateral.</p>
+  <pre>BUY_YES  @ p        escrows  p         <i>per contract</i>
+BUY_NO   @ p + s    escrows  1−(p+s)   <i>price is always YES-side</i>
+                             <b>───────</b>
+pair cost                    <b>1 − s</b></pre>
+  <p class="dim">Both legs fill and the vault holds a complete set — worth exactly 1 at settlement whichever side wins. The spread is captured with zero directional exposure, and no inventory was ever required.</p>
+</section>
+
+<!-- 06 -->
+<section class="slide">
+  <span class="n">06</span>
+  <div class="kicker">Live on Shannon</div>
+  <h2>We quoted inside, and the market tightened.</h2>
+  <pre>theirs   0.742 / 0.772     spread 0.030
+ours     <b>0.744 / 0.770</b>     spread 0.026   <i>inside</i>
+
+the book, read back:
+  <b>0.744 × 100  ← abadi</b>      0.769 × 200
+  0.742 × 200                <b>0.770 × 100  ← abadi</b>
+  0.733 × 330                0.779 × 330
+
+spread after   <b>0.030 → 0.025</b>   <i>the incumbent responded</i></pre>
+  <p class="dim">Abadi's bid became the best bid on the market. One vault quoting inside made prices better for everyone else trading it — the ecosystem claim as a screenshot, not an assertion.</p>
+</section>
+
+<!-- 07 -->
+<section class="slide">
+  <span class="n">07</span>
+  <div class="kicker">Then both legs filled</div>
+  <div class="two">
+    <div>
+      <pre>paid                <b>97.40</b>
+holds       100 up + 100 down
+worth at settlement <b>100.00</b>
+                   <i>either way</i>
+                   <b>──────</b>
+locked in           <b>+2.60</b></pre>
+      <p class="dim" style="font-size:15px">Both legs were buys. Neither could fill against a seller, because none was involved.</p>
+    </div>
+    <div>
+      <div class="big">0.00</div>
+      <p class="kicker" style="margin:0 0 10px">directional exposure</p>
+      <p class="dim" style="font-size:15px">The number a market maker is judged on. The 2.60 isn't a bet that paid — it's the spread, collected.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 08 -->
+<section class="slide">
+  <span class="n">08</span>
+  <div class="kicker">Custody</div>
+  <h2>The key that steers the quotes can't move a token.</h2>
+  <p>BinaryPool has no operator gate. The DreamDEX team confirmed the only shape that works today is a contract that owns its own orders — which is what Abadi is.</p>
+  <table>
+    <tr><th>Actor</th><th>Can</th><th>Cannot</th></tr>
+    <tr><td><code>operator</code></td><td>quote, cancel</td><td class="cross"><b>move any token</b></td></tr>
+    <tr><td><code>governor</code></td><td>set operator, risk params</td><td class="cross">touch assets</td></tr>
+    <tr><td>depositor</td><td>deposit, withdraw</td><td class="cross">steer quotes</td></tr>
+  </table>
+  <p class="dim"><code>settle()</code> is permissionless — proceeds go to the vault, never the caller, and a settled market leaves the live list so redemption has to be pulled. <code>flatten()</code> is operator-only while a market still trades, because cancelling a live quote destroys the spread; open to anyone once it can't.</p>
+</section>
+
+<!-- 09 -->
+<section class="slide">
+  <span class="n">09</span>
+  <div class="kicker">What we found for DreamDEX</div>
+  <h2>Four assumptions died on contact with the chain.</h2>
+  <ul>
+    <li><b>Prices scale to the collateral's decimals</b>, not 1e18 — and a wrong scale reverts as <code>PostOnlyWouldCross</code>, sending you to look at spreads instead of units.</li>
+    <li><b>The spot <code>placeOrder</code> ABI exists on binary pools and always fails.</b> It compiles, type-checks, and reverts at runtime.</li>
+    <li><b>Reactivity fails identically for two unrelated reasons</b> — a 32 STT floor and a missing ERC-165 — both with empty revert data.</li>
+    <li><b>Docs list two window tiers. There are six.</b> A headroom rule tuned for the documented ones silently stops trading the fast tiers.</li>
+  </ul>
+  <p class="dim">All reported back with reproduction steps, alongside what genuinely worked: the Gotchas page, unpruned history, and a dev channel that answered a hard question in under an hour.</p>
+</section>
+
+<!-- 10 -->
+<section class="slide">
+  <span class="n">10</span>
+  <div class="kicker">Status</div>
+  <h2>One vault. One fill. Honest about which is which.</h2>
+  <table>
+    <tr><th>Working on testnet</th><th></th></tr>
+    <tr><td>Vault deployed, quoting, top of book</td><td class="num tick">✓</td></tr>
+    <tr><td>Both legs filled into a complete set</td><td class="num tick">✓</td></tr>
+    <tr><td>51 tests, two fuzzed invariants</td><td class="num tick">✓</td></tr>
+    <tr><td>Reactive self-rearming rolls</td><td class="num cross">32 STT short</td></tr>
+  </table>
+  <p><b>One fill proves the mechanism, not the edge.</b> Adverse selection — being filled preferentially when you're wrong — is the real risk a maker carries, and measuring it needs many quotes across many windows. That's what comes next, along with the requote loop and the reactive roll.</p>
+  <p class="dim">The markets expire. The liquidity doesn't.</p>
+</section>
