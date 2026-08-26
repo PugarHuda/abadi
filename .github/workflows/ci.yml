@@ -1,0 +1,85 @@
+name: CI
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+
+# Everything here runs without network access to Somnia. The scripts that touch the
+# live chain are deliberately excluded: a testnet outage is not a reason to fail a
+# build, and the indexer drops roughly one call in five.
+jobs:
+  contracts:
+    name: contracts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: stable
+
+      - name: Install forge-std
+        run: forge install foundry-rs/forge-std --no-git
+
+      - name: Build
+        run: forge build --sizes
+
+      - name: Test
+        run: forge test -vv
+
+      - name: Fail on any remaining TODO in contracts
+        run: |
+          if grep -rnE "TODO|FIXME|XXX" src/ ; then
+            echo "::error::unresolved marker in src/"
+            exit 1
+          fi
+          echo "none"
+
+  web:
+    name: web + typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Build site
+        run: node scripts/build-site.mjs
+
+      - name: Assert the built pages are complete documents
+        # The sources are page CONTENT, because that is what the artifact renderer
+        # wants. Serving them raw put the live site into quirks mode with no mobile
+        # viewport, and nothing caught it. This is that regression, as a gate.
+        run: |
+          for f in dist/index.html dist/deck.html; do
+            head -c 15 "$f" | grep -qi '<!doctype html>' || { echo "::error::$f has no doctype"; exit 1; }
+            grep -q '<html lang=' "$f" || { echo "::error::$f has no lang"; exit 1; }
+            grep -q 'name="viewport"' "$f" || { echo "::error::$f has no viewport"; exit 1; }
+            grep -q 'charset=' "$f" || { echo "::error::$f has no charset"; exit 1; }
+            echo "ok  $f"
+          done
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Browser QA
+        run: |
+          node qa/serve.mjs &
+          npx wait-on http://localhost:4321/ --timeout 30000
+          BASE=http://localhost:4321 npx playwright test
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-failures
+          path: test-results/
+          retention-days: 7

@@ -7,6 +7,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
+import {AbadiReactive} from "./AbadiReactive.sol";
 import {MarketEngine} from "./MarketEngine.sol";
 import {IBinaryPool, IBinaryMarket, IOutcomeToken6909, ORDER_KIND, ORDER_TYPE} from "./interfaces/IBinaryPool.sol";
 import {IBinaryMarketsModule, MarketStatus} from "./interfaces/IBinaryMarketsModule.sol";
@@ -35,7 +36,7 @@ import {IBinaryMarketsModule, MarketStatus} from "./interfaces/IBinaryMarketsMod
 ///      Custody follows the shape the DreamDEX team confirmed is the only one that works
 ///      today: BinaryPool has no operator gate, so the CONTRACT owns the orders and the
 ///      collateral. The operator key can quote and cancel; it can never move a token out.
-contract LiquidityVault is ERC4626 {
+contract LiquidityVault is ERC4626, AbadiReactive {
     using SafeERC20 for IERC20;
     using MarketEngine for uint256;
 
@@ -92,6 +93,8 @@ contract LiquidityVault is ERC4626 {
         uint256 size; // contracts quoted per side
         uint256 bidPrice; // YES-side price of the BUY_YES leg
         uint256 askPrice; // YES-side price of the BUY_NO leg
+        uint256 yesId; // ERC-6909 ids, cached so NAV needs no registry lookup
+        uint256 noId;
         bool active;
     }
 
@@ -109,6 +112,7 @@ contract LiquidityVault is ERC4626 {
     event GridSet(uint256 tickSize, uint256 lotSize);
     event Settled(uint256 indexed slot, bytes32 indexed marketId, uint256 redeemed, bool voided);
     event Flattened(uint256 indexed slot, bytes32 indexed marketId, uint256 pairs, uint256 returned);
+    event Swept(uint256 indexed firesAtMillis, uint256 slotsReleased);
 
     // ----------------------------------------------------------------- errors
 
@@ -162,14 +166,34 @@ contract LiquidityVault is ERC4626 {
 
     // ------------------------------------------------------------ NAV / 4626
 
-    /// @notice Idle collateral plus everything committed to resting quotes.
-    /// @dev ponytail: escrow is carried at cost, so a slot whose legs have partially
-    ///      filled is valued at what it paid rather than at the book's mid. Between a
-    ///      fill and the next `settle`, NAV can be off by at most the half-spread on the
-    ///      filled leg. That only matters to someone depositing in that window.
-    ///      Upgrade path: mark unmatched legs to the book mid before pricing shares.
+    /// @notice Idle collateral, plus resting escrow, plus complete sets at their true worth.
+    /// @dev Share price is a transfer of value between users, so this cannot be lazy.
+    ///      Carrying a filled position at cost under-reports NAV by exactly the spread
+    ///      just captured, and a depositor arriving in that window buys in cheap and
+    ///      dilutes everyone already there.
+    ///
+    ///      A complete set is worth exactly 1 collateral per pair at any moment, whichever
+    ///      way the market later resolves, so it is marked at 1 — not estimated.
+    ///
+    ///      A leg WITHOUT a partner stays at cost. It is directional and only settlement
+    ///      resolves it; marking it to the book would import the book's noise into the
+    ///      share price, and a thin book moves for reasons that have nothing to do with
+    ///      the position's worth.
     function totalAssets() public view override returns (uint256) {
-        return IERC20(asset()).balanceOf(address(this)) + totalEscrowed;
+        uint256 total = IERC20(asset()).balanceOf(address(this)) + totalEscrowed;
+        for (uint256 i = 0; i < MAX_SLOTS; i++) {
+            Slot storage s = _slots[i];
+            if (!s.active) continue;
+            uint256 yes = outcomeToken.balanceOf(address(this), s.yesId);
+            uint256 no = outcomeToken.balanceOf(address(this), s.noId);
+            uint256 pairs = yes < no ? yes : no;
+            if (pairs == 0) continue;
+            // The pairs were bought out of escrow, which is still counted above at cost.
+            // Add only the difference between what they are worth and what they cost.
+            uint256 cost = s.size == 0 ? 0 : (s.escrowed * pairs) / s.size;
+            if (pairs > cost) total += pairs - cost;
+        }
+        return total;
     }
 
     /// @notice Collateral not currently committed to a quote.
@@ -200,6 +224,7 @@ contract LiquidityVault is ERC4626 {
         if (halfSpread < minHalfSpread) revert SpreadTooTight(halfSpread);
 
         (address pool, uint64 expiry, uint64 intervalSec) = _requireTradable(marketId);
+        (,,,,,,,,,, uint256 yesId_, uint256 noId_,,) = module.markets(marketId);
 
         uint256 bid = MarketEngine.floorToTick(mid - halfSpread, tickSize);
         uint256 ask = MarketEngine.ceilToTick(mid + halfSpread, tickSize);
@@ -231,6 +256,8 @@ contract LiquidityVault is ERC4626 {
             size: qty,
             bidPrice: bid,
             askPrice: ask,
+            yesId: yesId_,
+            noId: noId_,
             active: true
         });
         totalEscrowed += escrow;
@@ -284,9 +311,8 @@ contract LiquidityVault is ERC4626 {
             revert OnlyOperatorWhileTrading(s.marketId);
         }
 
-        (,,,,,,,,,, uint256 yesId, uint256 noId,,) = module.markets(s.marketId);
-        uint256 yes = outcomeToken.balanceOf(address(this), yesId);
-        uint256 no = outcomeToken.balanceOf(address(this), noId);
+        uint256 yes = outcomeToken.balanceOf(address(this), s.yesId);
+        uint256 no = outcomeToken.balanceOf(address(this), s.noId);
         uint256 pairs = yes < no ? yes : no;
         if (pairs == 0) revert NothingToFlatten(s.marketId);
 
@@ -335,7 +361,7 @@ contract LiquidityVault is ERC4626 {
         Slot storage s = _slots[slot];
         if (!s.active) revert SlotIdle(slot);
 
-        (,,,,,,,, address market,, uint256 yesId, uint256 noId,,) = module.markets(s.marketId);
+        (,,,,,,,, address market,,,,,) = module.markets(s.marketId);
         bool resolved = IBinaryMarket(market).isResolved();
         bool voided = IBinaryMarket(market).isVoided();
         if (!resolved && !voided) revert MarketNotSettled(s.marketId, _statusOf(s.marketId));
@@ -345,8 +371,8 @@ contract LiquidityVault is ERC4626 {
         if (voided) {
             // A voided market pays 0.5 on BOTH sides, so both must be redeemed. Redeeming
             // only the "winner" here would silently abandon half the position.
-            _redeemOutcome(s.marketId, 0, yesId);
-            _redeemOutcome(s.marketId, 1, noId);
+            _redeemOutcome(s.marketId, 0, s.yesId);
+            _redeemOutcome(s.marketId, 1, s.noId);
         } else {
             // `winningOutcome()` was removed in settlement v3 and now reverts. The winner
             // is the argmax of the payout vector.
@@ -355,7 +381,7 @@ contract LiquidityVault is ERC4626 {
             for (uint256 i = 1; i < payouts.length; i++) {
                 if (payouts[i] > payouts[winner]) winner = uint8(i);
             }
-            _redeemOutcome(s.marketId, winner, winner == 0 ? yesId : noId);
+            _redeemOutcome(s.marketId, winner, winner == 0 ? s.yesId : s.noId);
         }
 
         redeemed = IERC20(asset()).balanceOf(address(this)) - before;
@@ -373,6 +399,73 @@ contract LiquidityVault is ERC4626 {
         if (held == 0) return;
         // `(operatorId, venueId)` are attribution-only and may be zero.
         module.redeem(0, bytes32(0), marketId, outcomeIdx, held);
+    }
+
+    // -------------------------------------------------------- keeper-free sweep
+
+    /// @notice Wake the vault at `firesAtSec` to release whatever the window left behind.
+    /// @dev This is what makes the name literal: a window expires, and the vault frees its
+    ///      own capital without anyone calling it. Quotes on a dead window earn nothing and
+    ///      their escrow is stuck until something cancels them, so the something is the
+    ///      chain itself.
+    ///
+    ///      Arming costs native currency for the callback, and the precompile requires the
+    ///      handler to hold at least 32 STT on testnet — `_arm` reverts with `Underfunded`
+    ///      rather than letting the precompile fail with empty data.
+    function armSweep(uint64 firesAtSec) external onlyOperator returns (uint256 subscriptionId) {
+        return _arm(uint256(firesAtSec) * 1000, 10 gwei, 50 gwei, 500_000);
+    }
+
+    function disarmSweep(uint64 firesAtSec) external onlyOperator {
+        _disarm(uint256(firesAtSec) * 1000);
+    }
+
+    /// @dev Runs inside the reactivity callback. A callback that reverts is LOST — there
+    ///      is no retry and no error surface — so every slot is handled independently and
+    ///      a failure on one must not take down the rest. That is why this loop swallows
+    ///      per-slot failures instead of propagating them.
+    function _onScheduled(uint256 firesAtMillis) internal override {
+        uint256 released;
+        for (uint256 i = 0; i < MAX_SLOTS; i++) {
+            Slot storage s = _slots[i];
+            if (!s.active) continue;
+            if (_statusOf(s.marketId) == MarketStatus.TRADING) continue; // still earning
+            if (_release(i)) released++;
+        }
+        emit Swept(firesAtMillis, released);
+    }
+
+    /// @dev Cancel both legs and merge any complete set back to collateral.
+    /// @return true when the slot was fully closed.
+    function _release(uint256 slot) internal returns (bool) {
+        Slot storage s = _slots[slot];
+
+        if (s.yesOrderId != 0) {
+            try IBinaryPool(s.pool).cancelOrder(s.yesOrderId) {} catch {}
+            s.yesOrderId = 0;
+        }
+        if (s.noOrderId != 0) {
+            try IBinaryPool(s.pool).cancelOrder(s.noOrderId) {} catch {}
+            s.noOrderId = 0;
+        }
+
+        uint256 yes = outcomeToken.balanceOf(address(this), s.yesId);
+        uint256 no = outcomeToken.balanceOf(address(this), s.noId);
+        uint256 pairs = yes < no ? yes : no;
+
+        if (pairs > 0) {
+            try module.mergeCompleteSet(0, bytes32(0), s.marketId, pairs) {} catch {
+                return false; // leave it for settle(); do not strand the other slots
+            }
+        }
+
+        // An uneven fill leaves a naked leg that only settlement can redeem. Keep the
+        // slot so `settle` can find it — a settled market vanishes from the live list.
+        if (yes != no) return false;
+
+        totalEscrowed -= s.escrowed;
+        delete _slots[slot];
+        return true;
     }
 
     // ------------------------------------------------------------- governance

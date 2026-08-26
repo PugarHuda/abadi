@@ -10,34 +10,10 @@
  * Run: node scripts/operator.ts [slot]
  */
 import { SomniaMarkets, isBinaryMarket } from "@somnia-chain/markets-sdk";
-import { createPublicClient, createWalletClient, defineChain, http, parseAbi } from "viem";
+import { createPublicClient,  createWalletClient, http,  parseAbi } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { readFileSync } from "node:fs";
-
-const RPC = "https://api.infra.testnet.somnia.network";
-const WS = "wss://api.infra.testnet.somnia.network/ws";
-const INDEXER = "https://dev.smk.somnia.host/v1/graphql";
-
-const shannon = defineChain({
-  id: 50312,
-  name: "Somnia Shannon",
-  nativeCurrency: { name: "STT", symbol: "STT", decimals: 18 },
-  rpcUrls: { default: { http: [RPC], webSocket: [WS] } },
-});
-
-const addresses = {
-  binaryModule: "0x3ecC694Cef705358864a646142ac17A90E29e388",
-  marketsCore: "0x2802504314685D89bF6C992CA5a8e7cC78bc0294",
-  binarySettlement: "0xbF4a49e0Dfd092e5FBE8E5761064C49533e6Ed23",
-  collateralRouter: "0xbC0C9834B15ACE38bB50dDaa7d7f7C7CC4DC183C",
-  oracleHub: "0xe40db387cC98601Dd11bd634fF2f3AD5686dE32b",
-  clobFactory: "0xb2BE8EE02F96379DB75f01802384593EBa9bfF04",
-  binaryPoolImpl: "0x82A1FcdaA2daC2fC7D5f9909D43E68021eE966FD",
-  marketCreator: "0x5Ce69567dB39C8fBAd7e048bEfdbcCdfE67B44e6",
-  marketCreatorFactory: "0xE6bEE93cE87c9E6e62aCb621caa7832EE47b4F6B",
-  collateral: "0x70a86D8842FB63C4Ad2b7cdddF530eBf1BB25d8E",
-  testUsdc: "0x70a86D8842FB63C4Ad2b7cdddF530eBf1BB25d8E",
-};
+import { shannon, addresses, INDEXER, WS, RPC, env, PRICE_ONE, TICK } from "./lib/somnia.ts";
 
 const VAULT_ABI = parseAbi([
   "function quote(uint256 slot, bytes32 marketId, uint256 mid, uint256 halfSpread, uint256 size)",
@@ -48,19 +24,9 @@ const VAULT_ABI = parseAbi([
   "function minHalfSpread() view returns (uint256)",
 ]);
 
-const TICK = 1000n; // 0.001 at 6 decimals — precision.price = 3 on this venue
-// 1.0 in price units = 10 ** collateral.decimals(). tUSDC is 6, NOT 1e18.
-// Verified against a working order: 0.727 goes on the wire as 727000.
-const ONE = 1_000_000n;
+const ONE = PRICE_ONE;
 const SIZE = 100_000_000n; // 100 contracts, 6-decimal collateral
 const INSIDE_TICKS = 2n; // quote this many ticks inside each side of the incumbent
-
-const env = Object.fromEntries(
-  readFileSync(".env", "utf8")
-    .split(/\r?\n/)
-    .filter((l) => l && !l.startsWith("#") && l.includes("="))
-    .map((l) => [l.slice(0, l.indexOf("=")), l.slice(l.indexOf("=") + 1)]),
-);
 
 const toWei = (x: number) => BigInt(Math.round(x * 1000)) * TICK; // 0.727 -> 727000
 const fmt = (w: bigint) => (Number(w) / 1e6).toFixed(3);
@@ -68,7 +34,7 @@ const fmt = (w: bigint) => (Number(w) / 1e6).toFixed(3);
 async function main() {
   const slot = BigInt(process.argv[2] ?? 0);
   const vault = readFileSync(".vault-addr", "utf8").trim() as `0x${string}`;
-  const account = privateKeyToAccount(env.PRIVATE_KEY as `0x${string}`);
+  const account = privateKeyToAccount(env().PRIVATE_KEY as `0x${string}`);
 
   const pub = createPublicClient({ chain: shannon, transport: http(RPC) });
   const wallet = createWalletClient({ account, chain: shannon, transport: http(RPC) });

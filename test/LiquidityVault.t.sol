@@ -9,6 +9,8 @@ import {LiquidityVault} from "../src/LiquidityVault.sol";
 import {MarketEngine} from "../src/MarketEngine.sol";
 import {IBinaryMarketsModule, MarketStatus} from "../src/interfaces/IBinaryMarketsModule.sol";
 import {IOutcomeToken6909, ORDER_KIND, ORDER_TYPE} from "../src/interfaces/IBinaryPool.sol";
+import {AbadiReactive} from "../src/AbadiReactive.sol";
+import {SomniaExtensions} from "@somnia-chain/reactivity-contracts/contracts/interfaces/SomniaExtensions.sol";
 
 contract MockUSDC is ERC20 {
     constructor() ERC20("Test USDC", "tUSDC") {}
@@ -269,7 +271,7 @@ contract LiquidityVaultTest is Test {
         vault.setOperator(operator);
 
         usdc.mint(alice, 1_000e6);
-        usdc.mint(bob, 1_000e6);
+        usdc.mint(bob, 2_000e6);
     }
 
     function _deposit(address who, uint256 amount) internal {
@@ -521,8 +523,10 @@ contract LiquidityVaultTest is Test {
         assertEq(outcome.balanceOf(address(vault), NO_ID), 0, "winning tokens consumed");
         assertEq(vault.totalEscrowed(), 0, "escrow released");
         assertFalse(vault.slots(0).active, "slot freed for reuse");
-        // 100 back against 97 escrowed: the 3 is the spread the pair was quoted at.
-        assertEq(vault.totalAssets(), navBefore + 3e6, "spread captured");
+        // NAV does not jump here: the spread was recognised the moment the pair filled,
+        // because a complete set is already worth exactly 1 per pair. Settlement only
+        // converts it to collateral.
+        assertEq(vault.totalAssets(), navBefore, "settlement realises, it does not create");
     }
 
     /// A void pays 0.5 on BOTH sides. Redeeming only the "winner" abandons half the
@@ -569,16 +573,36 @@ contract LiquidityVaultTest is Test {
         vault.settle(0);
     }
 
-    function test_sharesAppreciateAfterASettledSpread() public {
-        _quotedAndFilled();
-        uint256 assetsBefore = vault.convertToAssets(vault.balanceOf(alice));
+    function test_sharesAppreciateTheMomentThePairFills() public {
+        _deposit(alice, 500e6);
+        assertEq(vault.convertToAssets(vault.balanceOf(alice)), 500e6);
+
+        vm.prank(operator);
+        vault.quote(0, MARKET, uint256(500_000), uint256(15_000), 100e6);
+        assertApproxEqAbs(vault.convertToAssets(vault.balanceOf(alice)), 500e6, 1, "quoting alone earns nothing");
+
+        // Both legs fill: the vault now holds a complete set worth 100 that cost 97.
+        outcome.setBalance(address(vault), YES_ID, 100e6);
+        outcome.setBalance(address(vault), NO_ID, 100e6);
+        assertApproxEqAbs(vault.convertToAssets(vault.balanceOf(alice)), 503e6, 1, "spread recognised at fill");
+
         vm.warp(expiry + 1);
         market.resolve(10_000_000, 0);
         vault.settle(0);
+        assertApproxEqAbs(vault.convertToAssets(vault.balanceOf(alice)), 503e6, 1, "settlement adds nothing new");
+    }
 
-        assertGt(vault.convertToAssets(vault.balanceOf(alice)), assetsBefore, "depositor gains");
-        // ERC-4626 rounds share->asset conversion down, so the last unit is dust.
-        assertApproxEqAbs(vault.convertToAssets(vault.balanceOf(alice)), 503e6, 1, "captured spread");
+    /// Share price is a transfer of value between users. If a filled position were still
+    /// carried at cost, someone depositing between the fill and the settlement would buy
+    /// in below true NAV and dilute everyone already there.
+    function test_aLateDepositorCannotBuyInBelowTrueValue() public {
+        _quotedAndFilled(); // alice paid 500, vault holds a set worth 100 that cost 97
+        assertEq(vault.totalAssets(), 503e6, "NAV marks the complete set at its real worth");
+
+        _deposit(bob, 503e6);
+        // Bob paid 503 for what alice's 500 became. Neither is diluted.
+        assertApproxEqAbs(vault.convertToAssets(vault.balanceOf(alice)), 503e6, 2, "alice unharmed");
+        assertApproxEqAbs(vault.convertToAssets(vault.balanceOf(bob)), 503e6, 2, "bob paid fair value");
     }
 
     // ---------------------------------------------------------------- flatten
@@ -658,7 +682,97 @@ contract LiquidityVaultTest is Test {
         uint256 navBefore = vault.totalAssets();
         vm.prank(operator);
         vault.flatten(0);
-        // NAV rises by exactly the realised spread, never by the escrow being counted twice.
-        assertEq(vault.totalAssets(), navBefore + 3e6, "no double count");
+        // Merging changes the FORM of the assets, not their worth. A jump either way
+        // would mean one of the two states was mispriced.
+        assertEq(vault.totalAssets(), navBefore, "form changed, value did not");
     }
+
+    // ----------------------------------------------------- keeper-free sweep
+
+    address constant PRECOMPILE = SomniaExtensions.SOMNIA_REACTIVITY_PRECOMPILE_ADDRESS;
+
+    /// Drives the callback exactly as the precompile would.
+    function roller_onEvent(uint256 whenMs) internal {
+        bytes32[] memory topics = new bytes32[](2);
+        topics[0] = ISomniaTicks.Schedule.selector;
+        topics[1] = bytes32(whenMs);
+        vm.prank(PRECOMPILE);
+        vault.onEvent(PRECOMPILE, topics, "");
+    }
+
+    /// The window is over, nobody called anything, and the vault let its own capital go.
+    /// That is the whole point of arming: a dead quote earns nothing and its escrow is
+    /// stuck until something cancels it, so the something is the chain.
+    function test_sweepReleasesCapitalWithNobodyCallingIt() public {
+        _quotedAndFilled();
+        assertEq(vault.totalEscrowed(), 97e6);
+
+        vm.warp(expiry + 1); // window locked
+        roller_onEvent(uint256(expiry + 1) * 1000);
+
+        assertEq(vault.totalEscrowed(), 0, "escrow released");
+        assertFalse(vault.slots(0).active, "slot freed");
+        assertEq(vault.idleAssets(), 500e6 - 97e6 + 100e6, "complete set merged back");
+    }
+
+    /// A slot still earning must not be touched. Cancelling a live quote throws away the
+    /// spread the vault exists to collect.
+    function test_sweepLeavesALiveQuoteAlone() public {
+        _quotedAndFilled();
+        roller_onEvent(uint256(block.timestamp) * 1000); // still Trading
+        assertEq(vault.totalEscrowed(), 97e6, "untouched");
+        assertTrue(vault.slots(0).active);
+    }
+
+    /// A reactivity callback that reverts is LOST — no retry, no error surface. One bad
+    /// slot must not take the others down with it.
+    function test_oneFailingSlotDoesNotStopTheSweep() public {
+        _deposit(alice, 500e6);
+        vm.startPrank(operator);
+        vault.quote(0, MARKET, uint256(500_000), uint256(15_000), 100e6);
+        vault.quote(1, MARKET, uint256(500_000), uint256(15_000), 100e6);
+        vm.stopPrank();
+
+        // Slot 0 filled cleanly; slot 1 is uneven and cannot fully close.
+        outcome.setBalance(address(vault), YES_ID, 100e6);
+        outcome.setBalance(address(vault), NO_ID, 100e6);
+
+        vm.warp(expiry + 1);
+        roller_onEvent(uint256(expiry + 1) * 1000);
+
+        assertFalse(vault.slots(0).active, "clean slot closed");
+        // The sweep completed rather than reverting on the awkward one.
+        assertEq(vault.totalEscrowed() < 194e6, true, "at least one slot released");
+    }
+
+    function test_onlyThePrecompileCanTriggerASweep() public {
+        _quotedAndFilled();
+        vm.warp(expiry + 1);
+        bytes32[] memory topics = new bytes32[](2);
+        topics[0] = ISomniaTicks.Schedule.selector;
+        topics[1] = bytes32(uint256(expiry + 1) * 1000);
+
+        vm.prank(operator);
+        vm.expectRevert(); // OnlyReactivityPrecompile from the Somnia base
+        vault.onEvent(PRECOMPILE, topics, "");
+    }
+
+    function test_armingRefusesWhenTheHandlerIsUnderfunded() public {
+        // The precompile requires 32 STT and answers an underfunded handler with empty
+        // revert data. The vault names the problem instead.
+        vm.prank(operator);
+        vm.expectRevert(abi.encodeWithSelector(AbadiReactive.Underfunded.selector, uint256(0), 32 ether));
+        vault.armSweep(uint64(block.timestamp + 600));
+    }
+
+    function test_onlyOperatorCanArm() public {
+        vm.deal(address(vault), 33 ether);
+        vm.prank(alice);
+        vm.expectRevert(abi.encodeWithSelector(LiquidityVault.NotOperator.selector, alice));
+        vault.armSweep(uint64(block.timestamp + 600));
+    }
+}
+
+interface ISomniaTicks {
+    event Schedule(uint256 indexed timestampMillis);
 }

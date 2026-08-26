@@ -3,7 +3,15 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "probe": "tsx scripts/probe.ts"
+    "build": "node scripts/build-site.mjs",
+    "serve": "node qa/serve.mjs",
+    "qa": "node scripts/build-site.mjs && node qa/serve.mjs & npx wait-on http://localhost:4321/ && BASE=http://localhost:4321 npx playwright test",
+    "typecheck": "tsc --noEmit",
+    "probe": "node scripts/probe.ts",
+    "history": "node scripts/history.ts",
+    "operator": "node scripts/operator.ts",
+    "verify": "node scripts/verify.ts",
+    "snapshot": "node scripts/snapshot.ts"
   },
   "dependencies": {
     "@somnia-chain/markets-sdk": "^0.28.1",
@@ -11,7 +19,9 @@
   },
   "devDependencies": {
     "@openzeppelin/contracts": "^5.6.1",
+    "@playwright/test": "^1.62.1",
     "@somnia-chain/reactivity-contracts": "^0.2.1",
+    "@types/node": "^26.3.0",
     "tsx": "^4.19.0",
     "typescript": "^5.6.0"
   }

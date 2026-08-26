@@ -8,3 +8,6 @@ broadcast/
 
 .vercel
 .env*
+dist/
+test-results/
+playwright-report/
