@@ -5,3 +5,6 @@ lib/
 broadcast/
 .env
 .probe-addr
+
+.vercel
+.env*
