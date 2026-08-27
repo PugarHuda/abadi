@@ -18,7 +18,7 @@ Depositors put in collateral and receive ERC-4626 shares. An operator key steers
 and can never touch the money. Every filled pair is worth exactly 1 at settlement no
 matter which way the market resolves.
 
-**Live on Shannon testnet:** `0xbcc310b25961bFd241646505c4baE18a518c0A77`
+**Live on Shannon testnet:** `0xbCAe987E3387f74867E56C6DDeA1BC94Af7932b5`
 
 ---
 
@@ -199,7 +199,7 @@ direction — `flatten` merges what it can and leaves the slot open for `settle(
 ```bash
 npm install
 forge install foundry-rs/forge-std   # forge-std is not vendored
-forge test                 # 51 tests, no network needed
+forge test                 # 65 tests, no network needed
 
 node scripts/probe.ts      # live markets and spreads
 node scripts/history.ts    # settled-market calibration
@@ -225,7 +225,7 @@ forge create src/LiquidityVault.sol:LiquidityVault \
 
 - Vault deployed, funded, quoting live, sitting at the top of book
 - Zero-inventory pair economics confirmed on chain (97.40 for 100 a side)
-- 51 tests passing, including two fuzzed invariants
+- 65 tests passing, including two fuzzed invariants
 
 - **Both legs filled**, into a complete set, with the spread locked in and zero
   directional exposure
@@ -235,6 +235,51 @@ forge create src/LiquidityVault.sol:LiquidityVault \
 - `settle()` — redemption after resolution, including the void path where **both** sides
   pay 0.5 and redeeming only the "winner" would abandon half the position
 - `flatten()` — early merge of complete sets back to collateral
+
+**What went wrong, and what it cost**
+
+The first window resolved and `settle()` reverted with empty data — the signature of a
+selector that is not there. It was not. The address demonstrated above was a build from
+before `settle`, `flatten`, and `AbadiReactive` existed, and nobody had checked that the
+live address still matched the source. Under it sat a second fault: the deployed
+constructor never granted the module ERC-6909 operator rights, and only redemption pulls,
+so the vault could buy a position and not redeem it — discovered, exactly as the guard in
+the current constructor predicted, at settlement.
+
+4902.60 tUSDC came back out. The 100 UP + 100 DOWN complete set, basis 97.40, is stranded
+in that contract with no exit. The current source is redeployed, the ERC-6909 grant is
+verified `true` on chain, and quoting has resumed on two windows.
+
+Sixty-two tests said the code was right. None of them said it was the code that was
+running. [`docs/evidence/stale-deployment-2026-08-27.md`](docs/evidence/stale-deployment-2026-08-27.md)
+
+Then the redeployed vault quoted two windows and both moved against it. Each time the
+BUY_NO leg was taken and the BUY_YES leg was left stranded under a market that had walked
+away — adverse selection, the risk a maker is paid to carry, and not a bug. What it
+uncovered underneath was three:
+
+- `cancelQuote` cancelled both stored order ids unconditionally, and the pool reverts
+  `IncorrectSender` on a filled one. The exit worked on every slot except the only shape
+  that needs an exit.
+- `settle` reverted `NothingToRedeem` when the held side lost, so a losing slot could
+  never be closed by anyone, by any path. It also never pulled the leg that was still
+  resting, stranding that escrow at the pool.
+- `totalEscrowed` was a stored counter that nothing decremented at fill time, so
+  `totalAssets` carried a directional leg at what it cost. Measured live, NAV read
+  4902.60 against a true 4794.20 — **overstated by 108.40, or 2.21%**. That is the number
+  ERC-4626 prices shares against.
+
+All three are fixed: one shared cancel guard every exit routes through, a `settle` that
+clears a losing slot instead of refusing it, and `totalEscrowed` derived from what is
+actually still resting rather than stored and kept in step by hand. A naked leg is now
+marked at nothing — NAV may understate, never overstate.
+
+Sixty-two tests missed all three because the mock pool was kinder than the pool: its
+`cancelOrder` never reverted on a dead id and never returned the escrow, so no test could
+reach the failure or tell stranded capital from recovered capital. The mock now reverts
+`IncorrectSender` on a filled id and hands collateral back on a cancel. Three defects fell
+out of that one change before a line of the fix was written.
+[`docs/evidence/one-sided-fill-2026-08-27.md`](docs/evidence/one-sided-fill-2026-08-27.md)
 
 **Blocked, and honestly so**
 

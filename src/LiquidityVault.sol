@@ -96,7 +96,7 @@ contract LiquidityVault is ERC4626, AbadiReactive, ReentrancyGuard {
         address pool;
         uint128 yesOrderId;
         uint128 noOrderId;
-        uint256 escrowed; // collateral committed to this slot's two resting orders
+        uint256 basis; // what the two legs cost at quote time; a record, not a balance
         uint256 size; // contracts quoted per side
         uint256 bidPrice; // YES-side price of the BUY_YES leg
         uint256 askPrice; // YES-side price of the BUY_NO leg
@@ -107,8 +107,34 @@ contract LiquidityVault is ERC4626, AbadiReactive, ReentrancyGuard {
 
     Slot[MAX_SLOTS] private _slots;
 
-    /// @notice Collateral committed to resting orders across all slots.
-    uint256 public totalEscrowed;
+    /// @notice Collateral still resting behind unfilled quote legs.
+    /// @dev Derived on read, never stored. The stored counter drifted the instant one leg
+    ///      of a two-sided quote filled: that escrow had been spent, nothing told the
+    ///      counter, and NAV went on carrying a directional leg at what it cost instead of
+    ///      what it was worth. A number that has to be kept in step with four other
+    ///      functions eventually is not.
+    function totalEscrowed() public view returns (uint256 resting) {
+        for (uint256 i = 0; i < MAX_SLOTS; i++) {
+            Slot storage s = _slots[i];
+            if (s.active) resting += _restingEscrow(s);
+        }
+    }
+
+    /// @dev A leg holds escrow only for the part of it that has not filled, and only
+    ///      while its order is still live. A cancelled leg has its id zeroed, which is
+    ///      what says the collateral came back.
+    function _restingEscrow(Slot storage s) internal view returns (uint256 resting) {
+        if (s.yesOrderId != 0) {
+            uint256 yes = outcomeToken.balanceOf(address(this), s.yesId);
+            if (yes < s.size) resting += MarketEngine.costOf(s.size - yes, s.bidPrice, priceOne);
+        }
+        if (s.noOrderId != 0) {
+            uint256 no = outcomeToken.balanceOf(address(this), s.noId);
+            if (no < s.size) {
+                resting += MarketEngine.costOf(s.size - no, MarketEngine.mirror(s.askPrice, priceOne), priceOne);
+            }
+        }
+    }
 
     // ----------------------------------------------------------------- events
 
@@ -137,7 +163,6 @@ contract LiquidityVault is ERC4626, AbadiReactive, ReentrancyGuard {
     error InsufficientIdle(uint256 needed, uint256 available);
     error OrderRejected(uint8 kind);
     error MarketNotSettled(bytes32 marketId, uint8 status);
-    error NothingToRedeem(bytes32 marketId);
     error OnlyOperatorWhileTrading(bytes32 marketId);
     error NothingToFlatten(bytes32 marketId);
     error OperatorGrantFailed();
@@ -193,18 +218,19 @@ contract LiquidityVault is ERC4626, AbadiReactive, ReentrancyGuard {
     ///      share price, and a thin book moves for reasons that have nothing to do with
     ///      the position's worth.
     function totalAssets() public view override returns (uint256) {
-        uint256 total = IERC20(asset()).balanceOf(address(this)) + totalEscrowed;
+        uint256 total = IERC20(asset()).balanceOf(address(this));
         for (uint256 i = 0; i < MAX_SLOTS; i++) {
             Slot storage s = _slots[i];
             if (!s.active) continue;
+            total += _restingEscrow(s);
             uint256 yes = outcomeToken.balanceOf(address(this), s.yesId);
             uint256 no = outcomeToken.balanceOf(address(this), s.noId);
-            uint256 pairs = yes < no ? yes : no;
-            if (pairs == 0) continue;
-            // The pairs were bought out of escrow, which is still counted above at cost.
-            // Add only the difference between what they are worth and what they cost.
-            uint256 cost = s.size == 0 ? 0 : (s.escrowed * pairs) / s.size;
-            if (pairs > cost) total += pairs - cost;
+            // A complete set redeems for exactly 1 per pair whichever side wins, so it is
+            // worth its own size. A leg without a partner is a directional bet, and
+            // marking it at what it cost is how the next depositor buys into a loss that
+            // has already happened. It is worth nothing here until settlement says
+            // otherwise: NAV may understate, never overstate.
+            total += yes < no ? yes : no;
         }
         return total;
     }
@@ -266,7 +292,7 @@ contract LiquidityVault is ERC4626, AbadiReactive, ReentrancyGuard {
             pool: pool,
             yesOrderId: _slots[slot].yesOrderId,
             noOrderId: _slots[slot].noOrderId,
-            escrowed: escrow,
+            basis: escrow,
             size: qty,
             bidPrice: bid,
             askPrice: ask,
@@ -274,7 +300,6 @@ contract LiquidityVault is ERC4626, AbadiReactive, ReentrancyGuard {
             noId: noId_,
             active: true
         });
-        totalEscrowed += escrow;
 
         // Silence the unused-variable warning without weakening the read: intervalSec is
         // consumed inside _requireTradable's headroom check.
@@ -290,10 +315,9 @@ contract LiquidityVault is ERC4626, AbadiReactive, ReentrancyGuard {
         if (!s.active) revert SlotIdle(slot);
 
         IBinaryPool pool = IBinaryPool(s.pool);
-        if (s.yesOrderId != 0) pool.cancelOrder(s.yesOrderId);
-        if (s.noOrderId != 0) pool.cancelOrder(s.noOrderId);
+        _cancelIfLive(pool, s.yesOrderId);
+        _cancelIfLive(pool, s.noOrderId);
 
-        totalEscrowed -= s.escrowed;
         bytes32 id = s.marketId;
         delete _slots[slot];
 
@@ -333,31 +357,19 @@ contract LiquidityVault is ERC4626, AbadiReactive, ReentrancyGuard {
         // Pull whatever is still resting first: its escrow is released by the pool, and
         // leaving it live after flattening would re-open exposure this call just closed.
         IBinaryPool pool = IBinaryPool(s.pool);
-        if (s.yesOrderId != 0) pool.cancelOrder(s.yesOrderId);
-        if (s.noOrderId != 0) pool.cancelOrder(s.noOrderId);
+        _cancelIfLive(pool, s.yesOrderId);
+        _cancelIfLive(pool, s.noOrderId);
+        s.yesOrderId = 0;
+        s.noOrderId = 0;
 
         uint256 before = IERC20(asset()).balanceOf(address(this));
         module.mergeCompleteSet(0, bytes32(0), s.marketId, pairs);
         returned = IERC20(asset()).balanceOf(address(this)) - before;
 
-        // Escrow is carried at cost, so release exactly the cost basis of the merged
-        // portion. Anything above it is realised profit and lands in NAV on its own.
-        uint256 basis = s.size == 0 ? s.escrowed : (s.escrowed * pairs) / s.size;
-        if (basis > s.escrowed) basis = s.escrowed;
-        totalEscrowed -= basis;
-        s.escrowed -= basis;
-        s.size -= pairs < s.size ? pairs : s.size;
-
         bytes32 id = s.marketId;
         // An uneven fill leaves a single-side leg that cannot be merged and still carries
         // direction. That one has to wait for settlement, so the slot stays open for it.
-        if (yes == no) {
-            totalEscrowed -= s.escrowed;
-            delete _slots[slot];
-        } else {
-            s.yesOrderId = 0;
-            s.noOrderId = 0;
-        }
+        if (yes == no) delete _slots[slot];
 
         emit Flattened(slot, id, pairs, returned);
     }
@@ -385,9 +397,16 @@ contract LiquidityVault is ERC4626, AbadiReactive, ReentrancyGuard {
         bytes32 id = s.marketId;
         uint256 yesId = s.yesId;
         uint256 noId = s.noId;
-        uint256 escrowed_ = s.escrowed;
+        IBinaryPool pool = IBinaryPool(s.pool);
+        uint128 yesOrderId = s.yesOrderId;
+        uint128 noOrderId = s.noOrderId;
         delete _slots[slot];
-        totalEscrowed -= escrowed_;
+
+        // A leg that never filled is still resting, and a resolved market will never fill
+        // it. Leaving it there strands its escrow at the pool for as long as the pool
+        // lives, which is the whole point of settling.
+        _cancelIfLive(pool, yesOrderId);
+        _cancelIfLive(pool, noOrderId);
 
         uint256 before = IERC20(asset()).balanceOf(address(this));
 
@@ -407,10 +426,23 @@ contract LiquidityVault is ERC4626, AbadiReactive, ReentrancyGuard {
             _redeemOutcome(id, winner, winner == 0 ? yesId : noId);
         }
 
+        // A slot that holds only the losing side redeems nothing, and that is a result,
+        // not a failure. Reverting here left such a slot active forever: `flatten` refuses
+        // it for want of a pair, `cancelQuote` cannot cancel a filled leg, and the escrow
+        // counter went on quoting a number for capital that was already gone.
         redeemed = IERC20(asset()).balanceOf(address(this)) - before;
-        if (redeemed == 0) revert NothingToRedeem(id); // reverts, so the clear above unwinds
 
         emit Settled(slot, id, redeemed, voided);
+    }
+
+    /// @dev The pool reverts `IncorrectSender` on an order id it no longer owns, which is
+    ///      what a filled leg looks like from here. That revert must never brick the exit:
+    ///      a one-sided fill is precisely the slot with something to get out of, and it is
+    ///      also precisely the slot with one dead id. The sweep already knew this; the
+    ///      three paths a human calls did not.
+    function _cancelIfLive(IBinaryPool pool, uint128 orderId) internal {
+        if (orderId == 0) return;
+        try pool.cancelOrder(orderId) {} catch {}
     }
 
     function _redeemOutcome(bytes32 marketId, uint8 outcomeIdx, uint256 tokenId) internal {
@@ -463,14 +495,10 @@ contract LiquidityVault is ERC4626, AbadiReactive, ReentrancyGuard {
     function _release(uint256 slot) internal returns (bool) {
         Slot storage s = _slots[slot];
 
-        if (s.yesOrderId != 0) {
-            try IBinaryPool(s.pool).cancelOrder(s.yesOrderId) {} catch {}
-            s.yesOrderId = 0;
-        }
-        if (s.noOrderId != 0) {
-            try IBinaryPool(s.pool).cancelOrder(s.noOrderId) {} catch {}
-            s.noOrderId = 0;
-        }
+        _cancelIfLive(IBinaryPool(s.pool), s.yesOrderId);
+        _cancelIfLive(IBinaryPool(s.pool), s.noOrderId);
+        s.yesOrderId = 0;
+        s.noOrderId = 0;
 
         uint256 yes = outcomeToken.balanceOf(address(this), s.yesId);
         uint256 no = outcomeToken.balanceOf(address(this), s.noId);
@@ -486,7 +514,6 @@ contract LiquidityVault is ERC4626, AbadiReactive, ReentrancyGuard {
         // slot so `settle` can find it — a settled market vanishes from the live list.
         if (yes != no) return false;
 
-        totalEscrowed -= s.escrowed;
         delete _slots[slot];
         return true;
     }

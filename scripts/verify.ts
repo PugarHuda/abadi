@@ -19,7 +19,7 @@ const VAULT_ABI = parseAbi([
   "function totalEscrowed() view returns (uint256)",
   "function totalSupply() view returns (uint256)",
   "function MAX_SLOTS() view returns (uint256)",
-  "function slots(uint256) view returns ((bytes32 marketId,address pool,uint128 yesOrderId,uint128 noOrderId,uint256 escrowed,uint256 size,uint256 bidPrice,uint256 askPrice,bool active))",
+  "function slots(uint256) view returns ((bytes32 marketId,address pool,uint128 yesOrderId,uint128 noOrderId,uint256 basis,uint256 size,uint256 bidPrice,uint256 askPrice,uint256 yesId,uint256 noId,bool active))",
 ]);
 const MODULE_ABI = parseAbi([
   "function markets(bytes32) view returns (uint256,uint8,uint8,address,uint32,bytes32,address,address,address,address,uint256,uint256,uint64,uint64)",
@@ -35,7 +35,7 @@ async function main() {
   const read = <T>(fn: string, args: unknown[] = []) =>
     pub.readContract({ address: vault, abi: VAULT_ABI, functionName: fn as never, args: args as never }) as Promise<T>;
 
-  const [nav, idle, escrowed, shares, maxSlots] = await Promise.all([
+  const [nav, idle, resting, shares, maxSlots] = await Promise.all([
     read<bigint>("totalAssets"),
     read<bigint>("idleAssets"),
     read<bigint>("totalEscrowed"),
@@ -46,7 +46,7 @@ async function main() {
   console.log("vault  ", vault);
   console.log("NAV    ", usd(nav), "tUSDC");
   console.log("  idle ", usd(idle));
-  console.log("  escrow", usd(escrowed));
+  console.log("  resting", usd(resting));
   console.log("shares ", usd(shares), shares > 0n ? `(${(Number(nav) / Number(shares)).toFixed(6)} per share)` : "");
   console.log("");
 
@@ -59,6 +59,7 @@ async function main() {
 
   let open = 0;
   let markedValue = 0n;
+  let paid = 0n;
 
   for (let i = 0n; i < maxSlots; i++) {
     const s = await read<any>("slots", [i]);
@@ -99,13 +100,14 @@ async function main() {
     // A leg without a partner is directional and only settlement resolves it, so it is
     // marked at cost rather than guessed at.
     const pairs = yes < no ? yes : no;
+    paid += s.basis;
     const naked = (yes > no ? yes - no : no - yes);
     markedValue += pairs;
 
     const secsLeft = expiry - Math.floor(Date.now() / 1000);
     console.log(`slot ${i}  ${symbol}`);
     console.log(`  quoted     ${px(s.bidPrice)} / ${px(s.askPrice)}    book now  ${book}`);
-    console.log(`  escrowed   ${usd(s.escrowed)}   orders ${s.yesOrderId}/${s.noOrderId}`);
+    console.log(`  basis      ${usd(s.basis)}   orders ${s.yesOrderId}/${s.noOrderId}`);
     console.log(`  holds      up ${usd(yes)}   down ${usd(no)}`);
     console.log(
       `  complete   ${usd(pairs)}  -> worth exactly that at settlement` +
@@ -120,10 +122,13 @@ async function main() {
     return;
   }
 
-  const pnl = markedValue - escrowed;
+  // Marked against what the legs COST, not against what is still resting: once a leg
+  // fills its escrow is spent, and comparing to the resting figure flatters every
+  // one-sided fill into looking like a win.
+  const pnl = markedValue - paid;
   console.log("--- marked ---");
   console.log(`complete sets held  ${usd(markedValue)}`);
-  console.log(`paid for them       ${usd(escrowed)}`);
+  console.log(`paid for them       ${usd(paid)}`);
   console.log(`locked in           ${usd(pnl)}  ${pnl > 0n ? "(spread captured, no directional exposure)" : ""}`);
 }
 

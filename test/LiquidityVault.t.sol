@@ -46,6 +46,23 @@ contract MockPool {
     uint128 public nextId = 1;
     uint128[] public cancelled;
     bool public rejectNext;
+    /// @dev Collateral the pool is still holding for a resting order. A mock that forgets
+    ///      to hand it back on cancel makes stranded escrow invisible.
+    mapping(uint128 => uint256) public escrowOf;
+    mapping(uint128 => bool) public filled;
+
+    error IncorrectSender(address caller, address owner);
+
+    /// @dev Take `spent` of an order's escrow, as a fill does. An order whose escrow is
+    ///      used up stops being a live order the vault owns.
+    function fillPartial(uint128 orderId, uint256 spent) public {
+        escrowOf[orderId] -= spent;
+        if (escrowOf[orderId] == 0) filled[orderId] = true;
+    }
+
+    function fill(uint128 orderId) external {
+        fillPartial(orderId, escrowOf[orderId]);
+    }
 
     function setRejectNext(bool v) external {
         rejectNext = v;
@@ -81,11 +98,20 @@ contract MockPool {
         collateral.transferFrom(msg.sender, address(this), cost);
         placed.push(Placed(kind, price, quantity, expireTimestampNs, orderType, userData));
         id = nextId++;
+        escrowOf[id] = cost;
         success = true;
     }
 
+    /// @dev The real pool reverts `IncorrectSender` on an id that is no longer the
+    ///      caller's live order, which is exactly what a filled leg looks like. A mock
+    ///      that always succeeded is why the vault shipped with an exit that bricks on
+    ///      the one shape that needs it.
     function cancelOrder(uint128 orderId) external {
+        if (filled[orderId]) revert IncorrectSender(msg.sender, address(this));
         cancelled.push(orderId);
+        uint256 back = escrowOf[orderId];
+        escrowOf[orderId] = 0;
+        if (back > 0) collateral.transfer(msg.sender, back);
     }
 }
 
@@ -490,8 +516,11 @@ contract LiquidityVaultTest is Test {
         vault.quote(0, MARKET, uint256(500_000), uint256(15_000), 100e6);
         escrow = vault.totalEscrowed();
         // Both legs filled: the pool minted a pair, so the vault holds 100 YES + 100 NO.
+        // Both ids stop being live orders, which is what makes them uncancellable.
         outcome.setBalance(address(vault), YES_ID, 100e6);
         outcome.setBalance(address(vault), NO_ID, 100e6);
+        pool.fill(1);
+        pool.fill(2);
     }
 
     /// The module PULLS outcome tokens on redemption, so the grant must exist from
@@ -562,15 +591,87 @@ contract LiquidityVaultTest is Test {
         assertEq(vault.idleAssets(), 500e6 - 97e6 + 100e6, "proceeds land in the vault");
     }
 
-    function test_settlingWithNoPositionReverts() public {
+    /// A window that resolved with neither leg taken still has both orders resting on a
+    /// pool that will never fill them. Settling has to pull them, or the escrow behind a
+    /// dead quote is gone for as long as the pool lives.
+    function test_settlingAnUnfilledSlotPullsTheRestingLegsAndReturnsTheEscrow() public {
         _deposit(alice, 500e6);
         vm.prank(operator);
         vault.quote(0, MARKET, uint256(500_000), uint256(15_000), 100e6);
+        assertEq(vault.idleAssets(), 500e6 - 97e6, "escrow left the vault at placement");
+
         vm.warp(expiry + 1);
         market.resolve(10_000_000, 0);
-        // Never filled, so nothing to redeem — must say so rather than silently freeing.
-        vm.expectRevert(abi.encodeWithSelector(LiquidityVault.NothingToRedeem.selector, MARKET));
-        vault.settle(0);
+
+        uint256 redeemed = vault.settle(0);
+        assertEq(redeemed, 0, "nothing was held, so nothing redeems");
+        assertEq(vault.idleAssets(), 500e6, "every cent of escrow came back");
+        assertFalse(vault.slots(0).active, "the slot is free to quote again");
+        assertEq(vault.totalEscrowed(), 0);
+    }
+
+    /// The shape that bricked the live vault: one leg fills, the market resolves against
+    /// it, and the slot holds only losing tokens. `flatten` refuses it for want of a pair
+    /// and the filled leg cannot be cancelled, so if `settle` also refuses there is no
+    /// way out at all and NAV keeps quoting capital that is gone.
+    function test_settlingASlotHoldingOnlyTheLosingSideStillClearsIt() public {
+        _deposit(alice, 500e6);
+        vm.prank(operator);
+        vault.quote(0, MARKET, uint256(500_000), uint256(15_000), 100e6);
+
+        // The BUY_NO leg is taken; the BUY_YES leg never is.
+        outcome.setBalance(address(vault), NO_ID, 100e6);
+        pool.fill(2);
+
+        vm.warp(expiry + 1);
+        market.resolve(10_000_000, 0); // YES wins, so the held NO is worth zero
+
+        uint256 redeemed = vault.settle(0);
+        assertEq(redeemed, 0, "the losing side redeems nothing");
+        assertFalse(vault.slots(0).active, "and the slot must not stay stuck");
+        assertEq(vault.totalEscrowed(), 0, "no phantom escrow left behind");
+        // The unfilled BUY_YES leg's escrow is recovered; the filled BUY_NO leg's is lost.
+        assertEq(vault.idleAssets(), 500e6 - 48_500_000, "only the leg that traded is spent");
+    }
+
+    /// `cancelQuote` cancelled both stored ids unconditionally. Once one leg fills, that
+    /// id is dead and the pool reverts on it — bricking the exit for precisely the slot
+    /// that has directional exposure to close.
+    function test_cancelQuoteSurvivesALegThatAlreadyFilled() public {
+        _deposit(alice, 500e6);
+        vm.prank(operator);
+        vault.quote(0, MARKET, uint256(500_000), uint256(15_000), 100e6);
+
+        outcome.setBalance(address(vault), NO_ID, 100e6);
+        pool.fill(2);
+
+        vm.prank(operator);
+        vault.cancelQuote(0);
+
+        assertFalse(vault.slots(0).active);
+        assertEq(vault.idleAssets(), 500e6 - 48_500_000, "the live leg's escrow came back");
+    }
+
+    /// NAV priced a directional leg at what it cost. A depositor arriving after an adverse
+    /// one-sided fill would have bought shares against collateral that no longer existed,
+    /// and the loss would have been split with them.
+    function test_aNakedLegIsWorthNothingUntilSettlement() public {
+        _deposit(alice, 500e6);
+        vm.prank(operator);
+        vault.quote(0, MARKET, uint256(500_000), uint256(15_000), 100e6);
+        assertApproxEqAbs(vault.totalAssets(), 500e6, 1, "resting on both sides is still cash");
+
+        // Only the BUY_NO leg fills: 47 of collateral becomes 100 directional tokens.
+        outcome.setBalance(address(vault), NO_ID, 100e6);
+        pool.fill(2);
+
+        assertEq(vault.totalAssets(), 500e6 - 48_500_000, "the 48.5 it cost is not an asset any more");
+        assertEq(vault.totalEscrowed(), 48_500_000, "only the leg still resting holds escrow");
+
+        // The partner arrives; now it is a complete set and worth exactly its size.
+        outcome.setBalance(address(vault), YES_ID, 100e6);
+        pool.fill(1);
+        assertEq(vault.totalAssets(), 500e6 - 97e6 + 100e6, "a pair settles at one apiece");
     }
 
     function test_sharesAppreciateTheMomentThePairFills() public {
@@ -584,6 +685,8 @@ contract LiquidityVaultTest is Test {
         // Both legs fill: the vault now holds a complete set worth 100 that cost 97.
         outcome.setBalance(address(vault), YES_ID, 100e6);
         outcome.setBalance(address(vault), NO_ID, 100e6);
+        pool.fill(1);
+        pool.fill(2);
         assertApproxEqAbs(vault.convertToAssets(vault.balanceOf(alice)), 503e6, 1, "spread recognised at fill");
 
         vm.warp(expiry + 1);
@@ -664,8 +767,12 @@ contract LiquidityVaultTest is Test {
         _deposit(alice, 500e6);
         vm.prank(operator);
         vault.quote(0, MARKET, uint256(500_000), uint256(15_000), 100e6);
+        // The BUY_YES leg is taken whole; the BUY_NO leg only 60 of its 100, so 40%
+        // of its escrow is still resting and has to come back.
         outcome.setBalance(address(vault), YES_ID, 100e6);
         outcome.setBalance(address(vault), NO_ID, 60e6);
+        pool.fill(1);
+        pool.fillPartial(2, (48_500_000 * 60) / 100);
 
         vm.prank(operator);
         uint256 returned = vault.flatten(0);
@@ -674,7 +781,10 @@ contract LiquidityVaultTest is Test {
         assertEq(outcome.balanceOf(address(vault), YES_ID), 40e6, "naked leg remains");
         assertEq(outcome.balanceOf(address(vault), NO_ID), 0);
         assertTrue(vault.slots(0).active, "slot stays open so settle() can redeem the rest");
-        assertGt(vault.totalEscrowed(), 0, "residual cost basis still carried");
+        assertEq(vault.totalEscrowed(), 0, "both legs were pulled, so nothing is resting");
+        // 403 idle + 19.4 of unspent BUY_NO escrow returned + 60 merged. The 40 naked YES
+        // is carried at nothing, because until settlement that is all it is worth.
+        assertEq(vault.totalAssets(), 403e6 + 19_400_000 + 60e6, "the naked leg is carried at nothing");
     }
 
     function test_navIsContinuousAcrossFlatten() public {
@@ -705,7 +815,9 @@ contract LiquidityVaultTest is Test {
     /// stuck until something cancels it, so the something is the chain.
     function test_sweepReleasesCapitalWithNobodyCallingIt() public {
         _quotedAndFilled();
-        assertEq(vault.totalEscrowed(), 97e6);
+        // Both legs took, so nothing is resting any more — the 97 became a complete set.
+        assertEq(vault.totalEscrowed(), 0);
+        assertEq(vault.totalAssets(), 503e6);
 
         vm.warp(expiry + 1); // window locked
         roller_onEvent(uint256(expiry + 1) * 1000);
@@ -720,7 +832,7 @@ contract LiquidityVaultTest is Test {
     function test_sweepLeavesALiveQuoteAlone() public {
         _quotedAndFilled();
         roller_onEvent(uint256(block.timestamp) * 1000); // still Trading
-        assertEq(vault.totalEscrowed(), 97e6, "untouched");
+        assertEq(vault.totalAssets(), 503e6, "untouched");
         assertTrue(vault.slots(0).active);
     }
 

@@ -57,10 +57,17 @@ async function main() {
   const now = Date.now() / 1000;
 
   // Prefer longer tiers: more headroom, and the book moves less between read and send.
+  // SHORTEST=1 flips it, which is how the settle path gets exercised without waiting a
+  // day for a window to resolve.
+  const shortest = !!process.env.SHORTEST;
   const candidates = (all.filter((x: any) => isBinaryMarket(x.info)) as any[])
-    .filter((m) => Number(m.info.intervalSec || 0) >= 900)
-    .sort((a, b) => Number(b.info.intervalSec) - Number(a.info.intervalSec))
-    .slice(0, 6);
+    .filter((m) => Number(m.info.intervalSec || 0) >= 900 && Number(m.info.expiry) - now >= 600)
+    .sort((a, b) =>
+      shortest
+        ? Number(a.info.intervalSec) - Number(b.info.intervalSec)
+        : Number(b.info.intervalSec) - Number(a.info.intervalSec),
+    )
+    .slice(0, shortest ? 20 : 6);
   console.log("candidates:", candidates.map((m) => m.symbol).join(", "));
   console.log("");
 
