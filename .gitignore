@@ -1,7 +1,10 @@
 node_modules/
 out/
 cache/
-lib/
+# Anchored. Unanchored, this pattern also swallowed scripts/lib/somnia.ts — the one
+# file every script imports its addresses from — and nobody noticed until CI could not
+# typecheck a module that exists on every machine it was written on.
+/lib/
 broadcast/
 .env
 .probe-addr

@@ -19,6 +19,18 @@ jobs:
         with:
           version: stable
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install npm deps
+        # remappings.txt points at node_modules for OpenZeppelin and the Somnia
+        # reactivity base, so `forge build` needs them. Without this the contracts job
+        # cannot compile at all, and it had not compiled here since those remappings
+        # were added.
+        run: npm ci
+
       - name: Install forge-std
         run: forge install foundry-rs/forge-std --no-git
 
