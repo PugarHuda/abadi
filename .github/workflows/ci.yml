@@ -99,7 +99,9 @@ jobs:
           a=$(cat .vault-addr)
           grep -q "$a" README.md || { echo "::error::README does not carry $a"; exit 1; }
           short="${a:0:10}…${a: -4}"
-          grep -q "$short" web/index.html || { echo "::error::web/index.html does not carry $short"; exit 1; }
+          for f in web/index.html web/dashboard.html; do
+            grep -q "$short" "$f" || { echo "::error::$f does not carry $short"; exit 1; }
+          done
           echo "ok  $a"
 
       - name: Typecheck

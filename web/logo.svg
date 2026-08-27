@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="Abadi">
+  <title>Abadi</title>
+  <!-- One contract, split by a price. The two sides are never equal and always add to
+       the whole — which is the entire trade. The hairline is the price level, drawn
+       past the contract because the level belongs to the book, not to this position.
+       It is the same shape as the "Pair" bar on the site, folded up. -->
+  <rect x="6" y="6" width="12.4" height="20" fill="#E0A045"/>
+  <rect x="18.4" y="6" width="7.6" height="20" fill="#4FA396"/>
+  <path d="M18.4 1V31" stroke="#EAE4D6" stroke-width="1" opacity=".5"/>
+</svg>

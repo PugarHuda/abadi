@@ -24,7 +24,7 @@ function watchForFailures(page: Page) {
 }
 
 test.describe("document shape", () => {
-  for (const path of ["/", "/deck"]) {
+  for (const path of ["/", "/dashboard", "/deck"]) {
     test(`${path} is a complete HTML document`, async ({ page }) => {
       const res = await page.goto(BASE + path, { waitUntil: "domcontentloaded" });
       expect(res?.status(), "must not redirect to an SSO wall").toBe(200);
@@ -48,17 +48,58 @@ test.describe("document shape", () => {
   }
 });
 
-test.describe("dashboard", () => {
-  test("renders the numbers it exists to show", async ({ page }) => {
+test.describe("landing", () => {
+  /** The page's whole claim is that one of each side is worth exactly one, at any
+   *  price. It is stated as a control the reader can work, so the control has to be
+   *  true — and a hard-coded 1.000 would look identical to a working one. */
+  test("the pair reads 1.000 wherever the price is put", async ({ page }) => {
     const problems = watchForFailures(page);
     await page.goto(BASE + "/", { waitUntil: "networkidle" });
 
-    await expect(page.getByText("directional exposure")).toBeVisible();
-    await expect(page.getByText("0.744", { exact: false }).first()).toBeVisible();
-    await expect(page.getByText("2,422 settled markets", { exact: true })).toBeVisible();
-    await expect(page.getByText("+2.60 tUSDC · 2.67%")).toBeVisible();
+    const track = page.locator("#track");
+    const up = page.locator("#pUp");
+    const down = page.locator("#pDown");
+    const sum = page.locator("#pSum");
+
+    await expect(sum).toHaveText("1.000");
+    const box = (await track.boundingBox())!;
+
+    for (const frac of [0.08, 0.31, 0.5, 0.77, 0.96]) {
+      await page.mouse.move(box.x + box.width * frac, box.y + box.height / 2);
+      await page.mouse.down();
+      await page.mouse.up();
+      const u = Number(await up.textContent());
+      const d = Number(await down.textContent());
+      expect(u + d, `up ${u} + down ${d} must be one`).toBeCloseTo(1, 3);
+      await expect(sum).toHaveText("1.000");
+    }
+
+    // Dragging must actually have moved something, or the assertion above is vacuous.
+    await page.mouse.move(box.x + box.width * 0.08, box.y + box.height / 2);
+    await page.mouse.down();
+    await page.mouse.up();
+    const low = Number(await up.textContent());
+    await page.mouse.move(box.x + box.width * 0.9, box.y + box.height / 2);
+    await page.mouse.down();
+    await page.mouse.up();
+    const high = Number(await up.textContent());
+    expect(high, "the control does not respond to the pointer").toBeGreaterThan(low + 0.5);
 
     expect(problems, problems.join("\n")).toEqual([]);
+  });
+
+  test("the control works from the keyboard", async ({ page }) => {
+    await page.goto(BASE + "/", { waitUntil: "networkidle" });
+    const track = page.locator("#track");
+    await track.focus();
+    const before = Number(await page.locator("#pUp").textContent());
+    for (let i = 0; i < 5; i++) await page.keyboard.press("ArrowRight");
+    const after = Number(await page.locator("#pUp").textContent());
+    expect(after, "arrow keys move nothing").toBeGreaterThan(before);
+    await expect(page.locator("#pSum")).toHaveText("1.000");
+
+    await page.keyboard.press("Home");
+    await expect(track).toHaveAttribute("aria-valuenow", "0.010");
   });
 
   test("does not scroll sideways on a phone", async ({ page }) => {
@@ -70,8 +111,37 @@ test.describe("dashboard", () => {
     expect(overflow, "horizontal scroll on mobile").toBeLessThanOrEqual(1);
   });
 
-  test("the display face actually loaded", async ({ page }) => {
+  test("sends the reader on to the working", async ({ page }) => {
     await page.goto(BASE + "/", { waitUntil: "networkidle" });
+    await page.getByRole("link", { name: /read the evidence/i }).click();
+    await expect(page).toHaveURL(/\/dashboard$/);
+  });
+});
+
+test.describe("dashboard", () => {
+  test("renders the numbers it exists to show", async ({ page }) => {
+    const problems = watchForFailures(page);
+    await page.goto(BASE + "/dashboard", { waitUntil: "networkidle" });
+
+    await expect(page.getByText("directional exposure")).toBeVisible();
+    await expect(page.getByText("0.744", { exact: false }).first()).toBeVisible();
+    await expect(page.getByText("2,422 settled markets", { exact: true })).toBeVisible();
+    await expect(page.getByText("+2.60 tUSDC · 2.67%")).toBeVisible();
+
+    expect(problems, problems.join("\n")).toEqual([]);
+  });
+
+  test("does not scroll sideways on a phone", async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 780 });
+    await page.goto(BASE + "/dashboard", { waitUntil: "networkidle" });
+    const overflow = await page.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    );
+    expect(overflow, "horizontal scroll on mobile").toBeLessThanOrEqual(1);
+  });
+
+  test("the display face actually loaded", async ({ page }) => {
+    await page.goto(BASE + "/dashboard", { waitUntil: "networkidle" });
     const family = await page.evaluate(() => {
       const el = document.querySelector(".wordmark");
       return el ? getComputedStyle(el).fontFamily : "";

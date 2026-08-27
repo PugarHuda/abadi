@@ -21,6 +21,11 @@ const PAGES = {
     description:
       "A vault that quotes both sides of DreamDEX Event Contract markets holding no inventory, and captures the spread with no directional exposure. Live on Somnia Shannon testnet.",
   },
+  "dashboard.html": {
+    path: "/dashboard",
+    description:
+      "The working behind Abadi: 2,422 settled markets measured, the live order book with the vault's quote inside it, and the position that filled — with what went wrong and what it cost.",
+  },
   "deck.html": {
     path: "/deck",
     description:
@@ -51,13 +56,17 @@ function splitHead(html) {
   return { head: head.join("\n  "), body: rest };
 }
 
-// A knotted cord: the thread continues past every knot. Inline so it costs no request.
+// The mark: one contract split by a price, the two sides always filling the whole.
+// Same geometry as web/logo.svg, on an ink field so it survives a light browser
+// chrome. Inline so it costs no request.
 const FAVICON =
   "data:image/svg+xml," +
   encodeURIComponent(
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">` +
       `<rect width="32" height="32" fill="#14203A"/>` +
-      `<path d="M6 22c5 0 5-12 10-12s5 12 10 12" fill="none" stroke="#E0A045" stroke-width="3.5" stroke-linecap="round"/>` +
+      `<rect x="6" y="6" width="12.4" height="20" fill="#E0A045"/>` +
+      `<rect x="18.4" y="6" width="7.6" height="20" fill="#4FA396"/>` +
+      `<path d="M18.4 2V30" stroke="#EAE4D6" stroke-width="1" opacity=".5"/>` +
       `</svg>`,
   );
 

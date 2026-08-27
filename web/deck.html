@@ -86,6 +86,7 @@
   .cover .meta {
     font-family: var(--mono); font-size: 11px; letter-spacing: .14em;
     color: var(--cotton-dim); text-transform: uppercase;
+    margin-left: 0;
   }
 
   .big {
@@ -131,6 +132,10 @@
     transition: opacity .34s ease, transform .34s ease, visibility 0s;
   }
   .slide .n { position: absolute; top: clamp(22px,3vh,34px); left: clamp(28px,7vw,96px); }
+  .cover .mark {
+    height: clamp(60px,9vh,104px); width: auto; align-self: flex-start;
+    display: block; margin: 0 0 clamp(10px,1.8vh,20px);
+  }
 
   /* chrome */
   .bar {
@@ -180,6 +185,11 @@
 <div class="deck">
 <section class="slide cover" data-i="0">
   <span class="n">01</span>
+  <svg class="mark" viewBox="6 1 20 30" aria-hidden="true">
+    <rect x="6" y="6" width="12.4" height="20" fill="#E0A045"/>
+        <rect x="18.4" y="6" width="7.6" height="20" fill="#4FA396"/>
+        <path d="M18.4 1V31" stroke="#EAE4D6" stroke-width="1" opacity=".5"/>
+  </svg>
   <h1>ABA<span>DI</span></h1>
   <p class="line">The markets expire every window. <span style="color:var(--turmeric)">The liquidity doesn't.</span></p>
   <p class="meta">Somnia × DreamDEX Event Contracts Hackathon · Shannon testnet</p>
