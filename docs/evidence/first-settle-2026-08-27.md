@@ -100,6 +100,30 @@ taken 11 minutes early and without waiting on an oracle. NAV again did not move,
 same reason it did not move across `settle`: the set was already marked at what it is
 worth.
 
+## And then the market did the thing you build this for
+
+The window after that, `ETH-0-27AUG26-0500`, quoted at `0.698 / 0.722`. Both legs filled.
+Then ETH fell out of bed:
+
+```
+quoted      0.698 / 0.722
+book now    0.028 / 0.049          a 67-point move against the up side
+
+holds       100 UP + 100 DOWN
+NAV         4714.80  ->  4714.80   unchanged
+```
+
+A directional position of that size would have been wiped. The vault did not move a unit,
+because it was not holding a direction — it was holding one of each, and one of each is
+worth exactly 100 at every price between zero and one. That is the entire claim of the
+product, and it is cheaper to show it happening than to argue it.
+
+Two complete sets so far, 2.40 of spread apiece, against a 4710.00 book. Share price
+`1.001019`. That is not an edge yet and we are not going to call it one — it is two fills.
+But it is two fills where the mechanism did what the arithmetic said it would.
+
+---
+
 `quote`, `flatten`, and `settle` have all now been run against the live venue.
 `cancelQuote` has not. Its interesting case is the one where a leg has already filled and
 the stored id is dead — the shape that reverted `IncorrectSender` on the old build — and
