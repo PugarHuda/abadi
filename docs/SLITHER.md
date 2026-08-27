@@ -4,7 +4,9 @@
 python3 -m slither . --filter-paths "lib|node_modules|test|script" --exclude-informational --exclude-low
 ```
 
-Slither 0.11.6. First run: 22 findings. Four were real.
+Slither 0.11.6. First run: 22 findings, four of them real. After the 27th's fixes the
+surface is 13 results across three detectors — `divide-before-multiply`, `unused-return`,
+and `reentrancy-no-eth` — all accepted below.
 
 ## Fixed
 
@@ -24,10 +26,15 @@ have processed a slot the sweep was halfway through. It now holds the guard.
 | Finding | Why it stands |
 |---|---|
 | `divide-before-multiply` in `floorToTick` / `quantize` | `(x / step) * step` **is** the grid snap. Multiplying first would defeat the entire purpose of the function. Annotated for forge-lint at the call site. |
-| `incorrect-equality` — `redeemed == 0` in `settle` | The detector targets equality on balances and timestamps. This is a delta computed two lines earlier from the vault's own balance; zero means nothing was redeemed, and reverting is correct. |
 | `unused-return` on `module.markets(...)` | Tuple destructuring with placeholders. Slither reads the ignored positions as discarded return values; the ones we need are bound. |
-| `uninitialized-local` — `released` | Solidity zero-initialises. Written explicitly anyway so the reader does not have to know that. |
 | Remaining `reentrancy-*` on guarded functions | Slither does not model OpenZeppelin's `nonReentrant`. Every function it names now carries it; see the tests for the behaviour rather than the detector. |
+
+`incorrect-equality` on `redeemed == 0` was on this list until the 27th. The detector was
+right about the shape and wrong about the risk, and then a live position proved the whole
+check wrong for a different reason: a slot holding only the losing side redeems nothing,
+which is a result and not a failure, and reverting on it meant such a slot could never be
+closed by anyone. The revert is gone, so the finding is gone with it. The exclusion has
+been dropped from CI too — a stale exclusion hides the next real instance.
 
 ## Not covered by any of this
 
