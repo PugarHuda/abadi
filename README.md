@@ -7,6 +7,10 @@ liquidity does not.
 
 Built for the Somnia × DreamDEX Event Contracts Hackathon.
 
+**[Dashboard](https://abadi-wheat.vercel.app)** ·
+**[Deck](https://abadi-wheat.vercel.app/deck)** ·
+[Vault on the explorer](https://shannon-explorer.somnia.network/address/0xDFb9C6fA99D8Fa2c8eeA2AE7C055C8cbA53971E9)
+
 ---
 
 ## What it is
