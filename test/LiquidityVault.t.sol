@@ -648,8 +648,44 @@ contract LiquidityVaultTest is Test {
         vm.prank(operator);
         vault.cancelQuote(0);
 
-        assertFalse(vault.slots(0).active);
         assertEq(vault.idleAssets(), 500e6 - 48_500_000, "the live leg's escrow came back");
+        assertEq(vault.totalEscrowed(), 0, "nothing is resting any more");
+        // The 100 NO it already bought is still there, so the slot has to be.
+        assertTrue(vault.slots(0).active, "a slot holding tokens stays open for settle()");
+    }
+
+    /// Cancelling pulls the orders. It does not pull what they already bought, and the
+    /// only function that can redeem those is `settle`, which needs the slot to exist.
+    function test_cancelQuoteDoesNotOrphanTokensTheSlotAlreadyHolds() public {
+        _deposit(alice, 500e6);
+        vm.prank(operator);
+        vault.quote(0, MARKET, uint256(500_000), uint256(15_000), 100e6);
+        outcome.setBalance(address(vault), NO_ID, 100e6);
+        pool.fill(2);
+
+        vm.prank(operator);
+        vault.cancelQuote(0);
+
+        // The market goes the other way: the side that looked dead is the side that pays.
+        vm.warp(expiry + 1);
+        market.resolve(0, 10_000_000); // NO wins
+
+        uint256 redeemed = vault.settle(0);
+        assertEq(redeemed, 100e6, "the cancelled slot could still be redeemed");
+        assertFalse(vault.slots(0).active);
+    }
+
+    /// With nothing bought, there is nothing to keep the slot open for.
+    function test_cancelQuoteFreesASlotThatBoughtNothing() public {
+        _deposit(alice, 500e6);
+        vm.prank(operator);
+        vault.quote(0, MARKET, uint256(500_000), uint256(15_000), 100e6);
+
+        vm.prank(operator);
+        vault.cancelQuote(0);
+
+        assertFalse(vault.slots(0).active, "slot is free to quote again");
+        assertEq(vault.idleAssets(), 500e6, "all of it came back");
     }
 
     /// NAV priced a directional leg at what it cost. A depositor arriving after an adverse

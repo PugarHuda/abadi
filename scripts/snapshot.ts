@@ -23,7 +23,7 @@ const out = {
   chainId: 50312, vault,
   market: { symbol: m.symbol, marketId: m.info.marketId, intervalSec: Number(m.info.intervalSec), expiry: Number(m.info.expiry) },
   book: { bids: bk.bids.slice(0,5).map((r:any)=>[r[0],r[1]]), asks: bk.asks.slice(0,5).map((r:any)=>[r[0],r[1]]) },
-  vaultState: { nav: Number(nav)/1e6, idle: Number(idle)/1e6, escrowed: Number(esc)/1e6, shares: Number(supply)/1e6 },
+  vaultState: { nav: Number(nav)/1e6, idle: Number(idle)/1e6, resting: Number(esc)/1e6, shares: Number(supply)/1e6 },
 };
 writeFileSync("web/snapshot.json", JSON.stringify(out,null,2));
 console.log(JSON.stringify(out,null,2));

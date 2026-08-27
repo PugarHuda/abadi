@@ -18,7 +18,9 @@ Depositors put in collateral and receive ERC-4626 shares. An operator key steers
 and can never touch the money. Every filled pair is worth exactly 1 at settlement no
 matter which way the market resolves.
 
-**Live on Shannon testnet:** `0xbCAe987E3387f74867E56C6DDeA1BC94Af7932b5`
+**Live on Shannon testnet:** `0xDFb9C6fA99D8Fa2c8eeA2AE7C055C8cbA53971E9`
+(`node scripts/attest.ts` checks that address is running this source — see below for
+why that is a thing we check now)
 
 ---
 
@@ -199,12 +201,13 @@ direction — `flatten` merges what it can and leaves the slot open for `settle(
 ```bash
 npm install
 forge install foundry-rs/forge-std   # forge-std is not vendored
-forge test                 # 65 tests, no network needed
+forge test                 # 67 tests, no network needed
 
 node scripts/probe.ts      # live markets and spreads
 node scripts/history.ts    # settled-market calibration
 node scripts/operator.ts   # read the book and quote inside it  (needs .env)
 node scripts/verify.ts     # read our orders back off the book
+node scripts/attest.ts     # is the live address running this source? (needs forge build)
 ```
 
 `.env` needs `PRIVATE_KEY` for anything that writes. Deploy:
@@ -225,16 +228,27 @@ forge create src/LiquidityVault.sol:LiquidityVault \
 
 - Vault deployed, funded, quoting live, sitting at the top of book
 - Zero-inventory pair economics confirmed on chain (97.40 for 100 a side)
-- 65 tests passing, including two fuzzed invariants
+- 67 tests passing, including two fuzzed invariants
 
 - **Both legs filled**, into a complete set, with the spread locked in and zero
   directional exposure
+- **`settle()` run on chain.** A 900s BTC window quoted at 0.578 / 0.602, one leg taken
+  adversely, the other filled on the way back, resolved UP, redeemed. `+100.00` against a
+  `97.60` basis — 2.40 captured, 2.46%, no directional exposure once the pair was
+  complete. NAV did not move across settlement, which is the assertion that matters: a
+  complete set was already marked at what it redeems for, so redemption changed the form
+  of the assets and not their worth.
+  [`docs/evidence/first-settle-2026-08-27.md`](docs/evidence/first-settle-2026-08-27.md)
+- **`flatten()` run on chain.** The next window filled both legs inside a minute, then ETH
+  walked seven cents past the quote and left it dead with eleven minutes still on the
+  clock. `mergeCompleteSet` returned the full `100.00` against the `97.60` basis without
+  waiting on an oracle, and the slot was free to quote again 671 seconds before expiry.
+  NAV did not move here either.
 
-**Built and tested, not yet exercised on chain**
-
-- `settle()` — redemption after resolution, including the void path where **both** sides
-  pay 0.5 and redeeming only the "winner" would abandon half the position
-- `flatten()` — early merge of complete sets back to collateral
+`quote`, `flatten`, and `settle` have all now been run against the live venue.
+`cancelQuote` has not: the case worth proving is the one where a leg has already filled,
+and that shape cannot be summoned on demand — it arrives when the market decides to take
+one side and not the other.
 
 **What went wrong, and what it cost**
 
@@ -274,12 +288,24 @@ clears a losing slot instead of refusing it, and `totalEscrowed` derived from wh
 actually still resting rather than stored and kept in step by hand. A naked leg is now
 marked at nothing — NAV may understate, never overstate.
 
+Fixing the first one opened a fourth. `cancelQuote` ends by deleting the slot, which was
+only ever safe because the old version could not reach that line on a slot that had
+bought anything. Now it could — and `settle` is the only function that can redeem outcome
+tokens, so deleting the slot orphans them permanently. It now keeps the slot whenever
+either outcome is still held. A fix that is not tested against what it just made
+reachable is half a fix.
+
 Sixty-two tests missed all three because the mock pool was kinder than the pool: its
 `cancelOrder` never reverted on a dead id and never returned the escrow, so no test could
 reach the failure or tell stranded capital from recovered capital. The mock now reverts
 `IncorrectSender` on a filled id and hands collateral back on a cancel. Three defects fell
 out of that one change before a line of the fix was written.
 [`docs/evidence/one-sided-fill-2026-08-27.md`](docs/evidence/one-sided-fill-2026-08-27.md)
+
+And the whole thing started because nobody asked whether the live address was the code, so
+now something does. `scripts/attest.ts` compares deployed runtime bytecode against the
+build artifact with the immutable slots masked out. Twenty lines, and it answers the
+question that cost 97.40 tUSDC.
 
 **Blocked, and honestly so**
 

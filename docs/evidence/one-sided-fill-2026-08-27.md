@@ -15,6 +15,11 @@ slot 1  BTC-0-27AUG26-0400   quoted 0.536 / 0.562   book now 0.783 / 0.808
 That is adverse selection, and it is the risk a maker is paid the spread to carry. It is
 not a bug. What it exposed underneath is.
 
+ETH later came back down through the resting bid and slot 0 completed into a full set
+— 100 UP + 100 DOWN against a 97.60 basis, the mechanism doing exactly what it is for.
+BTC never came back. That contrast is the whole product: the same quote, one window
+paying the spread and one window paying for the move.
+
 ## Every exit reverted
 
 ```
@@ -126,3 +131,39 @@ A mock kinder than the thing it stands in for does not test the code. It tests t
 
 Sixty-five tests now, and the four that matter here are the ones a passing suite could
 not previously have contained.
+
+## The fix had a hole of its own
+
+Making `cancelQuote` survive a filled leg immediately made it dangerous. It ends with
+
+```solidity
+delete _slots[slot];
+```
+
+unconditionally — which was safe only because the old version could never reach it on a
+slot that had bought anything. Now it could, and `settle` is the only function that can
+redeem outcome tokens. Deleting the slot orphans them on the ERC-6909 with nothing left
+that can reach them, and the side that looks dead today is the side that pays on the
+market that goes the other way.
+
+So the slot is now kept whenever it still holds either outcome, and freed only when it
+holds neither. Two tests: one that cancels, resolves the other way, and redeems 100
+anyway; one that cancels a slot which bought nothing and gets the slot back.
+
+Sixty-seven tests. A fix that is not tested against the thing it just made reachable is
+half a fix.
+
+## The check that was missing
+
+```
+$ node scripts/attest.ts
+address  0xDFb9C6fA99D8Fa2c8eeA2AE7C055C8cbA53971E9
+553 bytes differ, against 1024 bytes of immutables they are allowed to differ in
+MATCH  the live address is running this source
+```
+
+Deployed runtime bytecode against the build artifact, immutable slots masked out because
+those are constructor arguments burned into the code and differ by design. Anything
+outside them means the address is not this source.
+
+It is twenty lines and it answers the question that cost 97.40 tUSDC.

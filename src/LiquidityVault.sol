@@ -317,9 +317,18 @@ contract LiquidityVault is ERC4626, AbadiReactive, ReentrancyGuard {
         IBinaryPool pool = IBinaryPool(s.pool);
         _cancelIfLive(pool, s.yesOrderId);
         _cancelIfLive(pool, s.noOrderId);
+        s.yesOrderId = 0;
+        s.noOrderId = 0;
 
         bytes32 id = s.marketId;
-        delete _slots[slot];
+        // Pulling the orders does not pull what they already bought. A slot still holding
+        // outcome tokens has to stay open for `settle` to find: deleting it orphans them
+        // on the ERC-6909 with no function left that can redeem them, and a losing side
+        // today is a winning side on the market that goes the other way.
+        if (outcomeToken.balanceOf(address(this), s.yesId) == 0
+            && outcomeToken.balanceOf(address(this), s.noId) == 0) {
+            delete _slots[slot];
+        }
 
         emit Cancelled(slot, id);
     }
