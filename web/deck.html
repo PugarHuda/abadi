@@ -286,21 +286,25 @@ locked in           <b>+2.60</b></pre>
     <li><b>The spot <code>placeOrder</code> ABI exists on binary pools and always fails.</b> It compiles, type-checks, and reverts at runtime.</li>
     <li><b>Reactivity fails identically for two unrelated reasons</b> — a 32 STT floor and a missing ERC-165 — both with empty revert data.</li>
     <li><b>Docs list two window tiers. There are six.</b> A headroom rule tuned for the documented ones silently stops trading the fast tiers.</li>
+    <li><b>Redemption pulls through the module, not the pool</b> — and nothing says so until the one call that turns tokens back into money. Cost us a stranded position.</li>
+    <li><b>Cancelling an order that already filled reverts.</b> So cleanup breaks on exactly the position that needs cleaning up.</li>
   </ul>
   <p class="dim">All reported back with reproduction steps, alongside what genuinely worked: the Gotchas page, unpruned history, and a dev channel that answered a hard question in under an hour.</p>
 </section>
 <section class="slide" data-i="9">
   <span class="n">10</span>
   <div class="kicker">Status</div>
-  <h2>One vault. One fill. Honest about which is which.</h2>
+  <h2>One vault. Full lifecycle. Honest about the rest.</h2>
   <table>
-    <tr><th>Working on testnet</th><th></th></tr>
-    <tr><td>Vault deployed, quoting, top of book</td><td class="num tick">✓</td></tr>
+    <tr><th>Run against the venue</th><th></th></tr>
+    <tr><td>Quoting inside the book, top of book</td><td class="num tick">✓</td></tr>
     <tr><td>Both legs filled into a complete set</td><td class="num tick">✓</td></tr>
+    <tr><td><code>settle()</code> — redeemed 100.00 on a 97.60 basis</td><td class="num tick">✓</td></tr>
+    <tr><td><code>flatten()</code> — merged early, 671s before expiry</td><td class="num tick">✓</td></tr>
     <tr><td>67 tests, two fuzzed invariants</td><td class="num tick">✓</td></tr>
     <tr><td>Reactive self-rearming rolls</td><td class="num cross">32 STT short</td></tr>
   </table>
-  <p><b>One fill proves the mechanism, not the edge.</b> Adverse selection — being filled preferentially when you're wrong — is the real risk a maker carries, and measuring it needs many quotes across many windows. That's what comes next, along with the requote loop and the reactive roll.</p>
+  <p><b>A handful of fills proves the mechanism, not the edge.</b> Adverse selection is the real risk a maker carries, and we met it twice in one afternoon — a leg taken while the market walked away from the other. NAV marks that leg at zero, so the loss lands on us and not on whoever deposits next. Measuring the frequency needs many quotes across many windows. That's what comes next.</p>
   <p class="dim">The markets expire. The liquidity doesn't.</p>
 </section>
 </div>

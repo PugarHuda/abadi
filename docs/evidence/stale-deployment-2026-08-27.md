@@ -103,10 +103,28 @@ The hour tier is deliberate. Waiting a day for a window to resolve is how `settl
 unexercised in the first place, so `SHORTEST=1` on `scripts/operator.ts` now sorts tiers
 the other way and the settle path gets a window that closes inside the hour.
 
+## The full tally, after the day
+
+Four deployments, because each fix found the next fault. The accounting, honestly:
+
+| Vault | What is in it | Fate |
+|---|---|---|
+| `0xbcc310b2…` | complete set 100.00, basis 97.40 | **lost.** No `settle` in the bytecode, no path that touches ERC-6909 at all |
+| `0xbCAe987E…` | slot 0: complete set 100.00, basis 97.60 | **recoverable** — `settle(0)` once `ETH-0-28AUG26` resolves, 2026-08-28 |
+| | slot 1: 100 losing DOWN, basis 97.40 | **lost.** All three exits revert; 53.60 of it still resting at the pool |
+| `0x0f8fB844…` | empty, slot settled and drained | closed cleanly |
+| `0xDFb9C6fA…` | 4712.40 tUSDC, live | current |
+
+**194.80 tUSDC written off**, against a 5000.00 starting position. All of it testnet, and
+all of it to faults the current build does not have. One open action remains: `settle(0)`
+on `0xbCAe987E…` after the ETH day window resolves, which returns the last 100.00.
+
 ## What this changes
 
 A passing test suite says the code is right. It says nothing about whether the code is
 the code that is running. Sixty-two tests covered `settle` thoroughly and every one of
 them ran against a contract that was not on chain.
 
-`.vault-addr` now holds the new address, and it is the only place the address lives.
+`.vault-addr` now holds the current address, it is the only place the address lives, and
+`node scripts/attest.ts` says whether that address is this source. Twenty lines, run in a
+second, and the whole first half of this document would not exist if it had been there.

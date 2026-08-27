@@ -325,6 +325,13 @@
       to begin with. Holding one of each side, it redeems to exactly 100 whichever way
       the market resolves.
     </p>
+    <p>
+      That last sentence stopped being a design claim on the 27th. A later window ran the
+      same shape end to end — quoted, both legs filled, resolved, and
+      <code>settle()</code> redeemed <b>100.00</b> against a <b>97.60</b> basis. Net asset
+      value did not move by a single unit across settlement, because a complete set was
+      already marked at exactly what it redeems for.
+    </p>
   </div>
 
   <div class="zero">
@@ -375,7 +382,7 @@
   </div>
 
   <footer class="foot">
-    <span>vault 0xDFb9C6fA…71E9 · one fill, not a track record</span>
+    <span>vault 0xDFb9C6fA…71E9 · quote → fill → merge → redeem, all run · not a track record yet</span>
     <span>abadi · everlasting</span>
   </footer>
 

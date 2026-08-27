@@ -3,10 +3,9 @@
 Target **2:45**. The submission allows 2–3 minutes; leaving 15 seconds of headroom means
 you never have to rush the ending, which is where the judges' last impression forms.
 
-**Record on the 26th or 27th, not on deadline day.** Testnet has been intermittent —
-the indexer returned `fetch failed` roughly one call in five during development. If a
-take fails, that is a retry, not a crisis, provided you are not recording the night
-before.
+**Record on the 27th, not on deadline day.** Testnet has been intermittent — the indexer
+returned `fetch failed` roughly one call in five during development. If a take fails, that
+is a retry, not a crisis, provided you are not recording the night before.
 
 ## What to have open before you start
 
@@ -14,6 +13,8 @@ before.
 2. A terminal in the repo, cleared, ready for `forge test`
 3. `docs/evidence/first-fill-2026-08-26.md` in an editor
 4. The Shannon explorer on the vault address, one tab over
+5. `docs/evidence/first-settle-2026-08-27.md` in a second editor tab — the settle beat
+   reads off it
 
 Turn off notifications. Record at 1080p minimum. Speak slower than feels natural — the
 whole script is about 380 words, which is a comfortable pace for 2:45 with pauses.
@@ -101,9 +102,20 @@ believes the rest of the video.*
 > directional exposure. We never took a view. The profit isn't a bet that paid — it's
 > the spread, collected.
 
+**Screen:** the settle transaction on the explorer.
+
+> And then the window resolved, and we redeemed it. A hundred back against a basis of
+> ninety-seven point six. Net asset value did not move by a single unit across
+> settlement — which is the assertion that matters, because a complete set was already
+> marked at exactly what it redeems for. If that number had jumped either way, one of the
+> two states was mispriced, and share price is where a mispricing gets paid for by
+> whoever happens to be holding.
+
+*Twelve seconds. Do not read the transaction hash aloud — point at it and move on.*
+
 **Screen:** cut to the terminal, run `forge test`.
 
-> Fifty-one tests, including the fuzzed invariant that the vault can never spend more
+> Sixty-seven tests, including the fuzzed invariant that the vault can never spend more
 > than the premium it budgeted.
 
 *Let the test output finish on screen. Green passing tests are worth three seconds of
@@ -115,18 +127,24 @@ silence.*
 
 **Screen:** `docs/SDK-FEEDBACK.md`, scrolled slowly.
 
-> Four of our assumptions were wrong, and every one of them only showed up when we ran
-> something rather than read about it. Prices are scaled to the collateral's decimals,
-> not to 1e18 — and when you get it wrong, the error says your order would cross the
-> book, which sends you looking in completely the wrong place. That one cost us hours.
+> Eight findings, and every one of them only showed up when we ran something rather than
+> read about it. Prices are scaled to the collateral's decimals, not to 1e18 — and when
+> you get it wrong, the error says your order would cross the book, which sends you
+> looking in completely the wrong place. That one cost us hours.
+>
+> The two that cost us the most came from settling a real position: redemption pulls
+> through the module rather than the pool, and nothing says so until the one call that
+> turns tokens back into money. And cancelling an order that already filled reverts,
+> which breaks cleanup on exactly the position that needs cleaning up.
 >
 > All of it is written up and reported back, with reproduction steps.
 
 **Screen:** back to the dashboard top.
 
-> Abadi is one vault, one fill, on testnet. It is not a track record yet — one fill
-> proves the mechanism, not the edge. But the mechanism is real, the capital is
-> non-custodial, and the operator key that steers the quotes can't move a single token.
+> Abadi is one vault, a handful of fills, on testnet. It is not a track record yet — a
+> handful of fills proves the mechanism, not the edge. But the whole lifecycle has now
+> run against the venue: quote, fill, merge, redeem. The capital is non-custodial, and
+> the operator key that steers the quotes can't move a single token.
 >
 > The markets expire. The liquidity doesn't.
 
@@ -140,9 +158,20 @@ doubt; having good answers ready when asked builds far more confidence.
 - **"Is 2.60 on one fill meaningful?"** No, and we say so on screen. It demonstrates the
   mechanism. Adverse selection — being filled preferentially when you're wrong — is the
   real risk and needs many quotes across many windows to measure.
-- **"What if only one leg fills?"** Then the vault holds a naked directional leg until
-  the other side fills or it's flattened. That's why there's a minimum spread floor and
-  expiry headroom.
+- **"What if only one leg fills?"** Then the vault holds a naked directional leg until the
+  other side fills, it's flattened, or the window settles. It happened to us twice on the
+  27th and it is worth being specific about: NAV marks that leg at **zero**, not at what
+  it cost, so the loss is recognised the moment it happens rather than passed to whoever
+  deposits next. NAV may understate. It may not overstate. That's the direction that takes
+  money from someone.
+- **"Did anything go wrong?"** Yes, and it is in the README rather than buried. Our live
+  address turned out to be an older build than our source — `settle` was not in the
+  deployed bytecode at all, which is *why* it had never been exercised. Finding that cost
+  us a stranded position. Fixing it and quoting again surfaced three more defects in the
+  exits, including one where NAV overstated by 2.21% on a one-sided fill. All four are
+  fixed, tested, and written up; `scripts/attest.ts` now checks the live bytecode against
+  the build so the first one cannot recur. *Offer this if asked, with the fix in the same
+  breath — the finding is only impressive alongside what was done about it.*
 - **"Why isn't the reactive roll in the demo?"** A reactivity handler must hold 32 STT on
   testnet and our allowance is spent. It's built against the official Somnia base and
   the investigation is in `docs/evidence/`. Not a code problem.

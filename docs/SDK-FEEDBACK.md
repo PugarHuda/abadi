@@ -1,9 +1,12 @@
 # Feedback on the DreamDEX Event Contracts SDK and docs
 
-From building **Abadi**, a market-making vault on Event Contracts, over 2026-08-26 on
-Shannon testnet. Everything below cost us real debugging time and is reproducible.
+From building **Abadi**, a market-making vault on Event Contracts, on Shannon testnet.
+Everything below cost us real debugging time and is reproducible.
 
-Ordered by how much time each one cost.
+Issues 1–6 are from 2026-08-26 and are ordered by how much time each one cost. Issues 7
+and 8 are from 2026-08-27, found by settling a real position rather than by reading, and
+between them they cost us more than the first six put together — they are appended rather
+than reordered so the numbering people have already read stays put.
 
 ---
 
@@ -147,6 +150,100 @@ silently abandons half the position.
 
 ---
 
+## 7. Redemption pulls through the **module**, and nothing says so until settlement
+
+**Cost: a stranded position worth 100 tUSDC.** The most expensive one we hit.
+
+Buying outcome tokens needs no ERC-6909 approval at all — a Buy YES crossing a Buy NO
+mints a fresh pair and the pool credits the holders directly. Nothing pulls. So a
+contract can quote, fill, hold a complete set, and mark it correctly, with no grant
+anywhere.
+
+Redemption is the first operation that pulls, and the puller is the **module**, not the
+pool the orders went to:
+
+```
+outcomeToken.setOperator(binaryMarketsModule, true)
+```
+
+Without it, `redeem` and `mergeCompleteSet` both revert:
+
+```
+cast call $MODULE "redeem(uint32,bytes32,bytes32,uint8,uint256)"     0 0x00 $MARKET_ID 0 100000000 --from $VAULT
+Error: execution reverted, data: "0xdeda9030"     # InsufficientPermission()
+```
+
+Three things make this expensive rather than merely annoying:
+
+1. **The failure is invisible for the entire life of the position.** Everything works
+   until the one call that turns tokens back into money, and by then the window has
+   resolved and left the live market list.
+2. **The error does not name a spender.** `InsufficientPermission()` has no arguments, so
+   it does not say *which* contract needs approving — and the pool is the natural guess,
+   because the pool is what the orders were sent to and what the collateral was approved
+   for.
+3. **The SDK does know.** `trade.ts` carries the comment *"the trader approves whichever
+   contract pulls the escrow: the pool for orders/sets, the module for redeem"*, and
+   `orders.js` has a helper that approves the **pool**. A contract integrator reading the
+   write path finds the pool grant and no reason to suspect a second one exists.
+
+**Suggestions**
+
+- Put the module grant in the Settlement page's first code block, next to the redeem
+  call, not only in an SDK source comment.
+- Give `InsufficientPermission` the spender it wanted: `InsufficientPermission(address
+  owner, address spender)`. One argument turns a two-hour hunt into a one-line fix.
+- Consider a view — `canRedeem(address owner)` or similar — that a contract can assert on
+  at construction rather than discovering at settlement.
+
+**How we found it:** by isolating the failing call. Our vault's `settle()` reverted with
+empty data; calling `module.redeem` directly with the vault as `--from` produced the real
+custom error, and `isOperator(vault, module)` returned false.
+
+---
+
+## 8. `cancelOrder` reverts on an order that already filled
+
+**Cost: one bricked slot and 43.80 tUSDC.**
+
+A two-sided quote stores two order ids. When the market takes one side and walks away
+from the other, the natural cleanup is to cancel both:
+
+```solidity
+if (yesOrderId != 0) pool.cancelOrder(yesOrderId);
+if (noOrderId  != 0) pool.cancelOrder(noOrderId);
+```
+
+The filled id is no longer a live order the caller owns, so the pool answers:
+
+```
+0xf5e39c1f  IncorrectSender(0xbCAe987E…, 0x51fdca2e…)
+```
+
+and the whole cleanup reverts. The result is that cancellation works on every slot except
+the one shape that actually needs cancelling — the one carrying directional risk with a
+dead quote resting against it. Ours had no exit at all: cancel reverted on the filled id,
+merge refused for want of a complete set, and redemption refused because the side we held
+lost.
+
+The fix on our end is a `try/catch` per leg, which is fine once you know. Knowing requires
+either reading the pool's source or losing a position.
+
+**Suggestions**
+
+- Make cancelling a non-live order a **no-op** rather than a revert. Cancellation is
+  idempotent in intent: the caller wants the order gone, and it is.
+- If it must revert, `IncorrectSender(caller, owner)` is the wrong shape for this case —
+  the caller is not a different owner, the order is simply finished. `OrderNotLive(id)`
+  would send integrators to the right conclusion immediately.
+- Either way, say on the Gotchas page that a stored order id is not evidence the order is
+  still cancellable, and that batch cancels need per-order isolation.
+
+**How we found it:** a live one-sided fill on a 3600s BTC window, then simulating all
+three exits against the resolved market. All three reverted.
+
+---
+
 ## What was genuinely good
 
 Not padding — these saved us real time:
@@ -178,3 +275,6 @@ Everything above is backed by recorded output in `docs/evidence/`:
 | `calibration-2026-08-26.md` | 2,422 settled markets, UP won 49.96% |
 | `reactivity-spike-2026-08-26.md` | the full reactivity investigation and its resolution |
 | `live-quote-2026-08-26.md` | the working quote, and the calldata diff that found issue 1 |
+| `stale-deployment-2026-08-27.md` | issue 7 — the isolation that produced `InsufficientPermission` |
+| `one-sided-fill-2026-08-27.md` | issue 8 — all three exits reverting on a live slot |
+| `first-settle-2026-08-27.md` | `settle` and `flatten` succeeding once both were fixed |
