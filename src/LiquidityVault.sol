@@ -170,6 +170,10 @@ contract LiquidityVault is ERC4626, AbadiReactive, ReentrancyGuard {
     error NotPendingGovernor(address caller);
     error NotSelf(address caller);
     error LastShareWhileOpen(uint256 slot);
+    error MarketAlreadyQuoted(bytes32 marketId, uint256 slot);
+    error CancelFailed(uint128 orderId, bytes reason);
+    /// @dev The pool's own answer for an order id it no longer holds for the caller.
+    error IncorrectSender(address caller, address owner);
 
     // ------------------------------------------------------------ constructor
 
@@ -283,6 +287,13 @@ contract LiquidityVault is ERC4626, AbadiReactive, ReentrancyGuard {
         if (slot >= MAX_SLOTS) revert SlotOutOfRange(slot);
         if (_slots[slot].active) revert SlotBusy(slot);
         if (halfSpread < minHalfSpread) revert SpreadTooTight(halfSpread);
+        // One market, one slot. Outcome balances live on the ERC-6909 per market, not
+        // per slot, so two slots on the same window would read each other's fills:
+        // resting escrow undercounted, complete sets counted twice. The invariant
+        // fuzzer found it in its first minute; the bot had been avoiding it by luck.
+        for (uint256 i = 0; i < MAX_SLOTS; i++) {
+            if (_slots[i].active && _slots[i].marketId == marketId) revert MarketAlreadyQuoted(marketId, i);
+        }
 
         (address pool, uint64 expiry, uint64 intervalSec) = _requireTradable(marketId);
         (,,,,,,,,,, uint256 yesId_, uint256 noId_,,) = module.markets(marketId);
@@ -474,9 +485,19 @@ contract LiquidityVault is ERC4626, AbadiReactive, ReentrancyGuard {
     ///      a one-sided fill is precisely the slot with something to get out of, and it is
     ///      also precisely the slot with one dead id. The sweep already knew this; the
     ///      three paths a human calls did not.
+    ///
+    ///      Only that one answer is swallowed. A cancel that fails for any other reason
+    ///      leaves the order resting at the pool with its escrow still committed, and a
+    ///      vault that shrugged and deleted the slot anyway would be carrying orders it
+    ///      no longer knows about. That happened on Shannon: a slot was freed, its two
+    ///      legs stayed live, both filled later, and 200 outcome tokens turned up under
+    ///      a slot that had quoted 100.
     function _cancelIfLive(IBinaryPool pool, uint128 orderId) internal {
         if (orderId == 0) return;
-        try pool.cancelOrder(orderId) {} catch {}
+        try pool.cancelOrder(orderId) {}
+        catch (bytes memory reason) {
+            if (reason.length < 4 || bytes4(reason) != IncorrectSender.selector) revert CancelFailed(orderId, reason);
+        }
     }
 
     function _redeemOutcome(bytes32 marketId, uint8 outcomeIdx, uint256 tokenId) internal {

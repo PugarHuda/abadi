@@ -52,6 +52,12 @@ contract MockPool {
     mapping(uint128 => bool) public filled;
 
     error IncorrectSender(address caller, address owner);
+    error Paused();
+    bool public paused;
+
+    function setPaused(bool v) external {
+        paused = v;
+    }
 
     /// @dev Take `spent` of an order's escrow, as a fill does. An order whose escrow is
     ///      used up stops being a live order the vault owns.
@@ -107,6 +113,7 @@ contract MockPool {
     ///      that always succeeded is why the vault shipped with an exit that bricks on
     ///      the one shape that needs it.
     function cancelOrder(uint128 orderId) external {
+        if (paused) revert Paused();
         if (filled[orderId]) revert IncorrectSender(msg.sender, address(this));
         cancelled.push(orderId);
         uint256 back = escrowOf[orderId];
@@ -264,6 +271,12 @@ contract LiquidityVaultTest is Test {
     address bob = address(0xB0B);
 
     bytes32 constant MARKET = bytes32(uint256(0xB7C));
+    /// A second window on the same pool. One market may only occupy one slot, so any
+    /// test that wants two live slots needs two windows.
+    bytes32 constant MARKET2 = bytes32(uint256(0xB7D));
+    uint256 constant YES2_ID = 333;
+    uint256 constant NO2_ID = 444;
+    MockMarket market2;
 
     // A 900s window, freshly opened.
     uint64 tradingStart;
@@ -281,6 +294,9 @@ contract LiquidityVaultTest is Test {
         market = new MockMarket();
         module.set(MARKET, address(pool), tradingStart, expiry);
         module.setSettlement(MARKET, address(market), YES_ID, NO_ID);
+        market2 = new MockMarket();
+        module.set(MARKET2, address(pool), tradingStart, expiry);
+        module.setSettlement(MARKET2, address(market2), YES2_ID, NO2_ID);
         module.wire(outcome, usdc);
 
         vault = new LiquidityVault(
@@ -387,6 +403,45 @@ contract LiquidityVaultTest is Test {
         vm.prank(bob);
         vault.redeem(bobs, bob, bob);
         assertEq(vault.totalSupply(), 0);
+    }
+
+    /// Outcome balances are per market on the 6909, not per slot. Two slots on one window
+    /// would each see the other's fills; the fuzzer showed the escrow derivation and the
+    /// pair count both breaking. One market, one slot.
+    function test_aMarketCannotBeQuotedInTwoSlots() public {
+        _deposit(alice, 500e6);
+        vm.startPrank(operator);
+        vault.quote(0, MARKET, uint256(500_000), uint256(15_000), 100e6);
+        vm.expectRevert(abi.encodeWithSelector(LiquidityVault.MarketAlreadyQuoted.selector, MARKET, 0));
+        vault.quote(1, MARKET, uint256(500_000), uint256(15_000), 100e6);
+        // Once the first slot is gone the market is quotable again.
+        vault.cancelQuote(0);
+        vault.quote(1, MARKET, uint256(500_000), uint256(15_000), 100e6);
+        vm.stopPrank();
+        assertTrue(vault.slots(1).active);
+    }
+
+    /// A cancel that fails for any reason other than "already gone" must stop the
+    /// exit, not be shrugged off. Shrugging deleted a slot on Shannon whose legs were
+    /// still live; they filled later and 200 tokens appeared under a 100-contract slot.
+    function test_aCancelThatFailsForAnotherReasonAbortsTheExit() public {
+        _deposit(alice, 500e6);
+        vm.prank(operator);
+        vault.quote(0, MARKET, uint256(500_000), uint256(15_000), 100e6);
+
+        pool.setPaused(true);
+        vm.prank(operator);
+        vm.expectRevert(
+            abi.encodeWithSelector(LiquidityVault.CancelFailed.selector, 1, abi.encodeWithSelector(MockPool.Paused.selector))
+        );
+        vault.cancelQuote(0);
+        assertTrue(vault.slots(0).active, "the slot is still owned, because the orders are still live");
+
+        pool.setPaused(false);
+        vm.prank(operator);
+        vault.cancelQuote(0);
+        assertFalse(vault.slots(0).active);
+        assertEq(vault.idleAssets(), 500e6, "and the escrow came back");
     }
 
     function test_onlyOperatorCanQuote() public {
@@ -518,8 +573,8 @@ contract LiquidityVaultTest is Test {
         // At 60s left it is inside the buffer.
         vm.warp(expiry - 60);
         vm.prank(operator);
-        vm.expectRevert(abi.encodeWithSelector(LiquidityVault.NoHeadroom.selector, MARKET));
-        vault.quote(1, MARKET, uint256(500_000), uint256(15_000), 100e6);
+        vm.expectRevert(abi.encodeWithSelector(LiquidityVault.NoHeadroom.selector, MARKET2));
+        vault.quote(1, MARKET2, uint256(500_000), uint256(15_000), 100e6);
     }
 
     function test_cancelReturnsEscrowAndPullsBothLegs() public {
@@ -957,12 +1012,14 @@ contract LiquidityVaultTest is Test {
         _deposit(alice, 500e6);
         vm.startPrank(operator);
         vault.quote(0, MARKET, uint256(500_000), uint256(15_000), 100e6);
-        vault.quote(1, MARKET, uint256(500_000), uint256(15_000), 100e6);
+        vault.quote(1, MARKET2, uint256(500_000), uint256(15_000), 100e6);
         vm.stopPrank();
 
         // Slot 0 filled cleanly; slot 1 is uneven and cannot fully close.
         outcome.setBalance(address(vault), YES_ID, 100e6);
         outcome.setBalance(address(vault), NO_ID, 100e6);
+        outcome.setBalance(address(vault), YES2_ID, 100e6);
+        pool.fill(3);
 
         vm.warp(expiry + 1);
         roller_onEvent(uint256(expiry + 1) * 1000);

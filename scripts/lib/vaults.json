@@ -26,5 +26,9 @@
   {
     "address": "0xEF66Fa6Ae6AE0022f1A7524B90D49B293f9D1C10",
     "note": "v7 \u2014 last-share guard; bot-armed wake-up; compiled for osaka, which the explorer cannot verify"
+  },
+  {
+    "address": "0xE0E59F39a5c04AD768f7e3fDae8e2FdAC68DebCB",
+    "note": "v8 \u2014 first verified source; _cancelIfLive swallowed a real cancel failure, orders stayed live"
   }
 ]

@@ -184,6 +184,12 @@ doubt; having good answers ready when asked builds far more confidence.
   correctly at block 472752861 with a measured limit. Both are in
   `docs/evidence/reactivity-live-2026-08-27.md`. Say the failure first; it makes the
   success credible.
+- **"How do you know the contract works against the real venue and not just your
+  mocks?"** Because the mocks lied to us once and it cost capital. `test/fork/` forks
+  Shannon at the current block, deploys the vault, and plays the taker against the
+  vault's own legs through the real pool and module. Four passes, on GitHub every six
+  hours. And the dashboard's track record is decoded in the judge's own browser from the
+  explorer's logs — they can refetch the URL themselves.
 - **"What stops the operator running off with the money?"** Nothing in the vault gives it
   a path. It can quote and cancel. `test_operatorCannotMoveAnyFunds` checks all three
   exit routes.

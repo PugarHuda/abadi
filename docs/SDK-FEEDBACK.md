@@ -379,6 +379,43 @@ that rewrites the object into the number, and the fork suite runs through it.
 
 ---
 
+## 13. `cancelOrder` can revert on a resting order the caller owns, with no reason
+
+**Cost: two legs left live under a slot the vault had already freed.**
+
+On 2026-08-28 at 03:30:59 UTC the vault cancelled a two-sided quote it had placed a
+minute earlier on `ETH-0-29AUG26` (tx `0x58c70666…`). Neither leg had filled. Both
+`cancelOrder` calls into the pool reverted:
+
+```
+0xE0E5… -> 0xd548d450 (pool)      EXECUTION_REVERTED
+  0xd548d450 -> 0x85C01B5e        staticcall, parent reverted
+```
+
+No `IncorrectSender`, no named error, nothing in the return data our handler could
+read. Our fault was swallowing it — `_cancelIfLive` caught every revert, the slot was
+deleted, and the two orders stayed resting with 97.60 of escrow the vault no longer
+counted. Both filled forty minutes later and 200 outcome tokens turned up under a slot
+that had quoted 100. The vault now refuses to proceed on any cancel failure other than
+`IncorrectSender`; that part is ours.
+
+What is the venue's: a cancel of a live, unfilled, caller-owned order should not revert,
+and when it must, the reason should say why. The staticcall the pool makes first
+(`0x85C01B5e…`) is the likely gate — a market-state or oracle check — but from outside
+there is no way to know.
+
+**Suggestions**
+
+- Name the revert. Whatever condition makes a live order uncancellable, give it an
+  error with the market id in it.
+- Document the window. If cancels are refused during some phase (an oracle poke, a
+  pause, the seconds around expiry), say so next to `cancelOrder`.
+
+**How we found it:** `verify.ts` showing 200 tokens under a 100-contract slot, then the
+explorer's internal-transaction view of the cancel.
+
+---
+
 ## What was genuinely good
 
 Not padding — these saved us real time:

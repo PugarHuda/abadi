@@ -32,6 +32,11 @@ import { readFileSync } from "node:fs";
 import { shannon, addresses, RPC, OUTCOME_TOKEN, env, exchange, retry } from "./lib/somnia.ts";
 import { candidates, hasHeadroom, priceInside, ticksAway, fmt } from "./lib/quoting.ts";
 
+/** Every vault this project has deployed. Redeploys leave positions behind; see sweepOld. */
+const OLD_VAULTS: { address: `0x${string}` }[] = JSON.parse(
+  readFileSync(new URL("./lib/vaults.json", import.meta.url), "utf8"),
+);
+
 const VAULT_ABI = parseAbi([
   "function quote(uint256 slot, bytes32 marketId, uint256 mid, uint256 halfSpread, uint256 size)",
   "function cancelQuote(uint256 slot)",
@@ -134,6 +139,27 @@ async function armAt(firesAtSec: number) {
     return;
   }
   await send(`arm      ${new Date(firesAtSec * 1000).toISOString().slice(11, 19)}Z`, "armSweep", [BigInt(firesAtSec)]);
+}
+
+/**
+ * Positions do not follow a redeploy. Every earlier vault that still has an active slot
+ * on a resolved market gets settled here — settle is permissionless and pays the vault,
+ * so this costs the operator nothing but gas and leaves nothing stranded that the code
+ * can reach. What cannot be reached (v1, v2 slot 1) is listed in the ledger as such.
+ */
+async function sweepOld() {
+  for (const v of OLD_VAULTS) {
+    if (v.address.toLowerCase() === vault.toLowerCase()) continue;
+    let maxSlots: number;
+    try { maxSlots = Number(await pub.readContract({ address: v.address, abi: VAULT_ABI, functionName: "MAX_SLOTS" })); } catch { continue; }
+    for (let i = 0; i < maxSlots; i++) {
+      const s: any = await pub.readContract({ address: v.address, abi: VAULT_ABI, functionName: "slots", args: [BigInt(i)] }).catch(() => null);
+      if (!s?.active) continue;
+      const m = await marketState(s.marketId).catch(() => null);
+      if (!m || !(m.resolved || m.voided)) continue;
+      await send(`settle   old ${v.address.slice(0, 8)} slot ${i}`, "settle", [BigInt(i)], v.address);
+    }
+  }
 }
 
 async function cycle(n: number, bySymbol: Map<string, any>) {
@@ -242,6 +268,7 @@ async function main() {
       const bySymbol = new Map<string, any>();
       for (const m of all) if (m?.info?.marketId) bySymbol.set(String(m.info.marketId).toLowerCase(), m);
 
+      await sweepOld();
       await cycle(n, bySymbol);
 
       const [nav, idle, resting, supply] = await Promise.all([

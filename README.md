@@ -10,7 +10,7 @@ Built for the Somnia × DreamDEX Event Contracts Hackathon.
 **[abadi-wheat.vercel.app](https://abadi-wheat.vercel.app)** ·
 [The working](https://abadi-wheat.vercel.app/dashboard) ·
 [Deck](https://abadi-wheat.vercel.app/deck) ·
-[Vault on the explorer](https://shannon-explorer.somnia.network/address/0xE0E59F39a5c04AD768f7e3fDae8e2FdAC68DebCB)
+[Vault on the explorer](https://shannon-explorer.somnia.network/address/0x2314436ed2BDC44321c74EF43adA14CAE723D352)
 
 ---
 
@@ -23,8 +23,8 @@ Depositors put in collateral and receive ERC-4626 shares. An operator key steers
 and can never touch the money. Every filled pair is worth exactly 1 at settlement no
 matter which way the market resolves.
 
-**Live on Shannon testnet:** `0xE0E59F39a5c04AD768f7e3fDae8e2FdAC68DebCB`
-([source on the explorer](https://shannon-explorer.somnia.network/address/0xE0E59F39a5c04AD768f7e3fDae8e2FdAC68DebCB?tab=contract) ·
+**Live on Shannon testnet:** `0x2314436ed2BDC44321c74EF43adA14CAE723D352`
+([source on the explorer](https://shannon-explorer.somnia.network/address/0x2314436ed2BDC44321c74EF43adA14CAE723D352?tab=contract) ·
 `node scripts/attest.ts` checks that address is running this source — see below for
 why that is a thing we check now)
 
@@ -207,7 +207,7 @@ direction — `flatten` merges what it can and leaves the slot open for `settle(
 ```bash
 npm install
 forge install foundry-rs/forge-std   # forge-std is not vendored
-forge test                 # 73 tests, no network needed
+forge test                 # 76 tests, no network needed
 
 node scripts/probe.ts      # live markets and spreads
 node scripts/history.ts    # settled-market calibration
@@ -257,6 +257,11 @@ bot skips arming and says so until then. `sweepNative` brings the reserve back o
   quotes into idle slots, and arms a wake-up at each window's expiry so the chain closes
   the position even if the bot is down. First wide run: three complete sets flattened in
   one cycle, one of them from a requote
+- **Five stateful invariants**, fuzzed across thousands of random interleavings of
+  deposit, quote, fill, cancel, flatten, resolve, settle and withdraw: NAV is exactly cash
+  plus resting plus complete sets, the vault's derived escrow equals what the pool's own
+  ledger holds, shares never overstate assets. The first run found a real defect — two
+  slots on one window shared the same outcome balances — now refused by construction
 - **The vault against the real venue, on a fork.** `test/fork/Venue.fork.t.sol` forks
   Shannon, deploys the vault, quotes a live window, then plays the taker — crossing the
   vault's own legs through the real BinaryPool so the real module mints the pair and
@@ -267,7 +272,7 @@ bot skips arming and says so until then. `sweepNative` brings the reserve back o
   dashboard also renders the whole track record from the explorer's log API, decoded in
   the browser against the vault's ABI, so the numbers above can be checked without
   trusting this file
-- 73 unit tests including two fuzzed invariants, 4 fork tests against the venue, 36
+- 76 unit tests including two fuzzed properties and five stateful invariants, 4 fork tests against the venue, 36
   browser tests (axe-core WCAG 2.1 AA, Core Web Vitals, touch, every cited transaction
   checked against the explorer); `scripts/attest.ts` says the live address is running
   this source
@@ -284,7 +289,12 @@ Seven deployments in two days, each one a fix the previous one lacked, all liste
 | v5 `0x98954577…` | 102.13 | the last share was redeemed before the slot settled; ERC-4626 hands the proceeds to the virtual share and a re-seed lost more to rounding than it retrieved |
 
 The last one is now impossible by construction: `LastShareWhileOpen` refuses to let the
-final share out while any slot is active. The other two are why `scripts/attest.ts` and
+final share out while any slot is active. Two more defects were found on the 28th without
+losing anything: the invariant fuzzer showed two slots on one window sharing outcome
+balances (now `MarketAlreadyQuoted`), and `verify.ts` showed 200 tokens under a
+100-contract slot because `cancelQuote` had swallowed a real cancel failure from the pool
+and freed a slot whose legs were still live (now `CancelFailed`; only the pool's own
+"already gone" answer is tolerated). The other two are why `scripts/attest.ts` and
 the mock pool that reverts like the real one exist.
 
 **Verified source on the explorer**, after two days of `Unable to verify`. The verifier
