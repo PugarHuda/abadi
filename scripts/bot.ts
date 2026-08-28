@@ -18,8 +18,11 @@
  * Run:  node scripts/bot.ts
  * Env:  INTERVAL=30     seconds between cycles
  *       CYCLES=0        stop after N cycles (0 = run until killed)
- *       ACTIVE=1        how many slots to keep quoted at once
- *       DEAD_TICKS=6    ticks the book may move before a resting quote is called dead
+ *       ACTIVE=3        how many slots to keep quoted at once, one market each
+ *       SIZE=100        contracts per side per quote
+ *       DEAD_TICKS=6    ticks the book may move before a resting quote is called dead:
+ *                       an unfilled dead quote is pulled and requoted, a filled one is
+ *                       flattened if it completed
  *       GAS_FLOOR=0.5   stop quoting when the operator key holds less STT than this
  *       SHORTEST=1      prefer the fastest tiers (default: slowest)
  */
@@ -27,7 +30,7 @@ import { createPublicClient, createWalletClient, formatEther, http, parseAbi } f
 import { privateKeyToAccount } from "viem/accounts";
 import { readFileSync } from "node:fs";
 import { shannon, addresses, RPC, OUTCOME_TOKEN, env, exchange, retry } from "./lib/somnia.ts";
-import { candidates, hasHeadroom, priceInside, ticksAway, SIZE, fmt } from "./lib/quoting.ts";
+import { candidates, hasHeadroom, priceInside, ticksAway, fmt } from "./lib/quoting.ts";
 
 const VAULT_ABI = parseAbi([
   "function quote(uint256 slot, bytes32 marketId, uint256 mid, uint256 halfSpread, uint256 size)",
@@ -56,7 +59,8 @@ const TRADING = 1;
 
 const INTERVAL = Number(process.env.INTERVAL ?? 30);
 const CYCLES = Number(process.env.CYCLES ?? 0);
-const ACTIVE = Number(process.env.ACTIVE ?? 1);
+const ACTIVE = Number(process.env.ACTIVE ?? 3);
+const QTY = BigInt(Math.round(Number(process.env.SIZE ?? 100) * 1e6));
 const DEAD_TICKS = BigInt(process.env.DEAD_TICKS ?? 6);
 const GAS_FLOOR = Number(process.env.GAS_FLOOR ?? 0.5);
 const SHORTEST = !!process.env.SHORTEST;
@@ -158,7 +162,6 @@ async function cycle(n: number, bySymbol: Map<string, any>) {
 
     const { yes, no } = await held(s.yesId, s.noId);
     const pairs = yes < no ? yes : no;
-    if (pairs === 0n) continue;
 
     const mkt = bySymbol.get(String(s.marketId).toLowerCase());
     const book: any = mkt ? await ex.fetchOrderBook(mkt.outcomes[0].symbol, 3).catch(() => null) : null;
@@ -167,10 +170,22 @@ async function cycle(n: number, bySymbol: Map<string, any>) {
 
     const ourMid = (s.bidPrice + s.askPrice) / 2n;
     const away = ticksAway(ourMid, bid, ask);
-    if (away >= DEAD_TICKS) {
+    if (away < DEAD_TICKS) continue; // still where the market is; leave it to fill
+
+    if (pairs > 0n) {
       log(`slot ${i}: complete set held, book ${away} ticks from our mid — flattening`);
       if (await send(`flatten  ${tag}`, "flatten", [BigInt(i)])) active--;
+    } else if (yes === 0n && no === 0n) {
+      // Nothing filled and nothing will: the book is gone. Pull the escrow back so the
+      // quote step can put it where the market actually is.
+      log(`slot ${i}: no fills, book ${away} ticks away — pulling the quote`);
+      if (await send(`cancel   ${tag}`, "cancelQuote", [BigInt(i)])) {
+        active--;
+        quotedMarkets.delete(String(s.marketId).toLowerCase());
+      }
     }
+    // One leg filled and the other stranded: leave it. Cancelling the resting leg gives
+    // up the only way the pair can still complete; settlement resolves it either way.
   }
 
   // ---- then quote into whatever is idle
@@ -181,7 +196,7 @@ async function cycle(n: number, bySymbol: Map<string, any>) {
     return;
   }
 
-  const idle = await read<bigint>("idleAssets");
+  let idleLeft = await read<bigint>("idleAssets");
   const minHalf = await read<bigint>("minHalfSpread");
   const all = Object.values(await retry("loadMarkets", () => ex.loadMarkets(true)));
   const cands = candidates(all, { shortest: SHORTEST }).filter(
@@ -200,13 +215,14 @@ async function cycle(n: number, bySymbol: Map<string, any>) {
       const bid = book?.bids?.[0]?.[0], ask = book?.asks?.[0]?.[0];
       if (bid === undefined || ask === undefined) continue;
 
-      const p = priceInside(c, bid, ask, minHalf);
+      const p = priceInside(c, bid, ask, minHalf, QTY);
       if (!p) continue;
-      if (p.escrow > idle) continue;
+      if (p.escrow > idleLeft) continue;
 
       log(`quote    slot ${i} ${c.symbol}  theirs ${fmt(p.theirBid)}/${fmt(p.theirAsk)}  ours ${fmt(p.bid)}/${fmt(p.ask)}  escrow ${usd(p.escrow)}`);
-      if (await send(`quote    slot ${i} ${c.marketId.slice(-4)}`, "quote", [BigInt(i), c.marketId, p.mid, p.half, SIZE])) {
+      if (await send(`quote    slot ${i} ${c.marketId.slice(-4)}`, "quote", [BigInt(i), c.marketId, p.mid, p.half, QTY])) {
         quotedMarkets.add(c.marketId.toLowerCase());
+        idleLeft -= p.escrow;
         active++;
         await armAt(c.expiry + 45);
         break;
@@ -218,7 +234,7 @@ async function cycle(n: number, bySymbol: Map<string, any>) {
 async function main() {
   log("vault   ", vault);
   log("operator", account.address);
-  log(`interval ${INTERVAL}s  active ${ACTIVE}  dead ${DEAD_TICKS} ticks  gas floor ${GAS_FLOOR} STT  ${CYCLES ? CYCLES + " cycles" : "until killed"}`);
+  log(`interval ${INTERVAL}s  active ${ACTIVE}  size ${Number(QTY) / 1e6}  dead ${DEAD_TICKS} ticks  gas floor ${GAS_FLOOR} STT  ${CYCLES ? CYCLES + " cycles" : "until killed"}`);
 
   for (let n = 1; !CYCLES || n <= CYCLES; n++) {
     try {

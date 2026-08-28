@@ -64,7 +64,7 @@ export function hasHeadroom(c: Candidate, now = Date.now() / 1000): boolean {
  * or when our legs would cross theirs — the pool would reject that anyway, and the
  * point is to earn the spread, never to pay it.
  */
-export function priceInside(c: Candidate, bid: number, ask: number, minHalf: bigint): Priced | null {
+export function priceInside(c: Candidate, bid: number, ask: number, minHalf: bigint, size: bigint = SIZE): Priced | null {
   const theirBid = toWei(bid);
   const theirAsk = toWei(ask);
   const mid = ((theirBid + theirAsk) / (2n * TICK)) * TICK; // snap the mid to the grid
@@ -78,7 +78,7 @@ export function priceInside(c: Candidate, bid: number, ask: number, minHalf: big
   if (ourBid <= 0n || ourAsk >= PRICE_ONE) return null;
 
   // BUY_YES escrows `bid`; BUY_NO is quoted YES-side and escrows (1 - ask).
-  const escrow = (SIZE * ourBid) / PRICE_ONE + (SIZE * (PRICE_ONE - ourAsk)) / PRICE_ONE;
+  const escrow = (size * ourBid) / PRICE_ONE + (size * (PRICE_ONE - ourAsk)) / PRICE_ONE;
   return { ...c, theirBid, theirAsk, mid, half, bid: ourBid, ask: ourAsk, escrow };
 }
 

@@ -18,16 +18,11 @@ import { PRICE_ONE } from "./lib/somnia.ts";
 
 const EXPLORER = "https://shannon-explorer.somnia.network/api/v2";
 
-/** Every vault this project has run on Shannon, oldest first. Each redeploy was a fix. */
-const VAULTS: { address: `0x${string}`; note: string }[] = [
-  { address: "0xbcc310b25961bFd241646505c4baE18a518c0A77", note: "v1 — build predating settle(); position stranded" },
-  { address: "0xbCAe987E3387f74867E56C6DDeA1BC94Af7932b5", note: "v2 — exits bricked on a one-sided fill" },
-  { address: "0x0f8fB8447e0C550458B5F4Fd41CBbBf2AcAE2387", note: "v3 — cancelQuote could orphan tokens" },
-  { address: "0xDFb9C6fA99D8Fa2c8eeA2AE7C055C8cbA53971E9", note: "v4 — no native exit for the reactivity reserve" },
-  { address: "0x9895457779a2b9702e3F0a800c597afc175bC88D", note: "v5 — first live wake-up; callback ran out of gas at 500k" },
-  { address: "0x1aeB3B3cAda938B4fB320884D96471b5D9dDa058", note: "v6 — first keeper-free settle; callback key jittered by 60 ms" },
-  { address: "0xEF66Fa6Ae6AE0022f1A7524B90D49B293f9D1C10", note: "v7 — last-share guard; bot-armed wake-up; compiled for osaka, which the explorer cannot verify" },
-];
+/** Every vault this project has run on Shannon, oldest first. Each redeploy was a fix.
+ *  One file, read here and injected into the site, so the two can never disagree. */
+const VAULTS: { address: `0x${string}`; note: string }[] = JSON.parse(
+  readFileSync(new URL("./lib/vaults.json", import.meta.url), "utf8"),
+);
 
 const ABI = parseAbi([
   "event Quoted(uint256 indexed slot, bytes32 indexed marketId, uint256 bid, uint256 ask, uint256 size)",

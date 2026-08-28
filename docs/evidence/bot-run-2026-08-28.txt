@@ -1,0 +1,38 @@
+03:29:38 vault    0xE0E59F39a5c04AD768f7e3fDae8e2FdAC68DebCB
+03:29:38 operator 0x39D2bae5EAedA9283535dDC98F1991c81eD5Cd7E
+03:29:38 interval 45s  active 3  size 100  dead 6 ticks  gas floor 0.5 STT  2 cycles
+03:29:51 quote    slot 0 BTC-0-28AUG26-0400-B91D/tUSDC  theirs 0.437/0.466  ours 0.439/0.463  escrow 97.60
+03:29:54 quote    slot 0 b91d  success  0x3c124db1adc85779824c82e6d0a5ac7fa6ae609a64ffe540353e3d15749cf5b4  gas 2992430
+03:29:55 arm      skipped: vault holds 0 STT, floor is 32
+03:29:56 quote    slot 1 ETH-0-28AUG26-0400-B91E/tUSDC  theirs 0.507/0.537  ours 0.509/0.535  escrow 97.40
+03:29:58 quote    slot 1 b91e  success  0x98ee71bb91e1eb79166ea35758e4f61bb767a991cb1126ed89e78964f4ef7247  gas 4573757
+03:29:59 arm      skipped: vault holds 0 STT, floor is 32
+03:30:01 quote    slot 2 ETH-0-29AUG26/tUSDC  theirs 0.265/0.294  ours 0.267/0.291  escrow 97.60
+03:30:03 quote    slot 2 b74c  success  0xff26047d454e079ec69857e2b7c4d81702a68c9f83038e0c6cebc40e8fe01105  gas 2992430
+03:30:04 arm      skipped: vault holds 0 STT, floor is 32
+03:30:04 cycle 1  NAV 4768.17  idle 4475.57  resting 292.60  share 1.000000
+03:30:57 slot 2: no fills, book 10 ticks away — pulling the quote
+03:30:59 cancel   slot 2 b74c  success  0x58c7066631ce74bdc3eadbdcd0c7d919c1e3df615875446416476c90b5315753  gas 216230
+03:31:05 quote    slot 2 ETH-0-28AUG26-0345/tUSDC  theirs 0.590/0.619  ours 0.592/0.616  escrow 97.60
+03:31:07 quote    slot 2 b96c  success  0xa2a48aaed2a8872d85fe4cc065ca19846cb3e562c18dae44ae357952d654589a  gas 990553
+03:31:08 arm      skipped: vault holds 0 STT, floor is 32
+03:31:08 cycle 2  NAV 4511.17  idle 4377.97  resting 133.20  share 0.946101
+03:33:10 vault    0xE0E59F39a5c04AD768f7e3fDae8e2FdAC68DebCB
+03:33:10 operator 0x39D2bae5EAedA9283535dDC98F1991c81eD5Cd7E
+03:33:10 interval 30s  active 3  size 100  dead 6 ticks  gas floor 0.5 STT  1 cycles
+03:33:18 slot 0: complete set held, book 56 ticks from our mid — flattening
+03:33:20 flatten  slot 0 b91d  success  0x521ce64926b36ec1a45c91b4ccfa612f848b1823025c43574d42a95ac55fd6a1  gas 807912
+03:33:22 slot 1: complete set held, book 41 ticks from our mid — flattening
+03:33:24 flatten  slot 1 b91e  success  0x3067bf72da1e41552840853abe3bed7782b5a9b4e8833e29d2638f00c4dba8d8  gas 807912
+03:33:26 slot 2: complete set held, book 63 ticks from our mid — flattening
+03:33:28 flatten  slot 2 b96c  success  0xc96a83963abfafd77e54e10f2e02af7fc721f052f9b6d346b74b327f442c8f78  gas 807912
+03:33:34 quote    slot 0 BTC-0-28AUG26-0345/tUSDC  theirs 0.545/0.575  ours 0.547/0.573  escrow 97.40
+03:33:36 quote    slot 0 b96b  success  0xdcfbc9ce71281127de30602efb1ed9bd3d3190587d9019d105b7f17c7c308490  gas 992430
+03:33:36 arm      skipped: vault holds 0 STT, floor is 32
+03:33:38 quote    slot 1 ETH-0-29AUG26/tUSDC  theirs 0.267/0.295  ours 0.269/0.293  escrow 97.60
+03:33:40 quote    slot 1 b74c  success  0x108efe246f8be74ee7a020236a6dbcb866ab8e1409420dd5c91c1b91669a2001  gas 606272
+03:33:41 arm      skipped: vault holds 0 STT, floor is 32
+03:33:43 quote    slot 2 BTC-0-29AUG26/tUSDC  theirs 0.366/0.395  ours 0.368/0.392  escrow 97.60
+03:33:45 quote    slot 2 b74b  success  0x91eb7bb22a03d834e6f9b947724f60762c98e6d16fb6505e9fc6d9193bdc0061  gas 992430
+03:33:45 arm      skipped: vault holds 0 STT, floor is 32
+03:33:46 cycle 1  NAV 4552.57  idle 4385.37  resting 167.20  share 0.954784

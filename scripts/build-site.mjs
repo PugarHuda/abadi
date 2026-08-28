@@ -19,7 +19,8 @@ const ORIGIN = "https://abadi-wheat.vercel.app";
 // .vault-addr at build time so the page can never quote one vault and read another.
 const VAULT = readFileSync(".vault-addr", "utf8").trim();
 const RPC = "https://api.infra.testnet.somnia.network";
-const LIVE_CONFIG = `<script>window.ABADI={vault:${JSON.stringify(VAULT)},rpc:${JSON.stringify(RPC)}}</script>`;
+const VAULTS = JSON.parse(readFileSync("scripts/lib/vaults.json", "utf8"));
+const LIVE_CONFIG = `<script>window.ABADI={vault:${JSON.stringify(VAULT)},rpc:${JSON.stringify(RPC)},vaults:${JSON.stringify(VAULTS)},explorer:"https://shannon-explorer.somnia.network"}</script>`;
 
 const PAGES = {
   "index.html": {
@@ -31,6 +32,10 @@ const PAGES = {
     path: "/dashboard",
     description:
       "The working behind Abadi: 2,422 settled markets measured, the live order book with the vault's quote inside it, and the position that filled — with what went wrong and what it cost.",
+  },
+  "404.html": {
+    path: "/404",
+    description: "Nothing lives at this address.",
   },
   "deck.html": {
     path: "/deck",
@@ -98,7 +103,11 @@ for (const [file, meta] of Object.entries(PAGES)) {
   <meta property="og:title" content="${title}">
   <meta property="og:description" content="${meta.description}">
   <meta property="og:url" content="${ORIGIN}${meta.path}">
+  <meta property="og:image" content="${ORIGIN}/og.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
   <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:image" content="${ORIGIN}/og.png">
   ${head}
   ${LIVE_CONFIG}
 </head>
