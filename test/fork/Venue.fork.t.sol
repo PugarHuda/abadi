@@ -71,8 +71,10 @@ contract VenueForkTest is Test {
         vault.deposit(1_000e6, depositor);
         vm.stopPrank();
 
+        // The taker sweeps everything resting at or better than the vault's price, so it
+        // needs enough to eat whatever else the live book has there — see _take.
         vm.startPrank(taker);
-        IFaucet(COLLATERAL).faucet(1_000e6);
+        IFaucet(COLLATERAL).faucet(10_000e6);
         IERC20(COLLATERAL).approve(pool, type(uint256).max);
         vm.stopPrank();
     }
@@ -149,9 +151,14 @@ contract VenueForkTest is Test {
 
     // ---------------------------------------------------------------- helpers
 
+    /// An IOC at the vault's price, sized well past the vault's leg. The fork is the live
+    /// book at that block, and another maker may be resting inside the vault's price; a
+    /// taker for exactly SIZE would fill them and leave the vault untouched — which is
+    /// what happened on the first GitHub run. Sweeping the level guarantees the vault's
+    /// leg is among what fills, and IOC drops the remainder.
     function _take(uint8 kind, uint256 price) internal {
         (bool ok,) = IBinaryPool(pool).placeBinaryOrder(
-            kind, price, SIZE, uint64((block.timestamp + 3600) * 1e9), ORDER_TYPE.IOC, 0, address(0), 0, 0
+            kind, price, 20 * SIZE, uint64((block.timestamp + 3600) * 1e9), ORDER_TYPE.IOC, 0, address(0), 0, 0
         );
         assertTrue(ok, "taker order accepted by the real pool");
     }
