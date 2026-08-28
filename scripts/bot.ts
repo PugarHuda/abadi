@@ -25,15 +25,22 @@
  *                       flattened if it completed
  *       GAS_FLOOR=0.5   stop quoting when the operator key holds less STT than this
  *       SHORTEST=1      prefer the fastest tiers (default: slowest)
+ *       MOMENTUM_TICKS=3  a window whose mid moved this many ticks during the sample is
+ *                       trending; it is not quoted this cycle. Every adverse fill in
+ *                       the ledger came from a trending hour: the market took one leg
+ *                       and walked away from the other. A maker's spread pays for
+ *                       being wrong sometimes, not for standing in front of a move.
+ *       MOMENTUM_WAIT=20  seconds between the two book samples
+ *       SHORT_SIZE=0.5  size multiplier on the 900s tier, where a move is most of the window
  */
 import { createPublicClient, createWalletClient, formatEther, http, parseAbi } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { readFileSync } from "node:fs";
 import { shannon, addresses, RPC, OUTCOME_TOKEN, env, exchange, retry } from "./lib/somnia.ts";
-import { candidates, hasHeadroom, priceInside, ticksAway, fmt } from "./lib/quoting.ts";
+import { candidates, hasHeadroom, priceInside, ticksAway, toWei, fmt } from "./lib/quoting.ts";
 
 /** Every vault this project has deployed. Redeploys leave positions behind; see sweepOld. */
-const OLD_VAULTS: { address: `0x${string}` }[] = JSON.parse(
+const OLD_VAULTS: { address: `0x${string}`; dead_slots?: number[] }[] = JSON.parse(
   readFileSync(new URL("./lib/vaults.json", import.meta.url), "utf8"),
 );
 
@@ -69,6 +76,16 @@ const QTY = BigInt(Math.round(Number(process.env.SIZE ?? 100) * 1e6));
 const DEAD_TICKS = BigInt(process.env.DEAD_TICKS ?? 6);
 const GAS_FLOOR = Number(process.env.GAS_FLOOR ?? 0.5);
 const SHORTEST = !!process.env.SHORTEST;
+const MOMENTUM_TICKS = BigInt(process.env.MOMENTUM_TICKS ?? 3);
+const MOMENTUM_WAIT = Number(process.env.MOMENTUM_WAIT ?? 20);
+const SHORT_SIZE = Number(process.env.SHORT_SIZE ?? 0.5);
+
+/** Contracts per side for a window: smaller where a move eats most of the window. */
+function sizeFor(intervalSec: number): bigint {
+  const mult = intervalSec <= 900 ? SHORT_SIZE : intervalSec <= 3600 ? (1 + SHORT_SIZE) / 2 : 1;
+  const lots = (QTY * BigInt(Math.round(mult * 100))) / 100n;
+  return (lots / 1_000n) * 1_000n; // on the venue's lot grid
+}
 
 const usd = (v: bigint) => (Number(v) / 1e6).toFixed(2);
 const ts = () => new Date().toISOString().slice(11, 19);
@@ -153,6 +170,9 @@ async function sweepOld() {
     let maxSlots: number;
     try { maxSlots = Number(await pub.readContract({ address: v.address, abi: VAULT_ABI, functionName: "MAX_SLOTS" })); } catch { continue; }
     for (let i = 0; i < maxSlots; i++) {
+      // Slots the ledger already lists as unrecoverable: every exit reverts on that
+      // build, and trying again each cycle only puts a rejected line in the log.
+      if ((v.dead_slots ?? []).includes(i)) continue;
       const s: any = await pub.readContract({ address: v.address, abi: VAULT_ABI, functionName: "slots", args: [BigInt(i)] }).catch(() => null);
       if (!s?.active) continue;
       const m = await marketState(s.marketId).catch(() => null);
@@ -229,24 +249,44 @@ async function cycle(n: number, bySymbol: Map<string, any>) {
     (c) => !quotedMarkets.has(c.marketId.toLowerCase()) && hasHeadroom(c),
   );
 
+  // Two looks at every candidate's book, MOMENTUM_WAIT seconds apart. A mid that moved
+  // between them is a window in motion, and the one thing this vault must not do is
+  // rest a two-sided quote in front of a move.
+  const first = new Map<string, { bid: number; ask: number }>();
+  for (const c of cands.slice(0, 12)) {
+    const b: any = await ex.fetchOrderBook(c.upSymbol, 5).catch(() => null);
+    if (b?.bids?.[0]?.[0] !== undefined && b?.asks?.[0]?.[0] !== undefined) first.set(c.marketId, { bid: b.bids[0][0], ask: b.asks[0][0] });
+  }
+  if (first.size > 0 && active < ACTIVE) await new Promise((r) => setTimeout(r, MOMENTUM_WAIT * 1000));
+
   for (let i = 0; i < maxSlots && active < ACTIVE; i++) {
     const s = await read<any>("slots", [BigInt(i)]);
     if (s.active) continue;
 
     for (const c of cands) {
       if (quotedMarkets.has(c.marketId.toLowerCase())) continue;
+      const then = first.get(c.marketId);
+      if (!then) continue;
       const oc: any = await ex.client.getMarketOnchain(c.marketId).catch(() => null);
       if (!oc || oc.status !== TRADING) continue;
       const book: any = await ex.fetchOrderBook(c.upSymbol, 5).catch(() => null);
       const bid = book?.bids?.[0]?.[0], ask = book?.asks?.[0]?.[0];
       if (bid === undefined || ask === undefined) continue;
 
-      const p = priceInside(c, bid, ask, minHalf, QTY);
+      const moved = ticksAway((toWei(then.bid) + toWei(then.ask)) / 2n, bid, ask);
+      if (moved >= MOMENTUM_TICKS) {
+        log(`skip     ${c.symbol}  mid moved ${moved} ticks in ${MOMENTUM_WAIT}s — trending, not quoting`);
+        quotedMarkets.add(c.marketId.toLowerCase()); // not again this cycle, for any slot
+        continue;
+      }
+
+      const qty = sizeFor(c.intervalSec);
+      const p = priceInside(c, bid, ask, minHalf, qty);
       if (!p) continue;
       if (p.escrow > idleLeft) continue;
 
-      log(`quote    slot ${i} ${c.symbol}  theirs ${fmt(p.theirBid)}/${fmt(p.theirAsk)}  ours ${fmt(p.bid)}/${fmt(p.ask)}  escrow ${usd(p.escrow)}`);
-      if (await send(`quote    slot ${i} ${c.marketId.slice(-4)}`, "quote", [BigInt(i), c.marketId, p.mid, p.half, QTY])) {
+      log(`quote    slot ${i} ${c.symbol}  theirs ${fmt(p.theirBid)}/${fmt(p.theirAsk)}  ours ${fmt(p.bid)}/${fmt(p.ask)}  size ${Number(qty) / 1e6}  escrow ${usd(p.escrow)}  (mid still, ${moved} ticks)`);
+      if (await send(`quote    slot ${i} ${c.marketId.slice(-4)}`, "quote", [BigInt(i), c.marketId, p.mid, p.half, qty])) {
         quotedMarkets.add(c.marketId.toLowerCase());
         idleLeft -= p.escrow;
         active++;
@@ -260,7 +300,7 @@ async function cycle(n: number, bySymbol: Map<string, any>) {
 async function main() {
   log("vault   ", vault);
   log("operator", account.address);
-  log(`interval ${INTERVAL}s  active ${ACTIVE}  size ${Number(QTY) / 1e6}  dead ${DEAD_TICKS} ticks  gas floor ${GAS_FLOOR} STT  ${CYCLES ? CYCLES + " cycles" : "until killed"}`);
+  log(`interval ${INTERVAL}s  active ${ACTIVE}  size ${Number(QTY) / 1e6} (x${SHORT_SIZE} on 900s)  dead ${DEAD_TICKS} ticks  momentum ${MOMENTUM_TICKS} ticks/${MOMENTUM_WAIT}s  gas floor ${GAS_FLOOR} STT  ${CYCLES ? CYCLES + " cycles" : "until killed"}`);
 
   for (let n = 1; !CYCLES || n <= CYCLES; n++) {
     try {

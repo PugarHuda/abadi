@@ -36,3 +36,8 @@
 03:33:45 quote    slot 2 b74b  success  0x91eb7bb22a03d834e6f9b947724f60762c98e6d16fb6505e9fc6d9193bdc0061  gas 992430
 03:33:45 arm      skipped: vault holds 0 STT, floor is 32
 03:33:46 cycle 1  NAV 4552.57  idle 4385.37  resting 167.20  share 0.954784
+15:44:55 vault    0x2314436ed2BDC44321c74EF43adA14CAE723D352
+15:44:55 operator 0x39D2bae5EAedA9283535dDC98F1991c81eD5Cd7E
+15:44:55 interval 30s  active 3  size 100 (x0.5 on 900s)  dead 6 ticks  momentum 3 ticks/20s  gas floor 0.5 STT  1 cycles
+15:45:09 settle   old 0xbCAe98 slot 1  rejected: The contract function "settle" reverted with the following signature:
+15:45:43 cycle 1  NAV 4686.27  idle 4427.37  resting 158.90  share 1.000406

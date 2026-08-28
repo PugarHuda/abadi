@@ -230,6 +230,12 @@ forge create src/LiquidityVault.sol:LiquidityVault \
 `1000 / 1000` are the tick and lot grids: `precision.price = 3` on this venue, which is
 `0.001` at the collateral's 6 decimals.
 
+The keeper runs from GitHub (cron, off the quarter-hour marks GitHub drops under load)
+and from the operator's machine (`scripts/keeper.cmd`, Windows Task Scheduler, every
+fifteen minutes) — whichever fires first does the work; the second finds the slots
+busy. GitHub fired zero scheduled runs in the repository's first nine hours, which is why
+the second exists.
+
 To let the vault wake itself, send it **32 STT** (`cast send $VAULT --value 32ether`):
 the reactivity precompile refuses a subscription from a handler holding less, and the
 bot skips arming and says so until then. `sweepNative` brings the reserve back out.
@@ -252,7 +258,11 @@ bot skips arming and says so until then. `sweepNative` brings the reserve back o
   the bot rather than by hand, closed a naked leg that lost — the shape the old `settle`
   refused forever — at block 473130786.
   [`docs/evidence/reactivity-live-2026-08-27.md`](docs/evidence/reactivity-live-2026-08-27.md)
-- `scripts/bot.ts` — the requote loop, three markets at a time: settles what resolved,
+- `scripts/bot.ts` — the requote loop, three markets at a time, with a **momentum filter**:
+  every candidate's book is read twice, twenty seconds apart, and a window whose mid moved
+  three ticks in between is not quoted — every adverse fill in the ledger came from a
+  trending hour, and one adverse fill costs what twenty complete sets earn. Size halves
+  on the 900s tier. It settles what resolved,
   finalizes what expired through the venue's permissionless keeper entry, pulls and
   requotes an unfilled quote the book has walked away from, flattens a completed one,
   quotes into idle slots, and arms a wake-up at each window's expiry so the chain closes
