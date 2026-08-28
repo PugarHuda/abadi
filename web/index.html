@@ -145,6 +145,23 @@
   }
   .rig-foot b { color: var(--cotton); font-weight: 500; }
 
+
+  /* ---------- live strip ---------- */
+  .live { border: 1px solid var(--ink-line); background: var(--ink-raised); padding: 20px clamp(16px, 2.4vw, 26px); }
+  .live-err { display: none; margin: 0; color: var(--turmeric); font-size: 14px; }
+  .live[data-state="unreachable"] .live-err { display: block; }
+  .live[data-state="unreachable"] .live-grid, .live[data-state="unreachable"] .live-slots { display: none; }
+  .live-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin: 0; }
+  .live-grid dt { font-family: var(--mono); font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--cotton-dim); }
+  .live-grid dd { margin: 4px 0 0; font-family: var(--mono); font-size: clamp(15px, 2vw, 20px); font-weight: 600; font-variant-numeric: tabular-nums; }
+  .live-grid small { font-size: 10px; font-weight: 300; color: var(--cotton-dim); }
+  .live-slots { list-style: none; margin: 16px 0 0; padding: 14px 0 0; border-top: 1px solid var(--ink-line); font-family: var(--mono); font-size: 12px; color: var(--cotton-dim); }
+  .live-slots li { padding: 3px 0; }
+  .live-slots b { color: var(--turmeric); font-weight: 600; }
+  .live-foot { margin: 14px 0 0; font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--cotton-dim); }
+  .live[data-state="loading"] [data-live] { color: var(--cotton-dim); }
+  @media (max-width: 620px) { .live-grid { grid-template-columns: repeat(2, 1fr); } }
+
   /* ---------- section frame ---------- */
   .eyebrow {
     font-family: var(--mono); font-size: 10px; font-weight: 400;
@@ -154,7 +171,7 @@
     border-bottom: 1px solid var(--ink-line);
     display: flex; justify-content: space-between; gap: 16px;
   }
-  .eyebrow span { color: var(--ink-line); }
+  .eyebrow span { color: var(--cotton-dim); }
 
   p.note { max-width: 62ch; color: var(--cotton-dim); }
   p.note b { color: var(--cotton); font-weight: 500; }
@@ -284,6 +301,26 @@
     </p>
   </div>
 
+
+  <!-- ============ live, from the chain ============ -->
+  <div class="eyebrow">Live from the chain <span>read in your browser, no server of ours</span></div>
+
+  <div class="live" id="live" data-state="loading">
+    <p class="live-err" data-live="error"></p>
+    <dl class="live-grid">
+      <div><dt>NAV</dt><dd><span data-live="nav">…</span> <small>tUSDC</small></dd></div>
+      <div><dt>Idle</dt><dd><span data-live="idle">…</span> <small>tUSDC</small></dd></div>
+      <div><dt>Resting</dt><dd><span data-live="resting">…</span> <small>tUSDC</small></dd></div>
+      <div><dt>Per share</dt><dd><span data-live="share">…</span></dd></div>
+    </dl>
+    <ul class="live-slots" data-live="slots"></ul>
+    <p class="live-foot">
+      block <span data-live="block">…</span> ·
+      <a data-live="explorer" href="#">vault on the explorer</a> ·
+      refreshes every minute
+    </p>
+  </div>
+
   <!-- ============ the trade ============ -->
   <div class="eyebrow">Where the money comes from <span>zero inventory</span></div>
 
@@ -373,16 +410,17 @@
     <a class="lead" href="/dashboard">Read the evidence &rarr;</a>
     <a href="/deck">Deck</a>
     <a href="https://github.com/PugarHuda/abadi">Source</a>
-    <a href="https://shannon-explorer.somnia.network/address/0xDFb9C6fA99D8Fa2c8eeA2AE7C055C8cbA53971E9">Vault on the explorer</a>
+    <a href="https://shannon-explorer.somnia.network/address/0xEF66Fa6Ae6AE0022f1A7524B90D49B293f9D1C10">Vault on the explorer</a>
   </div>
 
   <footer class="foot">
-    <span>vault 0xDFb9C6fA…71E9</span>
+    <span>vault 0xEF66Fa6A…1C10</span>
     <span>abadi &middot; everlasting</span>
   </footer>
 
 </div>
 
+<script src="/live.js" defer></script>
 <script>
 (function () {
   var rig   = document.querySelector(".rig");

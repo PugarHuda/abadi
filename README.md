@@ -10,7 +10,7 @@ Built for the Somnia × DreamDEX Event Contracts Hackathon.
 **[abadi-wheat.vercel.app](https://abadi-wheat.vercel.app)** ·
 [The working](https://abadi-wheat.vercel.app/dashboard) ·
 [Deck](https://abadi-wheat.vercel.app/deck) ·
-[Vault on the explorer](https://shannon-explorer.somnia.network/address/0xDFb9C6fA99D8Fa2c8eeA2AE7C055C8cbA53971E9)
+[Vault on the explorer](https://shannon-explorer.somnia.network/address/0xEF66Fa6Ae6AE0022f1A7524B90D49B293f9D1C10)
 
 ---
 
@@ -23,7 +23,7 @@ Depositors put in collateral and receive ERC-4626 shares. An operator key steers
 and can never touch the money. Every filled pair is worth exactly 1 at settlement no
 matter which way the market resolves.
 
-**Live on Shannon testnet:** `0xDFb9C6fA99D8Fa2c8eeA2AE7C055C8cbA53971E9`
+**Live on Shannon testnet:** `0xEF66Fa6Ae6AE0022f1A7524B90D49B293f9D1C10`
 (`node scripts/attest.ts` checks that address is running this source — see below for
 why that is a thing we check now)
 
@@ -206,13 +206,15 @@ direction — `flatten` merges what it can and leaves the slot open for `settle(
 ```bash
 npm install
 forge install foundry-rs/forge-std   # forge-std is not vendored
-forge test                 # 67 tests, no network needed
+forge test                 # 73 tests, no network needed
 
 node scripts/probe.ts      # live markets and spreads
 node scripts/history.ts    # settled-market calibration
 node scripts/operator.ts   # read the book and quote inside it  (needs .env)
 node scripts/verify.ts     # read our orders back off the book
 node scripts/attest.ts     # is the live address running this source? (needs forge build)
+node scripts/ledger.ts     # every episode the vaults have run, marked from chain events
+node scripts/bot.ts        # the requote loop  (CYCLES=3 INTERVAL=30 SHORTEST=1 to try it)
 ```
 
 `.env` needs `PRIVATE_KEY` for anything that writes. Deploy:
@@ -229,100 +231,52 @@ forge create src/LiquidityVault.sol:LiquidityVault \
 
 ## Honest status
 
-**Working and verified on testnet**
+**Run against the venue, on Shannon**
 
-- Vault deployed, funded, quoting live, sitting at the top of book
-- Zero-inventory pair economics confirmed on chain (97.40 for 100 a side)
-- 67 tests passing, including two fuzzed invariants
+- Quoting inside the incumbent's spread, top of book, both legs filling into complete sets
+- `settle()` and `flatten()`, each several times — seven complete-set episodes so far,
+  **+17.00 tUSDC on 683.00 of basis (2.49%)**, every one read back off the chain by
+  `scripts/ledger.ts` rather than remembered
+- **The vault wakes itself up.** A 900s window was quoted, expired, resolved, and the
+  reactivity precompile called the vault at the armed second; the vault redeemed its own
+  position and freed the slot with nobody calling it. Tx `0x66c0e1ec…`, block 472752861.
+  The first attempt ran out of gas at the hard-coded 500k; the limit is now sized from a
+  measurement, and the callback's 60 ms of jitter is handled.
+  [`docs/evidence/reactivity-live-2026-08-27.md`](docs/evidence/reactivity-live-2026-08-27.md)
+- `scripts/bot.ts` — the requote loop: settles what resolved, finalizes what expired
+  through the venue's permissionless keeper entry, flattens a dead quote's complete set,
+  quotes into idle slots, and arms a wake-up at each window's expiry so the chain closes
+  the position even if the bot is down
+- The site reads the vault live in the visitor's browser — four `eth_call`s to the public
+  RPC, no server of ours, and an explicit failure state rather than a stale number
+- 73 tests passing, including two fuzzed invariants; axe-core WCAG 2.1 AA on every page in
+  CI; `scripts/attest.ts` says the live address is running this source
 
-- **Both legs filled**, into a complete set, with the spread locked in and zero
-  directional exposure
-- **`settle()` run on chain.** A 900s BTC window quoted at 0.578 / 0.602, one leg taken
-  adversely, the other filled on the way back, resolved UP, redeemed. `+100.00` against a
-  `97.60` basis — 2.40 captured, 2.46%, no directional exposure once the pair was
-  complete. NAV did not move across settlement, which is the assertion that matters: a
-  complete set was already marked at what it redeems for, so redemption changed the form
-  of the assets and not their worth.
-  [`docs/evidence/first-settle-2026-08-27.md`](docs/evidence/first-settle-2026-08-27.md)
-- **`flatten()` run on chain.** The next window filled both legs inside a minute, then ETH
-  walked seven cents past the quote and left it dead with eleven minutes still on the
-  clock. `mergeCompleteSet` returned the full `100.00` against the `97.60` basis without
-  waiting on an oracle, and the slot was free to quote again 671 seconds before expiry.
-  NAV did not move here either.
+**What it cost to get here**
 
-`quote`, `flatten`, and `settle` have all now been run against the live venue.
-`cancelQuote` has not: the case worth proving is the one where a leg has already filled,
-and that shape cannot be summoned on demand — it arrives when the market decides to take
-one side and not the other.
+Seven deployments in two days, each one a fix the previous one lacked, all listed in
+`scripts/ledger.ts` with the reason. Written off along the way, all testnet:
 
-**What went wrong, and what it cost**
+| where | how much | why |
+|---|---|---|
+| v1 `0xbcc310b2…` | 97.40 | build predated `settle()`; no exit exists |
+| v2 `0xbCAe987E…` slot 1 | 43.80 + 53.60 resting | one-sided fill on a build whose exits all reverted |
+| v5 `0x98954577…` | 102.13 | the last share was redeemed before the slot settled; ERC-4626 hands the proceeds to the virtual share and a re-seed lost more to rounding than it retrieved |
 
-The first window resolved and `settle()` reverted with empty data — the signature of a
-selector that is not there. It was not. The address demonstrated above was a build from
-before `settle`, `flatten`, and `AbadiReactive` existed, and nobody had checked that the
-live address still matched the source. Under it sat a second fault: the deployed
-constructor never granted the module ERC-6909 operator rights, and only redemption pulls,
-so the vault could buy a position and not redeem it — discovered, exactly as the guard in
-the current constructor predicted, at settlement.
+The last one is now impossible by construction: `LastShareWhileOpen` refuses to let the
+final share out while any slot is active. The other two are why `scripts/attest.ts` and
+the mock pool that reverts like the real one exist.
 
-4902.60 tUSDC came back out. The 100 UP + 100 DOWN complete set, basis 97.40, is stranded
-in that contract with no exit. The current source is redeployed, the ERC-6909 grant is
-verified `true` on chain, and quoting has resumed on two windows.
+**Not done**
 
-Sixty-two tests said the code was right. None of them said it was the code that was
-running. [`docs/evidence/stale-deployment-2026-08-27.md`](docs/evidence/stale-deployment-2026-08-27.md)
-
-Then the redeployed vault quoted two windows and both moved against it. Each time the
-BUY_NO leg was taken and the BUY_YES leg was left stranded under a market that had walked
-away — adverse selection, the risk a maker is paid to carry, and not a bug. What it
-uncovered underneath was three:
-
-- `cancelQuote` cancelled both stored order ids unconditionally, and the pool reverts
-  `IncorrectSender` on a filled one. The exit worked on every slot except the only shape
-  that needs an exit.
-- `settle` reverted `NothingToRedeem` when the held side lost, so a losing slot could
-  never be closed by anyone, by any path. It also never pulled the leg that was still
-  resting, stranding that escrow at the pool.
-- `totalEscrowed` was a stored counter that nothing decremented at fill time, so
-  `totalAssets` carried a directional leg at what it cost. Measured live, NAV read
-  4902.60 against a true 4794.20 — **overstated by 108.40, or 2.21%**. That is the number
-  ERC-4626 prices shares against.
-
-All three are fixed: one shared cancel guard every exit routes through, a `settle` that
-clears a losing slot instead of refusing it, and `totalEscrowed` derived from what is
-actually still resting rather than stored and kept in step by hand. A naked leg is now
-marked at nothing — NAV may understate, never overstate.
-
-Fixing the first one opened a fourth. `cancelQuote` ends by deleting the slot, which was
-only ever safe because the old version could not reach that line on a slot that had
-bought anything. Now it could — and `settle` is the only function that can redeem outcome
-tokens, so deleting the slot orphans them permanently. It now keeps the slot whenever
-either outcome is still held. A fix that is not tested against what it just made
-reachable is half a fix.
-
-Sixty-two tests missed all three because the mock pool was kinder than the pool: its
-`cancelOrder` never reverted on a dead id and never returned the escrow, so no test could
-reach the failure or tell stranded capital from recovered capital. The mock now reverts
-`IncorrectSender` on a filled id and hands collateral back on a cancel. Three defects fell
-out of that one change before a line of the fix was written.
-[`docs/evidence/one-sided-fill-2026-08-27.md`](docs/evidence/one-sided-fill-2026-08-27.md)
-
-And the whole thing started because nobody asked whether the live address was the code, so
-now something does. `scripts/attest.ts` compares deployed runtime bytecode against the
-build artifact with the immutable slots masked out. Twenty lines, and it answers the
-question that cost 97.40 tUSDC.
-
-**Blocked, and honestly so**
-
-- `AbadiReactive` — keeper-free self-rearming rolls. The mechanism is understood and
-  built against the official `@somnia-chain/reactivity-contracts` base, but a handler
-  must hold **32 STT** and our testnet allowance is spent. Not a code problem; a faucet
-  problem. See
-  [`docs/evidence/reactivity-spike-2026-08-26.md`](docs/evidence/reactivity-spike-2026-08-26.md).
-
-Until that lands, rolls fall back to permissionless bounty triggers using the venue's own
-keeper entries (`finalizeMarket`, `releasePool`, `pokeOracle`). Still trustless and
-non-custodial — the claim is "no *trusted* keeper" rather than "no keeper".
+- Source verification on the Shannon explorer. Both the Etherscan-style route and the
+  Blockscout v2 standard-input route accept the submission and then report
+  `Unable to verify`; the verifier lists `osaka` as supported, which is what this was
+  compiled for. `scripts/attest.ts` compares the deployed bytecode to the artifact
+  directly, which is the stronger check, but a judge who clicks the address still sees
+  bytecode.
+- A track record. Seven complete sets is a mechanism working, not an edge. The ledger
+  script exists so the number can grow without anyone having to trust it.
 
 ---
 

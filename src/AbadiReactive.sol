@@ -102,11 +102,16 @@ abstract contract AbadiReactive is SomniaEventHandler {
         }
 
         uint256 firesAtMillis = uint256(eventTopics[1]);
+        // The topic carries the instant the precompile actually fired, not the one that
+        // was asked for. Measured on Shannon: armed for ...245000, fired with ...245060.
+        // Arms are whole seconds, so the key is found by flooring; the sweep runs either
+        // way, because a stale entry is not a reason to leave capital on a dead window.
+        uint256 key = armed[firesAtMillis] != 0 ? firesAtMillis : firesAtMillis - (firesAtMillis % 1000);
         // One-shot: the subscription is spent once it fires and does NOT re-arm itself.
-        delete armed[firesAtMillis];
+        delete armed[key];
         emit CallbackFired(firesAtMillis);
 
-        _onScheduled(firesAtMillis);
+        _onScheduled(key);
     }
 
     /// @notice Called when an armed instant arrives. Implement the roll here.

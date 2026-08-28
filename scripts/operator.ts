@@ -9,27 +9,19 @@
  *
  * Run: node scripts/operator.ts [slot]
  */
-import { SomniaMarkets, isBinaryMarket } from "@somnia-chain/markets-sdk";
-import { createPublicClient,  createWalletClient, http,  parseAbi } from "viem";
+import { createPublicClient, createWalletClient, http, parseAbi } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { readFileSync } from "node:fs";
-import { shannon, addresses, INDEXER, WS, RPC, env, PRICE_ONE, TICK } from "./lib/somnia.ts";
+import { shannon, RPC, env, exchange, retry } from "./lib/somnia.ts";
+import { candidates, hasHeadroom, priceInside, SIZE, fmt } from "./lib/quoting.ts";
 
 const VAULT_ABI = parseAbi([
   "function quote(uint256 slot, bytes32 marketId, uint256 mid, uint256 halfSpread, uint256 size)",
-  "function cancelQuote(uint256 slot)",
   "function idleAssets() view returns (uint256)",
   "function totalAssets() view returns (uint256)",
   "function totalEscrowed() view returns (uint256)",
   "function minHalfSpread() view returns (uint256)",
 ]);
-
-const ONE = PRICE_ONE;
-const SIZE = 100_000_000n; // 100 contracts, 6-decimal collateral
-const INSIDE_TICKS = 2n; // quote this many ticks inside each side of the incumbent
-
-const toWei = (x: number) => BigInt(Math.round(x * 1000)) * TICK; // 0.727 -> 727000
-const fmt = (w: bigint) => (Number(w) / 1e6).toFixed(3);
 
 async function main() {
   const slot = BigInt(process.argv[2] ?? 0);
@@ -38,83 +30,51 @@ async function main() {
 
   const pub = createPublicClient({ chain: shannon, transport: http(RPC) });
   const wallet = createWalletClient({ account, chain: shannon, transport: http(RPC) });
-  const ex = new SomniaMarkets({
-    indexerUrl: INDEXER,
-    chain: shannon,
-    wsRpcUrl: WS,
-    addresses: addresses as never,
-  } as never);
+  const ex = exchange();
 
   console.log("vault    :", vault);
   console.log("operator :", account.address);
-  const idle = await pub.readContract({ address: vault, abi: VAULT_ABI, functionName: "idleAssets" });
-  const minHalf = await pub.readContract({ address: vault, abi: VAULT_ABI, functionName: "minHalfSpread" });
+  const idle = (await pub.readContract({ address: vault, abi: VAULT_ABI, functionName: "idleAssets" })) as bigint;
+  const minHalf = (await pub.readContract({ address: vault, abi: VAULT_ABI, functionName: "minHalfSpread" })) as bigint;
   console.log("idle     :", (Number(idle) / 1e6).toFixed(2), "tUSDC");
-  console.log("minHalf  :", fmt(minHalf as bigint));
+  console.log("minHalf  :", fmt(minHalf));
   console.log("");
 
-  const all = Object.values(await ex.loadMarkets(true));
-  const now = Date.now() / 1000;
-
-  // Prefer longer tiers: more headroom, and the book moves less between read and send.
-  // SHORTEST=1 flips it, which is how the settle path gets exercised without waiting a
-  // day for a window to resolve.
+  const all = Object.values(await retry("loadMarkets", () => ex.loadMarkets(true)));
+  // SHORTEST=1 prefers the fast tiers, which is how the settle path gets exercised
+  // without waiting a day for a window to resolve.
   const shortest = !!process.env.SHORTEST;
-  const candidates = (all.filter((x: any) => isBinaryMarket(x.info)) as any[])
-    .filter((m) => Number(m.info.intervalSec || 0) >= 900 && Number(m.info.expiry) - now >= 600)
-    .sort((a, b) =>
-      shortest
-        ? Number(a.info.intervalSec) - Number(b.info.intervalSec)
-        : Number(b.info.intervalSec) - Number(a.info.intervalSec),
-    )
-    .slice(0, shortest ? 20 : 6);
-  console.log("candidates:", candidates.map((m) => m.symbol).join(", "));
+  const cands = candidates(all, { shortest }).slice(0, shortest ? 20 : 6);
+  console.log("candidates:", cands.map((m) => m.symbol).join(", "));
   console.log("");
 
-  for (const m of candidates) {
-    const oc: any = await ex.client.getMarketOnchain(m.info.marketId);
+  for (const c of cands) {
+    const oc: any = await ex.client.getMarketOnchain(c.marketId);
     if (oc.status !== 1) continue;
+    if (!hasHeadroom(c)) continue;
 
-    const interval = Number(m.info.intervalSec || 0);
-    const left = Number(m.info.expiry) - now;
-    // Headroom is a fraction of the tier, never a fixed number of seconds: the venue
-    // runs 60s through 86400s and a flat rule rejects the fast tiers outright.
-    if (left < interval * 0.25 || left < 600) continue;
-
-    const up = m.outcomes?.[0]?.symbol;
-    if (!up) continue;
-    const book: any = await ex.fetchOrderBook(up, 5).catch(() => null);
+    const book: any = await ex.fetchOrderBook(c.upSymbol, 5).catch(() => null);
     const bid = book?.bids?.[0]?.[0];
     const ask = book?.asks?.[0]?.[0];
     if (bid === undefined || ask === undefined) continue;
 
-    const bidW = toWei(bid);
-    const askW = toWei(ask);
-    const midW = ((bidW + askW) / (2n * TICK)) * TICK; // snap the mid to the grid
-    let halfW = (askW - bidW) / 2n - INSIDE_TICKS * TICK; // sit inside their quote
-    if (halfW < (minHalf as bigint)) halfW = minHalf as bigint;
-    halfW = (halfW / TICK) * TICK;
-
-    const ourBid = midW - halfW;
-    const ourAsk = midW + halfW;
-    // A POST_ONLY leg that would cross is rejected by the pool, not silently repriced.
-    if (ourBid >= askW || ourAsk <= bidW) {
-      console.log(`${m.symbol}: computed quote would cross, skipping`);
+    const p = priceInside(c, bid, ask, minHalf);
+    if (!p) {
+      console.log(`${c.symbol}: computed quote would cross, skipping`);
+      continue;
+    }
+    if (p.escrow > idle) {
+      console.log(`${c.symbol}: needs ${(Number(p.escrow) / 1e6).toFixed(2)} tUSDC, idle is short`);
       continue;
     }
 
-    const escrow = (SIZE * ourBid) / ONE + (SIZE * (ONE - ourAsk)) / ONE;
-    if (escrow > (idle as bigint)) {
-      console.log(`${m.symbol}: needs ${(Number(escrow) / 1e6).toFixed(2)} tUSDC, idle is short`);
-      continue;
-    }
-
-    console.log("market   :", m.symbol);
-    console.log("marketId :", m.info.marketId);
-    console.log("tier     :", interval + "s,", Math.round(left) + "s left");
-    console.log(`theirs   : ${fmt(bidW)} / ${fmt(askW)}   spread ${fmt(askW - bidW)}`);
-    console.log(`ours     : ${fmt(ourBid)} / ${fmt(ourAsk)}   spread ${fmt(halfW * 2n)}  <-- inside`);
-    console.log(`escrow   : ${(Number(escrow) / 1e6).toFixed(2)} tUSDC for ${Number(SIZE) / 1e6} contracts/side`);
+    const left = c.expiry - Date.now() / 1000;
+    console.log("market   :", c.symbol);
+    console.log("marketId :", c.marketId);
+    console.log("tier     :", c.intervalSec + "s,", Math.round(left) + "s left");
+    console.log(`theirs   : ${fmt(p.theirBid)} / ${fmt(p.theirAsk)}   spread ${fmt(p.theirAsk - p.theirBid)}`);
+    console.log(`ours     : ${fmt(p.bid)} / ${fmt(p.ask)}   spread ${fmt(p.half * 2n)}  <-- inside`);
+    console.log(`escrow   : ${(Number(p.escrow) / 1e6).toFixed(2)} tUSDC for ${Number(SIZE) / 1e6} contracts/side`);
     console.log(`           (= size x (1 - spread); a full pair settles at exactly 1)`);
     console.log("");
 
@@ -123,7 +83,7 @@ async function main() {
         address: vault,
         abi: VAULT_ABI,
         functionName: "quote",
-        args: [slot, m.info.marketId as `0x${string}`, midW, halfW, SIZE],
+        args: [slot, c.marketId, p.mid, p.half, SIZE],
       });
       const rcpt = await pub.waitForTransactionReceipt({ hash });
       console.log("QUOTED  tx:", hash);

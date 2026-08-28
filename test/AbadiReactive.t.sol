@@ -110,6 +110,22 @@ contract AbadiReactiveTest is Test {
         roller.exposedDisarm(AT);
     }
 
+    /// Measured on Shannon: armed for ...245000, the callback's topic said ...245060. The
+    /// precompile reports the millisecond it actually ran, not the one that was asked
+    /// for. The arm must still be found and cleared, and the sweep must still run.
+    function test_aCallbackSixtyMillisecondsLateStillClearsTheArm() public {
+        // Plant the arm directly: the precompile does not exist here, so `_arm` cannot.
+        vm.store(address(roller), keccak256(abi.encode(AT, uint256(0))), bytes32(uint256(777)));
+        assertEq(roller.armed(AT), 777, "planted");
+
+        vm.prank(PRECOMPILE);
+        roller.onEvent(PRECOMPILE, _scheduleTopics(AT + 60), "");
+
+        assertEq(roller.fireCount(), 1, "the sweep ran");
+        assertEq(roller.lastFiredAt(), AT, "keyed by the second that was armed, not the jittered one");
+        assertEq(roller.armed(AT), 0, "cleared despite the jitter");
+    }
+
     function _scheduleTopics(uint256 at_) internal pure returns (bytes32[] memory topics) {
         topics = new bytes32[](2);
         topics[0] = ISomniaReactivityPrecompile.Schedule.selector;

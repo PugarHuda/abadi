@@ -143,6 +143,7 @@ contract LiquidityVault is ERC4626, AbadiReactive, ReentrancyGuard {
     event OperatorSet(address indexed operator);
     event RiskParamsSet(uint16 headroomBps, uint256 minHalfSpread);
     event GridSet(uint256 tickSize, uint256 lotSize);
+    event NativeSwept(address indexed to, uint256 amount);
     event Settled(uint256 indexed slot, bytes32 indexed marketId, uint256 redeemed, bool voided);
     event Flattened(uint256 indexed slot, bytes32 indexed marketId, uint256 pairs, uint256 returned);
     event Swept(uint256 indexed firesAtMillis, uint256 slotsReleased);
@@ -167,6 +168,8 @@ contract LiquidityVault is ERC4626, AbadiReactive, ReentrancyGuard {
     error NothingToFlatten(bytes32 marketId);
     error OperatorGrantFailed();
     error NotPendingGovernor(address caller);
+    error NotSelf(address caller);
+    error LastShareWhileOpen(uint256 slot);
 
     // ------------------------------------------------------------ constructor
 
@@ -233,6 +236,24 @@ contract LiquidityVault is ERC4626, AbadiReactive, ReentrancyGuard {
             total += yes < no ? yes : no;
         }
         return total;
+    }
+
+    /// @dev A withdrawal that takes the share supply to zero while a slot is still open
+    ///      orphans that slot's proceeds: ERC-4626 assigns them to the virtual share and
+    ///      no later deposit can recover them. That happened on Shannon — 102.13 tUSDC
+    ///      settled into a vault whose last share had already been redeemed, and the
+    ///      re-seed to get it out lost more to rounding than it retrieved. The last
+    ///      holder waits for the slots to close; everyone before them is unaffected.
+    function _withdraw(address caller, address receiver, address owner, uint256 assets, uint256 shares)
+        internal
+        override
+    {
+        if (shares == totalSupply()) {
+            for (uint256 i = 0; i < MAX_SLOTS; i++) {
+                if (_slots[i].active) revert LastShareWhileOpen(i);
+            }
+        }
+        super._withdraw(caller, receiver, owner, assets, shares);
     }
 
     /// @notice Collateral not currently committed to a quote.
@@ -392,6 +413,10 @@ contract LiquidityVault is ERC4626, AbadiReactive, ReentrancyGuard {
     ///      A settled market leaves the live list entirely, so nothing upstream will
     ///      remind the vault this position exists. Redemption has to be pulled.
     function settle(uint256 slot) external nonReentrant returns (uint256 redeemed) {
+        return _settle(slot);
+    }
+
+    function _settle(uint256 slot) internal returns (uint256 redeemed) {
         if (slot >= MAX_SLOTS) revert SlotOutOfRange(slot);
         Slot storage s = _slots[slot];
         if (!s.active) revert SlotIdle(slot);
@@ -472,8 +497,16 @@ contract LiquidityVault is ERC4626, AbadiReactive, ReentrancyGuard {
     ///      Arming costs native currency for the callback, and the precompile requires the
     ///      handler to hold at least 32 STT on testnet — `_arm` reverts with `Underfunded`
     ///      rather than letting the precompile fail with empty data.
+    /// @dev Gas for the callback. The first live wake-up on Shannon was armed at 500,000
+    ///      and ran OUT_OF_GAS with one idle slot to look at — `eth_estimateGas` from the
+    ///      precompile's address put that no-op sweep at 1,151,045. A full sweep can
+    ///      cancel two legs and redeem or merge on each of MAX_SLOTS slots, so the limit
+    ///      is sized for that worst case. The precompile accepts up to 200,000,000; only
+    ///      gas actually used is paid for.
+    uint64 public constant SWEEP_GAS = 8_000_000;
+
     function armSweep(uint64 firesAtSec) external onlyOperator returns (uint256 subscriptionId) {
-        return _arm(uint256(firesAtSec) * 1000, 10 gwei, 50 gwei, 500_000);
+        return _arm(uint256(firesAtSec) * 1000, 10 gwei, 50 gwei, SWEEP_GAS);
     }
 
     function disarmSweep(uint64 firesAtSec) external onlyOperator {
@@ -482,21 +515,36 @@ contract LiquidityVault is ERC4626, AbadiReactive, ReentrancyGuard {
 
     /// @dev Runs inside the reactivity callback. A callback that reverts is LOST — there
     ///      is no retry and no error surface — so every slot is handled independently and
-    ///      a failure on one must not take down the rest. That is why this loop swallows
-    ///      per-slot failures instead of propagating them.
-    ///
-    ///      It holds the reentrancy guard for the whole sweep. Without it the sweep is
-    ///      the one value-moving path that does not, and a reentrant `settle` during it
-    ///      would process a slot the sweep is already halfway through.
-    function _onScheduled(uint256 firesAtMillis) internal override nonReentrant {
+    ///      a failure on one must not take down the rest. Each slot goes through its own
+    ///      guarded external self-call: a revert in one is caught here, and the guard is
+    ///      held per slot rather than across the whole sweep so a slot is never half done
+    ///      when something else touches it.
+    function _onScheduled(uint256 firesAtMillis) internal override {
         uint256 released = 0;
         for (uint256 i = 0; i < MAX_SLOTS; i++) {
-            Slot storage s = _slots[i];
-            if (!s.active) continue;
-            if (_statusOf(s.marketId) == MarketStatus.TRADING) continue; // still earning
-            if (_release(i)) released++;
+            if (!_slots[i].active) continue;
+            if (_statusOf(_slots[i].marketId) == MarketStatus.TRADING) continue; // still earning
+            try this.releaseSlot(i) returns (bool closed) {
+                if (closed) released++;
+            } catch {}
         }
         emit Swept(firesAtMillis, released);
+    }
+
+    /// @notice One slot's share of a sweep. Callable only by the vault itself.
+    /// @dev Settles if the market has resolved — that is the whole lifecycle closing with
+    ///      no one calling it — otherwise pulls the resting legs and merges what it can.
+    function releaseSlot(uint256 slot) external nonReentrant returns (bool closed) {
+        if (msg.sender != address(this)) revert NotSelf(msg.sender);
+        Slot storage s = _slots[slot];
+        if (!s.active) return true;
+
+        (,,,,,,,, address market,,,,,) = module.markets(s.marketId);
+        if (IBinaryMarket(market).isResolved() || IBinaryMarket(market).isVoided()) {
+            _settle(slot);
+            return true;
+        }
+        return _release(slot);
     }
 
     /// @dev Cancel both legs and merge any complete set back to collateral.
@@ -551,6 +599,17 @@ contract LiquidityVault is ERC4626, AbadiReactive, ReentrancyGuard {
         emit GovernanceTransferred(governor, msg.sender);
         governor = msg.sender;
         pendingGovernor = address(0);
+    }
+
+    /// @notice Recover the native gas reserve that funds reactivity callbacks.
+    /// @dev The reactivity precompile requires this contract to hold 32 STT before it will
+    ///      accept a subscription. `receive()` lets that in; without this, nothing lets it
+    ///      out, and 20 STT is already stranded on Shannon in probes that lacked it. Only
+    ///      native currency moves here — the collateral is untouched and stays behind
+    ///      ERC-4626.
+    function sweepNative(address payable to, uint256 amount) external onlyGovernor {
+        _sweepNative(to, amount);
+        emit NativeSwept(to, amount);
     }
 
     function setGrid(uint256 tickSize_, uint256 lotSize_) external onlyGovernor {

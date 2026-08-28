@@ -111,11 +111,70 @@ test.describe("landing", () => {
     expect(overflow, "horizontal scroll on mobile").toBeLessThanOrEqual(1);
   });
 
+  test("works by touch as well as pointer", async ({ browser }) => {
+    const ctx = await browser.newContext({ hasTouch: true, viewport: { width: 390, height: 844 } });
+    const page = await ctx.newPage();
+    await page.goto(BASE + "/", { waitUntil: "networkidle" });
+    const track = page.locator("#track");
+    const box = (await track.boundingBox())!;
+    const before = Number(await page.locator("#pUp").textContent());
+    await page.touchscreen.tap(box.x + box.width * 0.9, box.y + box.height / 2);
+    const after = Number(await page.locator("#pUp").textContent());
+    expect(after, "a tap on the track must move the price").toBeGreaterThan(before);
+    await expect(page.locator("#pSum")).toHaveText("1.000");
+    await ctx.close();
+  });
+
+  test("every transaction it cites exists on chain", async ({ request, page }) => {
+    await page.goto(BASE + "/", { waitUntil: "networkidle" });
+    const hrefs = await page.locator('a[href*="/tx/0x"]').evaluateAll((as) => as.map((a) => (a as HTMLAnchorElement).href));
+    expect(hrefs.length, "the page cites transactions").toBeGreaterThan(0);
+    for (const href of hrefs) {
+      const hash = href.split("/tx/")[1];
+      const res = await request.get(`https://shannon-explorer.somnia.network/api/v2/transactions/${hash}`);
+      expect(res.status(), `${hash} is not on the explorer`).toBe(200);
+      const j = await res.json();
+      expect(j.status ?? j.result, `${hash} did not succeed`).toBe("ok");
+    }
+  });
+
   test("sends the reader on to the working", async ({ page }) => {
     await page.goto(BASE + "/", { waitUntil: "networkidle" });
     await page.getByRole("link", { name: /read the evidence/i }).click();
     await expect(page).toHaveURL(/\/dashboard$/);
   });
+});
+
+test.describe("live strip", () => {
+  /** The strip reads the vault off the chain in the browser. It may show live numbers
+   *  or an explicit failure; it must never sit forever on the loading placeholders,
+   *  and it must never show a number for a vault other than the one the page names. */
+  for (const path of ["/", "/dashboard"]) {
+    test(`${path} resolves to live numbers or an honest failure`, async ({ page }) => {
+      await page.goto(BASE + path, { waitUntil: "networkidle" });
+      const strip = page.locator("#live");
+      await expect(strip).toBeVisible();
+      await expect
+        .poll(async () => strip.getAttribute("data-state"), { timeout: 20000 })
+        .toMatch(/^(live|unreachable)$/);
+
+      const state = await strip.getAttribute("data-state");
+      if (state === "live") {
+        const nav = await strip.locator("[data-live=nav]").textContent();
+        expect(nav, "NAV must be a real number").toMatch(/^\d{1,3}(,\d{3})*\.\d{2}$/);
+        const block = await strip.locator("[data-live=block]").textContent();
+        expect(Number(block!.replace(/,/g, "")), "block number must be real").toBeGreaterThan(400_000_000);
+        const vault = await page.evaluate(() => (window as any).ABADI?.vault as string);
+        const href = await strip.locator("[data-live=explorer]").getAttribute("href");
+        expect(href, "explorer link must point at the vault the page reads").toContain(vault);
+        // The footer names a vault; the strip reads one. They have to be the same.
+        const short = vault.slice(0, 10) + "…" + vault.slice(-4);
+        await expect(page.locator("footer, .foot").first()).toContainText(short);
+      } else {
+        await expect(strip.locator("[data-live=error]")).toContainText("Chain read failed");
+      }
+    });
+  }
 });
 
 test.describe("dashboard", () => {

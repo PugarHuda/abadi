@@ -332,6 +332,63 @@ contract LiquidityVaultTest is Test {
         assertEq(vault.totalAssets(), 500e6, "assets untouched");
     }
 
+    /// The reactivity floor is 32 STT held by this contract. A contract that must hold
+    /// that much needs an exit by construction — three probes on Shannon did not have one.
+    function test_governorCanRecoverTheNativeReserveAndNobodyElseCan() public {
+        vm.deal(address(vault), 32 ether);
+
+        vm.prank(operator);
+        vm.expectRevert();
+        vault.sweepNative(payable(operator), 1 ether);
+        vm.prank(alice);
+        vm.expectRevert();
+        vault.sweepNative(payable(alice), 1 ether);
+
+        address payable treasury = payable(address(0x7777));
+        vm.prank(governor);
+        vault.sweepNative(treasury, 32 ether);
+        assertEq(treasury.balance, 32 ether, "the reserve came back out");
+        assertEq(address(vault).balance, 0);
+    }
+
+    /// Native currency and collateral are different money. Moving the gas reserve must
+    /// not be able to touch what depositors put in.
+    function test_sweepingNativeLeavesCollateralAlone() public {
+        _deposit(alice, 500e6);
+        vm.deal(address(vault), 5 ether);
+        vm.prank(governor);
+        vault.sweepNative(payable(governor), 5 ether);
+        assertEq(vault.totalAssets(), 500e6, "collateral untouched");
+        assertEq(usdc.balanceOf(address(vault)), 500e6);
+    }
+
+    /// Redeeming the last share while a slot is open hands that slot's proceeds to the
+    /// virtual share forever. Measured on Shannon: 102.13 tUSDC, unrecoverable.
+    function test_theLastShareCannotLeaveWhileASlotIsOpen() public {
+        _deposit(alice, 500e6);
+        vm.prank(operator);
+        vault.quote(0, MARKET, uint256(500_000), uint256(15_000), 100e6);
+
+        uint256 all = vault.balanceOf(alice);
+        vm.prank(alice);
+        vm.expectRevert(abi.encodeWithSelector(LiquidityVault.LastShareWhileOpen.selector, 0));
+        vault.redeem(all, alice, alice);
+
+        // Anyone who is not the last share is unaffected.
+        _deposit(bob, 100e6);
+        vm.prank(alice);
+        vault.redeem(all, alice, alice);
+        assertEq(vault.balanceOf(alice), 0, "alice could leave once she was not last");
+
+        // And the last share leaves the moment the slot is closed.
+        vm.prank(operator);
+        vault.cancelQuote(0);
+        uint256 bobs = vault.balanceOf(bob);
+        vm.prank(bob);
+        vault.redeem(bobs, bob, bob);
+        assertEq(vault.totalSupply(), 0);
+    }
+
     function test_onlyOperatorCanQuote() public {
         _deposit(alice, 500e6);
         vm.prank(alice);
@@ -870,6 +927,28 @@ contract LiquidityVaultTest is Test {
         roller_onEvent(uint256(block.timestamp) * 1000); // still Trading
         assertEq(vault.totalAssets(), 503e6, "untouched");
         assertTrue(vault.slots(0).active);
+    }
+
+    /// The lifecycle closing with nobody calling it: the window resolves, the wake-up
+    /// fires, and the sweep redeems the position rather than just pulling the legs.
+    function test_sweepSettlesASlotWhoseMarketHasResolved() public {
+        _quotedAndFilled();
+        vm.warp(expiry + 1);
+        market.resolve(10_000_000, 0); // YES wins
+
+        roller_onEvent(uint256(expiry + 1) * 1000);
+
+        assertFalse(vault.slots(0).active, "settled by the sweep");
+        assertEq(vault.idleAssets(), 500e6 - 97e6 + 100e6, "the 100 came back as cash");
+        assertEq(vault.totalAssets(), 503e6);
+    }
+
+    /// The per-slot self-call is the sweep's isolation boundary. It must not be a door.
+    function test_releaseSlotIsOnlyCallableByTheVaultItself() public {
+        _quotedAndFilled();
+        vm.expectRevert(abi.encodeWithSelector(LiquidityVault.NotSelf.selector, operator));
+        vm.prank(operator);
+        vault.releaseSlot(0);
     }
 
     /// A reactivity callback that reverts is LOST — no retry, no error surface. One bad

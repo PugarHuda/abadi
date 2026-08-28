@@ -15,6 +15,12 @@ const SRC = "web";
 const OUT = "dist";
 const ORIGIN = "https://abadi-wheat.vercel.app";
 
+// The live strip reads the vault in the visitor's browser. The address comes from
+// .vault-addr at build time so the page can never quote one vault and read another.
+const VAULT = readFileSync(".vault-addr", "utf8").trim();
+const RPC = "https://api.infra.testnet.somnia.network";
+const LIVE_CONFIG = `<script>window.ABADI={vault:${JSON.stringify(VAULT)},rpc:${JSON.stringify(RPC)}}</script>`;
+
 const PAGES = {
   "index.html": {
     path: "/",
@@ -94,6 +100,7 @@ for (const [file, meta] of Object.entries(PAGES)) {
   <meta property="og:url" content="${ORIGIN}${meta.path}">
   <meta name="twitter:card" content="summary_large_image">
   ${head}
+  ${LIVE_CONFIG}
 </head>
 <body>
 ${body.trim()}

@@ -244,6 +244,76 @@ three exits against the resolved market. All three reverted.
 
 ---
 
+## 9. A reactivity callback that runs out of gas vanishes without a trace
+
+**Cost: one subscription, and the afternoon it took to find out where it went.**
+
+Subscription creation is permissionless and the 32 STT floor is documented in the
+resolution above. What is not documented is what happens when the callback itself fails.
+Our first live wake-up on Shannon was armed with `gasLimit = 500_000`. It fired at the
+exact millisecond asked for — the scheduler is precise — and ran `OUT_OF_GAS`:
+
+```
+16:03:29 UTC  block 472736505  from 0x9895…C88D  onEvent  OUT_OF_GAS  gasUsed 500000
+```
+
+From the handler's side nothing happened: no event, `armed[...]` still set, the
+subscription simply spent. `getSubscriptionInfo(id)` reverts with empty data before and
+after, so there is no read that says "fired, failed". The only place the failure exists
+is the explorer's transaction list for the handler address, where the sender is the
+handler itself.
+
+`eth_estimateGas` for the same `onEvent` payload with `from` set to the precompile's
+address returned **1,151,045** for a sweep that touched one idle slot and did nothing —
+so a 500k limit was never going to work, and nothing on the way said so.
+
+**Suggestions**
+
+- State a floor. If a callback commonly needs a million gas before doing any work, the
+  reactivity docs should say so next to `gasLimit`, and `SomniaExtensions` could refuse
+  a limit under it the way it refuses a fee gap under 6 gwei.
+- Surface the outcome. A `getSubscriptionInfo` that returns `{fired, success, gasUsed}`
+  after the instant would have turned a forensic exercise into one call.
+- Estimate for people. The precompile knows the handler and selector; a
+  `estimateCallbackGas(subscription)` view, or a note that `eth_estimateGas` with
+  `from = 0x…0100` works, would let arming be sized from a measurement.
+
+**How we found it:** the explorer's `/addresses/{handler}/transactions`, filtered to
+`onEvent`. Then `cast estimate` from the precompile address.
+
+---
+
+## 10. The `Schedule` topic is the fired millisecond, not the scheduled one
+
+**Cost: a stale mapping entry and an hour of reading logs.**
+
+A handler that keys its own state by the instant it asked for — the natural thing to do,
+since that is the only number it has at arm time — cannot find that state when the
+callback arrives:
+
+```
+armed for   1787848245000
+topic[1]    1787848245060       CallbackFired, block 472752861
+```
+
+Sixty milliseconds of scheduler jitter. `SomniaExtensions.scheduleSubscriptionAtTimestamp`
+documents the topic as the scheduled timestamp; on Shannon it is the actual one. The
+callback itself is on time to the second, so this is a documentation gap and not a
+scheduling fault — but a handler written to the documentation deletes the wrong key.
+
+**Suggestions**
+
+- Say so in the docs, one line: *the topic carries the fire time, which may trail the
+  scheduled time by tens of milliseconds.*
+- Better: include the scheduled instant as well, either as a second topic or in `data`,
+  so a handler can match on what it asked for.
+- Failing both, recommend keying by second in the handler pattern.
+
+**How we found it:** decoding the callback's `CallbackFired` topic against the value
+passed to `armSweep`, after `armed[...]` was still set following a successful sweep.
+
+---
+
 ## What was genuinely good
 
 Not padding — these saved us real time:

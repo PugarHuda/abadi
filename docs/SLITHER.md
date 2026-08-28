@@ -27,6 +27,7 @@ have processed a slot the sweep was halfway through. It now holds the guard.
 |---|---|
 | `divide-before-multiply` in `floorToTick` / `quantize` | `(x / step) * step` **is** the grid snap. Multiplying first would defeat the entire purpose of the function. Annotated for forge-lint at the call site. |
 | `unused-return` on `module.markets(...)` | Tuple destructuring with placeholders. Slither reads the ignored positions as discarded return values; the ones we need are bound. |
+| `incorrect-equality` — `shares == totalSupply()` in `_withdraw` | The detector targets equality on balances that can be nudged by a wei. A share count is exact by construction: this asks whether the withdrawal is the last share out, which is the one case ERC-4626 orphans an open slot's proceeds. |
 | Remaining `reentrancy-*` on guarded functions | Slither does not model OpenZeppelin's `nonReentrant`. Every function it names now carries it; see the tests for the behaviour rather than the detector. |
 
 `incorrect-equality` on `redeemed == 0` was on this list until the 27th. The detector was

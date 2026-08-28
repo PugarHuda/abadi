@@ -1,0 +1,17 @@
+15:56:45 vault    0x9895457779a2b9702e3F0a800c597afc175bC88D
+15:56:45 operator 0x39D2bae5EAedA9283535dDC98F1991c81eD5Cd7E
+15:56:45 interval 40s  active 1  dead 6 ticks  gas floor 0.5 STT  3 cycles
+15:56:57 quote    slot 0 ETH-0-28AUG26/tUSDC  theirs 0.641/0.670  ours 0.643/0.667  escrow 97.60
+15:57:00 quote    slot 0 a8ce  success  0xc71646068b9cc9eb631f4439237befab14b1b9c5a02b1415a3ac01cbb4fffb06  gas 3452935
+15:57:02 cycle 1  NAV 4717.20  idle 4619.60  resting 97.60  share 1.000000
+15:57:47 finalize slot 0 a8ce  rejected: The contract function "finalizeMarket" reverted with the following signature:
+15:57:50 cycle 2  NAV 4717.20  idle 4619.60  resting 97.60  share 1.000000
+15:58:35 finalize slot 0 a8ce  rejected: The contract function "finalizeMarket" reverted with the following signature:
+15:58:37 cycle 3  NAV 4683.90  idle 4619.60  resting 64.30  share 0.992941
+02:20:50 vault    0xEF66Fa6Ae6AE0022f1A7524B90D49B293f9D1C10
+02:20:50 operator 0x39D2bae5EAedA9283535dDC98F1991c81eD5Cd7E
+02:20:50 interval 30s  active 1  dead 6 ticks  gas floor 0.5 STT  1 cycles
+02:21:01 quote    slot 0 ETH-0-28AUG26-0300/tUSDC  theirs 0.077/0.099  ours 0.079/0.097  escrow 98.20
+02:21:04 quote    slot 0 b884  success  0xd037aea33e7f0c93bdfb18bd2d5ea28e65751160d93bfa652d6731b805ae0636  gas 3014659
+02:21:07 arm      03:00:45Z  success  0xd2098a41ff55fbeb2647c76a848eba80e47f655097d66a48a62e72956a39a9fd  gas 465755
+02:21:08 cycle 1  NAV 4773.67  idle 4675.47  resting 98.20  share 1.000000

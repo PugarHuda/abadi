@@ -113,6 +113,14 @@ believes the rest of the video.*
 
 *Twelve seconds. Do not read the transaction hash aloud — point at it and move on.*
 
+**Screen:** the explorer, the `onEvent` transaction whose sender is the vault itself.
+
+> And this one nobody sent. The window expired, the chain woke the vault at the second
+> we asked for, and the vault redeemed its own position. The transaction is from the
+> vault, to the vault. That is what "the liquidity doesn't expire" means mechanically.
+
+*Eight seconds. This is the single most unusual thing on screen; let it sit.*
+
 **Screen:** cut to the terminal, run `forge test`.
 
 > Sixty-seven tests, including the fuzzed invariant that the vault can never spend more
@@ -172,9 +180,10 @@ doubt; having good answers ready when asked builds far more confidence.
   fixed, tested, and written up; `scripts/attest.ts` now checks the live bytecode against
   the build so the first one cannot recur. *Offer this if asked, with the fix in the same
   breath — the finding is only impressive alongside what was done about it.*
-- **"Why isn't the reactive roll in the demo?"** A reactivity handler must hold 32 STT on
-  testnet and our allowance is spent. It's built against the official Somnia base and
-  the investigation is in `docs/evidence/`. Not a code problem.
+- **"Did the reactive roll actually run?"** Yes — once out of gas at 500k, then
+  correctly at block 472752861 with a measured limit. Both are in
+  `docs/evidence/reactivity-live-2026-08-27.md`. Say the failure first; it makes the
+  success credible.
 - **"What stops the operator running off with the money?"** Nothing in the vault gives it
   a path. It can quote and cancel. `test_operatorCannotMoveAnyFunds` checks all three
   exit routes.
