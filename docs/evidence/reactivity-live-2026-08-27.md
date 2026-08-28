@@ -108,3 +108,25 @@ the scheduled timestamp; it is the fired one.
 
 Every earlier claim in this repository about keeper-free rolls was a design. This one
 is a block number.
+
+## Then it happened again, armed by the bot, on a position that lost
+
+`scripts/bot.ts` quoted `ETH-0-28AUG26-0300` at 02:21 UTC and armed a wake-up at the
+window's expiry plus 45 seconds in the same cycle — no human chose the instant. The
+market walked away from one leg; the other filled; the vault held a naked side, marked
+at zero, and the side lost.
+
+```
+block 473130786   03:00:45 UTC   from 0xEF66…1C10   onEvent   success   gasUsed 279055
+slot 0 freed      NAV 4765.77 -> 4765.77     the unfilled leg's escrow came back, the
+                                             losing tokens redeemed nothing
+```
+
+That is the shape the old `settle` refused with `NothingToRedeem` and left stuck forever.
+The chain closed it in one call with nobody watching. Two wake-ups, two shapes — a
+complete set that paid and a naked leg that did not — both closed by the same path.
+
+The 32.99 STT reserve was then swept back to the operator wallet with `sweepNative`
+(`0xd98e2a2a…`). Until the vault holds 32 STT again the bot logs `arm skipped` and its
+own settle step covers the slots; the wake-up is a property of the funded vault, not of
+the code.
