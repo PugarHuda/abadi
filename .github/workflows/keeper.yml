@@ -9,7 +9,10 @@ name: keeper
 # nothing else; custody lives in the vault.
 on:
   schedule:
-    - cron: "*/15 * * * *"
+    # Off the :00/:15/:30/:45 marks, which GitHub's scheduler drops under load. Nine
+    # hours after this file landed, zero scheduled runs had fired for any workflow in
+    # the repository; a local Task Scheduler entry (scripts/keeper.cmd) covers the gap.
+    - cron: "7,22,37,52 * * * *"
   workflow_dispatch:
 
 concurrency:

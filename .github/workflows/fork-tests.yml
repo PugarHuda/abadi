@@ -6,7 +6,7 @@ name: fork tests
 # not a reason to fail a build — and runs every six hours plus on demand.
 on:
   schedule:
-    - cron: "17 */6 * * *"
+    - cron: "23 */6 * * *"
   workflow_dispatch:
 
 jobs:
