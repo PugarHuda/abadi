@@ -49,11 +49,11 @@
     font-size: clamp(32px, 5.4vw, 46px);
     letter-spacing: -0.045em; line-height: 0.9; margin: 0;
   }
-  .gloss {
-    font-family: var(--body); font-size: 14px; line-height: 1.45;
-    color: var(--cotton-dim); text-align: right; max-width: 30ch;
-  }
-  .gloss b { color: var(--cotton); font-weight: 500; }
+  .nav { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; font-size: 15px; }
+  .nav a { text-decoration: none; color: var(--cotton-dim); }
+  .nav a:hover { color: var(--cotton); }
+  .nav a.go { color: var(--turmeric); border: 1px solid var(--turmeric); padding: 10px 16px; font-weight: 500; transition: background .15s ease-out, color .15s ease-out; }
+  .nav a.go:hover { background: var(--turmeric); color: var(--ink); }
 
   /* ---------- thesis ---------- */
   .hero { margin: 56px 0 0; }
@@ -244,7 +244,11 @@
       </svg>
       <h1>abadi</h1>
     </div>
-    <p class="gloss">Liquidity for DreamDEX Event Contracts<br><b>Somnia Shannon testnet</b></p>
+    <nav class="nav" aria-label="Site">
+      <a href="/dashboard">The working</a>
+      <a href="/deck">Deck</a>
+      <a class="go" href="/app">Open the app</a>
+    </nav>
   </header>
 
   <div class="hero">
@@ -400,7 +404,8 @@
   </p>
 
   <div class="out">
-    <a class="lead" href="/dashboard">Read the evidence &rarr;</a>
+    <a class="lead" href="/app">Open the app &rarr;</a>
+    <a href="/dashboard">Read the evidence</a>
     <a href="/deck">Deck</a>
     <a href="https://github.com/PugarHuda/abadi">Source</a>
     <a href="https://shannon-explorer.somnia.network/address/0x2314436ed2BDC44321c74EF43adA14CAE723D352">Vault on the explorer</a>

@@ -24,7 +24,7 @@ function watchForFailures(page: Page) {
 }
 
 test.describe("document shape", () => {
-  for (const path of ["/", "/dashboard", "/deck"]) {
+  for (const path of ["/", "/dashboard", "/deck", "/app"]) {
     test(`${path} is a complete HTML document`, async ({ page }) => {
       const res = await page.goto(BASE + path, { waitUntil: "domcontentloaded" });
       expect(res?.status(), "must not redirect to an SSO wall").toBe(200);
@@ -140,8 +140,8 @@ test.describe("landing", () => {
 
   test("sends the reader on to the working", async ({ page }) => {
     await page.goto(BASE + "/", { waitUntil: "networkidle" });
-    await page.getByRole("link", { name: /read the evidence/i }).click();
-    await expect(page).toHaveURL(/\/dashboard$/);
+    await page.getByRole("link", { name: /open the app/i }).first().click();
+    await expect(page).toHaveURL(/\/app$/);
   });
 });
 

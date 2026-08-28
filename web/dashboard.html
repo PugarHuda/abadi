@@ -99,6 +99,13 @@
   /* prose never runs the full 1000px: ~68 characters is where the eye stops losing the line */
   .wrap p, .wrap .sub { max-width: 68ch; }
 
+  .nav { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; font-size: 15px; padding: 18px 0 0; }
+  .nav a { text-decoration: none; color: var(--cotton-dim); }
+  .nav a[aria-current] { color: var(--cotton); font-weight: 500; }
+  .nav a:hover { color: var(--cotton); }
+  .nav a.go { color: var(--turmeric); border: 1px solid var(--turmeric); padding: 8px 14px; font-weight: 500; }
+  .nav a.go:hover { background: var(--turmeric); color: var(--ink); }
+
   /* ---------- section frame ---------- */
   .eyebrow {
     font-family: var(--display); font-size: 21px; font-weight: 600;
@@ -277,6 +284,12 @@
       <b>Shannon 50312</b><br><b>26&ndash;28 Aug 2026</b>
     </div>
   </header>
+  <nav class="nav" aria-label="Site">
+    <a href="/">Landing</a>
+    <a href="/dashboard" aria-current="page">The working</a>
+    <a href="/deck">Deck</a>
+    <a class="go" href="/app">Open the app</a>
+  </nav>
 
   <p class="thesis">The markets expire every window. <em>The liquidity does not.</em></p>
   <p class="sub">

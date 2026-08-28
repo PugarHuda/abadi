@@ -33,6 +33,10 @@ const PAGES = {
     description:
       "The working behind Abadi: 2,422 settled markets measured, the live order book with the vault's quote inside it, and the position that filled — with what went wrong and what it cost.",
   },
+  "app.html": {
+    path: "/app",
+    description: "Deposit into the Abadi vault, redeem your shares, mint test collateral — from the wallet you already have, with every call built in the open.",
+  },
   "404.html": {
     path: "/404",
     description: "Nothing lives at this address.",

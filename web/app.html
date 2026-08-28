@@ -1,0 +1,182 @@
+<title>Abadi App</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Martian+Mono:wght@300;400;600&family=Public+Sans:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+
+<style>
+  :root {
+    --ink: #14203A; --ink-raised: #1B2A48; --ink-line: #2A3B5E;
+    --cotton: #EAE4D6; --cotton-dim: #8D97AE; --turmeric: #E0A045; --teal: #4FA396;
+    --display: "Bricolage Grotesque", system-ui, sans-serif;
+    --body: "Public Sans", system-ui, sans-serif;
+    --mono: "Martian Mono", ui-monospace, monospace;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--ink); color: var(--cotton); font-family: var(--body); font-size: 16px; line-height: 1.6; -webkit-font-smoothing: antialiased; }
+  a { color: var(--cotton); text-decoration-color: var(--ink-line); text-underline-offset: 3px; }
+  a:hover { text-decoration-color: var(--turmeric); }
+  :focus-visible { outline: 2px solid var(--turmeric); outline-offset: 3px; }
+  ::selection { background: var(--turmeric); color: var(--ink); }
+
+  .wrap { max-width: 1000px; margin: 0 auto; padding: 0 24px 96px; }
+
+  .masthead { display: flex; align-items: center; justify-content: space-between; gap: 24px; flex-wrap: wrap; padding: 36px 0 26px; border-bottom: 1px solid var(--ink-line); }
+  .lockup { display: flex; align-items: center; gap: 14px; text-decoration: none; color: inherit; }
+  .lockup svg { height: 46px; width: auto; display: block; }
+  .lockup h1 { font-family: var(--display); font-weight: 800; font-size: clamp(32px, 5.4vw, 46px); letter-spacing: -0.045em; line-height: 0.9; margin: 0; }
+  nav { display: flex; gap: 18px; flex-wrap: wrap; font-size: 15px; }
+  nav a { text-decoration: none; color: var(--cotton-dim); }
+  nav a[aria-current] { color: var(--cotton); font-weight: 500; }
+
+  h2 { font-family: var(--display); font-size: 21px; font-weight: 600; letter-spacing: -0.015em; margin: 56px 0 18px; padding-bottom: 12px; border-bottom: 1px solid var(--ink-line); display: flex; justify-content: space-between; align-items: baseline; gap: 16px; }
+  h2 span { font-family: var(--body); font-size: 14px; font-weight: 400; color: var(--cotton-dim); }
+
+  .panel { border: 1px solid var(--ink-line); background: var(--ink-raised); padding: 22px clamp(16px, 2.4vw, 26px); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px 22px; margin: 0; }
+  .grid dt { font-size: 13px; color: var(--cotton-dim); }
+  .grid dd { margin: 4px 0 0; font-family: var(--mono); font-size: clamp(15px, 2vw, 20px); font-weight: 600; font-variant-numeric: tabular-nums; }
+  .grid dd small { font-size: 12px; font-weight: 300; color: var(--cotton-dim); }
+
+  .wallet { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+  .wallet .who { font-family: var(--mono); font-size: 15px; }
+  .wallet .net { font-size: 14px; color: var(--cotton-dim); }
+
+  button {
+    font: inherit; font-weight: 500; font-size: 15px; cursor: pointer;
+    color: var(--cotton); background: transparent; border: 1px solid var(--ink-line);
+    padding: 12px 18px; transition: border-color .15s ease-out, color .15s ease-out, background .15s ease-out;
+  }
+  button:hover:not(:disabled) { border-color: var(--turmeric); color: var(--turmeric); }
+  button.lead { border-color: var(--turmeric); color: var(--turmeric); }
+  button.lead:hover:not(:disabled) { background: var(--turmeric); color: var(--ink); }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+
+  .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }
+  .action { border: 1px solid var(--ink-line); background: var(--ink-raised); padding: 22px clamp(16px, 2.4vw, 26px); }
+  .action h3 { font-family: var(--display); font-size: 18px; font-weight: 600; margin: 0 0 6px; letter-spacing: -0.01em; }
+  .action p { margin: 0 0 16px; color: var(--cotton-dim); font-size: 14px; }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; }
+  label { display: block; font-size: 13px; color: var(--cotton-dim); margin-bottom: 6px; }
+  input[type=text] {
+    font: inherit; font-family: var(--mono); font-size: 16px; color: var(--cotton);
+    background: var(--ink); border: 1px solid var(--ink-line); padding: 11px 12px; width: 100%; max-width: 240px;
+    caret-color: var(--turmeric);
+  }
+  input[type=text]:focus { border-color: var(--turmeric); outline: none; }
+  .guard { margin: 12px 0 0; padding: 12px 14px; border: 1px solid var(--turmeric); color: var(--cotton); font-size: 14px; }
+  .guard[hidden] { display: none; }
+
+  table { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 13px; }
+  th, td { text-align: left; padding: 10px 14px 10px 0; border-bottom: 1px solid var(--ink-line); }
+  th { font-family: var(--body); font-size: 13px; font-weight: 500; color: var(--cotton-dim); }
+
+  .log { list-style: none; margin: 0; padding: 0; font-size: 14px; }
+  .log li { padding: 8px 0; border-bottom: 1px solid var(--ink-line); }
+  .log time { font-family: var(--mono); font-size: 12px; color: var(--cotton-dim); margin-right: 8px; }
+  .log a { margin-left: 6px; }
+  #app[data-busy="true"] .actions { opacity: .7; }
+
+  .note { color: var(--cotton-dim); max-width: 66ch; font-size: 15px; }
+  .note b { color: var(--cotton); font-weight: 500; }
+
+  @media (max-width: 640px) { .actions { grid-template-columns: 1fr; } }
+  @media (prefers-reduced-motion: reduce) { button { transition: none; } }
+</style>
+
+<div class="wrap" id="app" data-busy="false">
+
+  <header class="masthead">
+    <a class="lockup" href="/" aria-label="Abadi home">
+      <svg viewBox="6 1 20 30" aria-hidden="true">
+        <rect x="6" y="6" width="12.4" height="20" fill="#E0A045"/>
+        <rect x="18.4" y="6" width="7.6" height="20" fill="#4FA396"/>
+        <path d="M18.4 1V31" stroke="#EAE4D6" stroke-width="1" opacity=".5"/>
+      </svg>
+      <h1>abadi</h1>
+    </a>
+    <nav aria-label="Site">
+      <a href="/">Landing</a>
+      <a href="/dashboard">The working</a>
+      <a href="/deck">Deck</a>
+      <a href="/app" aria-current="page">App</a>
+    </nav>
+  </header>
+
+  <h2>Wallet <span>Somnia Shannon testnet, chain 50312</span></h2>
+  <div class="panel wallet">
+    <div>
+      <div class="who" id="wallet">Not connected</div>
+      <div class="net" id="network"></div>
+    </div>
+    <button class="lead" id="connect" type="button">Connect wallet</button>
+  </div>
+  <p class="note">
+    Deposits mint ERC-4626 shares of the vault. The operator key can quote and cancel and
+    cannot move a token; <b>settle</b> is permissionless and pays the vault. Your shares are
+    worth their slice of NAV at every moment, and NAV marks a naked leg at zero.
+  </p>
+
+  <h2>Balances <span>read from the chain every 30 seconds</span></h2>
+  <div class="panel">
+    <dl class="grid">
+      <div><dt>Your tUSDC</dt><dd><span id="usdc">—</span> <small>tUSDC</small></dd></div>
+      <div><dt>Your STT (gas)</dt><dd><span id="stt">—</span> <small>STT</small></dd></div>
+      <div><dt>Your shares</dt><dd><span id="shares">—</span> <small>abLIQ</small></dd></div>
+      <div><dt>Worth today</dt><dd><span id="worth">—</span> <small>tUSDC</small></dd></div>
+      <div><dt>Vault NAV</dt><dd><span id="nav">…</span> <small>tUSDC</small></dd></div>
+      <div><dt>Idle in vault</dt><dd><span id="idle">…</span> <small>tUSDC</small></dd></div>
+      <div><dt>Per share</dt><dd><span id="share">…</span></dd></div>
+    </dl>
+  </div>
+
+  <h2>Actions <span>each one is a transaction your wallet signs</span></h2>
+  <div class="actions">
+    <div class="action">
+      <h3>Get test collateral</h3>
+      <p>The venue's tUSDC mints on demand on testnet. One click, 10,000 tUSDC.</p>
+      <div class="row"><button id="faucet" type="button" disabled>Mint 10,000 tUSDC</button></div>
+    </div>
+    <div class="action">
+      <h3>Deposit</h3>
+      <p>Approves the vault for the amount if needed, then deposits. Two signatures the first time, one after.</p>
+      <label for="amount">Amount in tUSDC</label>
+      <div class="row">
+        <input id="amount" type="text" inputmode="decimal" placeholder="100" autocomplete="off">
+        <button id="deposit" class="lead" type="button" disabled>Deposit</button>
+      </div>
+    </div>
+    <div class="action">
+      <h3>Withdraw</h3>
+      <p>Redeems shares for tUSDC from what is idle. Capital resting in a quote comes back as the quote closes.</p>
+      <label for="withdrawShares">Shares to redeem</label>
+      <div class="row">
+        <input id="withdrawShares" type="text" inputmode="decimal" placeholder="100" autocomplete="off">
+        <button id="withdraw" type="button" disabled>Redeem</button>
+        <button id="withdrawAll" type="button" disabled>Redeem all</button>
+      </div>
+      <p class="guard" id="guard" hidden>
+        You hold the last share and a quote is still open. Redeeming everything now would hand
+        that quote's proceeds to nobody, so the vault refuses it. Redeem all but a little, or
+        wait for the slot to close.
+      </p>
+    </div>
+    <div class="action">
+      <h3>Where to watch it</h3>
+      <p>Every transaction lands in the activity list below with an explorer link. The vault's whole history is on <a href="/dashboard">the working</a>.</p>
+    </div>
+  </div>
+
+  <h2>Open quotes <span>what the vault is resting right now</span></h2>
+  <div class="panel" style="overflow-x:auto">
+    <table>
+      <thead><tr><th>slot</th><th>market</th><th>bid / ask</th><th>size</th><th>basis</th></tr></thead>
+      <tbody id="slots"><tr><td colspan="5">…</td></tr></tbody>
+    </table>
+  </div>
+
+  <h2>Activity <span>this session</span></h2>
+  <ul class="log" id="log"></ul>
+
+</div>
+
+<script src="/app.js" defer></script>

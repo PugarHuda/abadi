@@ -9,7 +9,7 @@ import { test, expect } from "@playwright/test";
 
 const BASE = process.env.BASE ?? "https://abadi-wheat.vercel.app";
 
-for (const path of ["/", "/dashboard", "/deck"]) {
+for (const path of ["/", "/dashboard", "/deck", "/app"]) {
   test(`${path} paints its largest content within 2.5s`, async ({ page }) => {
     await page.goto(BASE + path, { waitUntil: "load" });
     const lcp = await page.evaluate(

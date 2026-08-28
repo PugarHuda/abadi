@@ -9,7 +9,7 @@ import AxeBuilder from "@axe-core/playwright";
 
 const BASE = process.env.BASE ?? "https://abadi-wheat.vercel.app";
 
-for (const path of ["/", "/dashboard", "/deck"]) {
+for (const path of ["/", "/dashboard", "/deck", "/app"]) {
   test(`${path} has no serious or critical accessibility violations`, async ({ page }) => {
     await page.goto(BASE + path, { waitUntil: "networkidle" });
     const results = await new AxeBuilder({ page })

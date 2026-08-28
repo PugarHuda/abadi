@@ -8,6 +8,7 @@ liquidity does not.
 Built for the Somnia × DreamDEX Event Contracts Hackathon.
 
 **[abadi-wheat.vercel.app](https://abadi-wheat.vercel.app)** ·
+**[App](https://abadi-wheat.vercel.app/app)** ·
 [The working](https://abadi-wheat.vercel.app/dashboard) ·
 [Deck](https://abadi-wheat.vercel.app/deck) ·
 [Vault on the explorer](https://shannon-explorer.somnia.network/address/0x2314436ed2BDC44321c74EF43adA14CAE723D352)
@@ -267,6 +268,13 @@ bot skips arming and says so until then. `sweepNative` brings the reserve back o
   vault's own legs through the real BinaryPool so the real module mints the pair and
   merges it. Four tests, no mock anywhere; the shape of every defect the mock pool hid.
   Runs every six hours on GitHub and on demand with `node scripts/fork-test.ts`
+- **An app.** `/app` connects the wallet the visitor already has (EIP-1193), switches it
+  to Shannon or adds the chain, mints test collateral from the venue's faucet, and
+  deposits into or redeems from the vault. No wallet library, no ABI library: every call
+  is a selector and 32-byte words built in `web/app.js`, and the browser suite compares
+  what the page sends with the encoding written out by hand, byte for byte. The guard
+  the contract enforces (`LastShareWhileOpen`) is explained before the button is pressed,
+  not after it reverts
 - The site reads the vault live in the visitor's browser — four `eth_call`s to the public
   RPC, no server of ours, and an explicit failure state rather than a stale number. The
   dashboard also renders the whole track record from the explorer's log API, decoded in
