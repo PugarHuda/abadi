@@ -314,6 +314,40 @@ passed to `armSweep`, after `armed[...]` was still set following a successful sw
 
 ---
 
+## 11. The explorer's verifier advertises `osaka` and cannot verify it
+
+**Cost: two days of an unverified live address, and every route tried twice.**
+
+`GET /api/v2/smart-contracts/verification/config` lists `osaka` among
+`solidity_evm_versions`, and forge's default target for solc 0.8.30 is osaka. Every
+submission of the vault — the Etherscan-style route via `forge verify-contract`, the v2
+`standard-input` route, the v2 `flattened-code` route — was accepted and then reported
+`Fail - Unable to verify`. Settings, sources, and constructor arguments all matched what
+was deployed; `scripts/attest.ts` confirms the artifact and the chain bytecode agree.
+
+The isolating experiment was a nine-line contract deployed twice from the same toolchain:
+
+```
+--evm-version osaka    0x5e89175C7CE79D494C2CB44Fe5728584AAD9a4AD    Fail - Unable to verify
+--evm-version cancun   0xe4DB4F1edd1EB74A28111eDE373E89b19CE5ed6f    Pass - Verified
+```
+
+Same source, same compiler, same optimizer, same explorer. Only the EVM target differs.
+
+**Suggestions**
+
+- Either verify osaka builds or drop `osaka` from the advertised list. A version that is
+  listed and silently fails costs far more than one that is absent.
+- Say which target to use in the Foundry deployment guide. One line —
+  `evm_version = "cancun"` in `foundry.toml` — would have saved every attempt above.
+- Return the compiler's diagnostic. `Unable to verify` for a bytecode mismatch and for an
+  unsupported target look identical from outside.
+
+**How we found it:** by giving up on the real contract and verifying something too small
+to have any other reason to fail.
+
+---
+
 ## What was genuinely good
 
 Not padding — these saved us real time:

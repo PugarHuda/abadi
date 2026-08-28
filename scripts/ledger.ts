@@ -26,6 +26,7 @@ const VAULTS: { address: `0x${string}`; note: string }[] = [
   { address: "0xDFb9C6fA99D8Fa2c8eeA2AE7C055C8cbA53971E9", note: "v4 — no native exit for the reactivity reserve" },
   { address: "0x9895457779a2b9702e3F0a800c597afc175bC88D", note: "v5 — first live wake-up; callback ran out of gas at 500k" },
   { address: "0x1aeB3B3cAda938B4fB320884D96471b5D9dDa058", note: "v6 — first keeper-free settle; callback key jittered by 60 ms" },
+  { address: "0xEF66Fa6Ae6AE0022f1A7524B90D49B293f9D1C10", note: "v7 — last-share guard; bot-armed wake-up; compiled for osaka, which the explorer cannot verify" },
 ];
 
 const ABI = parseAbi([

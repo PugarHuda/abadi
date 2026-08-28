@@ -10,7 +10,7 @@ Built for the Somnia × DreamDEX Event Contracts Hackathon.
 **[abadi-wheat.vercel.app](https://abadi-wheat.vercel.app)** ·
 [The working](https://abadi-wheat.vercel.app/dashboard) ·
 [Deck](https://abadi-wheat.vercel.app/deck) ·
-[Vault on the explorer](https://shannon-explorer.somnia.network/address/0xEF66Fa6Ae6AE0022f1A7524B90D49B293f9D1C10)
+[Vault on the explorer](https://shannon-explorer.somnia.network/address/0xE0E59F39a5c04AD768f7e3fDae8e2FdAC68DebCB)
 
 ---
 
@@ -23,8 +23,9 @@ Depositors put in collateral and receive ERC-4626 shares. An operator key steers
 and can never touch the money. Every filled pair is worth exactly 1 at settlement no
 matter which way the market resolves.
 
-**Live on Shannon testnet:** `0xEF66Fa6Ae6AE0022f1A7524B90D49B293f9D1C10`
-(`node scripts/attest.ts` checks that address is running this source — see below for
+**Live on Shannon testnet:** `0xE0E59F39a5c04AD768f7e3fDae8e2FdAC68DebCB`
+([source on the explorer](https://shannon-explorer.somnia.network/address/0xE0E59F39a5c04AD768f7e3fDae8e2FdAC68DebCB?tab=contract) ·
+`node scripts/attest.ts` checks that address is running this source — see below for
 why that is a thing we check now)
 
 ---
@@ -273,14 +274,14 @@ The last one is now impossible by construction: `LastShareWhileOpen` refuses to 
 final share out while any slot is active. The other two are why `scripts/attest.ts` and
 the mock pool that reverts like the real one exist.
 
+**Verified source on the explorer**, after two days of `Unable to verify`. The verifier
+lists `osaka` — forge's default target for 0.8.30 — and cannot reproduce it; a nine-line
+probe verified on `cancun` and failed on `osaka` from the same toolchain. `foundry.toml`
+now pins `cancun`, and the live address shows source rather than bytecode.
+[`docs/evidence/verification-2026-08-28.md`](docs/evidence/verification-2026-08-28.md)
+
 **Not done**
 
-- Source verification on the Shannon explorer. Both the Etherscan-style route and the
-  Blockscout v2 standard-input route accept the submission and then report
-  `Unable to verify`; the verifier lists `osaka` as supported, which is what this was
-  compiled for. `scripts/attest.ts` compares the deployed bytecode to the artifact
-  directly, which is the stronger check, but a judge who clicks the address still sees
-  bytecode.
 - A track record. Seven complete sets is a mechanism working, not an edge. The ledger
   script exists so the number can grow without anyone having to trust it.
 

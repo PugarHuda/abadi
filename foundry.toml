@@ -8,6 +8,11 @@ optimizer_runs = 200
 # The module's `markets()` returns a 14-field tuple; destructuring it blows the stack
 # on the legacy pipeline. via_ir is the documented fix, not a workaround.
 via_ir = true
+# forge's default for 0.8.30 is osaka. The Shannon explorer's verifier lists osaka and
+# then fails to reproduce it: an identical probe verified on cancun and not on osaka
+# (2026-08-28, docs/evidence/verification-2026-08-28.md). Nothing here needs an opcode
+# newer than cancun, and a judge who clicks the address should see source, not bytecode.
+evm_version = "cancun"
 
 [profile.default.fuzz]
 runs = 256

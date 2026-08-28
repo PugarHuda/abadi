@@ -298,6 +298,7 @@ locked in           <b>+2.60</b></pre>
     <li><b>Docs list two window tiers. There are six.</b> A headroom rule tuned for the documented ones silently stops trading the fast tiers.</li>
     <li><b>Redemption pulls through the module, not the pool</b> — and nothing says so until the one call that turns tokens back into money. Cost us a stranded position.</li>
     <li><b>Cancelling an order that already filled reverts.</b> So cleanup breaks on exactly the position that needs cleaning up.</li>
+    <li><b>The explorer’s verifier lists <code>osaka</code> and cannot verify it.</b> Same nine-line probe: cancun passes, osaka fails.</li>
     <li><b>A reactivity callback that runs out of gas vanishes</b> — no event, no error, subscription spent. And the callback’s topic is the fired millisecond, not the scheduled one.</li>
   </ul>
   <p class="dim">All reported back with reproduction steps, alongside what genuinely worked: the Gotchas page, unpruned history, and a dev channel that answered a hard question in under an hour.</p>
