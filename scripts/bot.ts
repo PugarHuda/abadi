@@ -257,24 +257,35 @@ async function cycle(n: number, bySymbol: Map<string, any>) {
   // Two looks at every candidate's book, MOMENTUM_WAIT seconds apart. A mid that moved
   // between them is a window in motion, and the one thing this vault must not do is
   // rest a two-sided quote in front of a move.
+  // The indexer answers a book read in a few seconds, so the sample is small and
+  // parallel: the first scheduled cycle with this filter read twelve books twice in
+  // series and was killed by the scheduler's time limit before it quoted anything.
+  const pool = cands.slice(0, 2 * (ACTIVE - active) + 2);
+  const t0 = Date.now();
+  const firstReads = await Promise.all(pool.map((c) => ex.fetchOrderBook(c.upSymbol, 5).catch(() => null)));
   const first = new Map<string, { bid: number; ask: number }>();
-  for (const c of cands.slice(0, 12)) {
-    const b: any = await ex.fetchOrderBook(c.upSymbol, 5).catch(() => null);
+  pool.forEach((c, k) => {
+    const b: any = firstReads[k];
     if (b?.bids?.[0]?.[0] !== undefined && b?.asks?.[0]?.[0] !== undefined) first.set(c.marketId, { bid: b.bids[0][0], ask: b.asks[0][0] });
-  }
+  });
+  log(`sampled  ${first.size} books in ${((Date.now() - t0) / 1000).toFixed(1)}s; second look in ${MOMENTUM_WAIT}s`);
   if (first.size > 0 && active < ACTIVE) await new Promise((r) => setTimeout(r, MOMENTUM_WAIT * 1000));
+  const secondReads = new Map<string, any>();
+  await Promise.all(pool.map((c) => first.has(c.marketId)
+    ? ex.fetchOrderBook(c.upSymbol, 5).then((b: any) => secondReads.set(c.marketId, b)).catch(() => null)
+    : Promise.resolve()));
 
   for (let i = 0; i < maxSlots && active < ACTIVE; i++) {
     const s = await read<any>("slots", [BigInt(i)]);
     if (s.active) continue;
 
-    for (const c of cands) {
+    for (const c of pool) {
       if (quotedMarkets.has(c.marketId.toLowerCase())) continue;
       const then = first.get(c.marketId);
       if (!then) continue;
-      const oc: any = await ex.client.getMarketOnchain(c.marketId).catch(() => null);
-      if (!oc || oc.status !== TRADING) continue;
-      const book: any = await ex.fetchOrderBook(c.upSymbol, 5).catch(() => null);
+      // No on-chain status read here: headroom already filtered by expiry, and a window
+      // that stopped trading in the meantime makes quote() revert, which is caught.
+      const book: any = secondReads.get(c.marketId);
       const bid = book?.bids?.[0]?.[0], ask = book?.asks?.[0]?.[0];
       if (bid === undefined || ask === undefined) continue;
 
