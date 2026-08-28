@@ -53,7 +53,9 @@ contract VenueForkTest is Test {
         (,,,,,,,,,, uint256 y, uint256 n,,) = IBinaryMarketsModule(MODULE).markets(marketId);
         yesId = y;
         noId = n;
-        (,,, address p,,,,,,,,,,) = IBinaryMarketsModule(MODULE).markets(marketId);
+        // Field 9 is the pool; field 3 is the collateral, and a taker order sent to the
+        // collateral reverts with nothing to say — the first run of this file did that.
+        (,,,,,,,,, address p,,,,) = IBinaryMarketsModule(MODULE).markets(marketId);
         pool = p;
 
         vault = new LiquidityVault(

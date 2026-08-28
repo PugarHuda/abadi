@@ -135,7 +135,7 @@ silence.*
 
 **Screen:** `docs/SDK-FEEDBACK.md`, scrolled slowly.
 
-> Eight findings, and every one of them only showed up when we ran something rather than
+> Twelve findings, and every one of them only showed up when we ran something rather than
 > read about it. Prices are scaled to the collateral's decimals, not to 1e18 — and when
 > you get it wrong, the error says your order would cross the book, which sends you
 > looking in completely the wrong place. That one cost us hours.

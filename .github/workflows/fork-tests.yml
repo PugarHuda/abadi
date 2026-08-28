@@ -1,0 +1,31 @@
+name: fork tests
+
+# The vault against the real venue, on a fork of Shannon taken at run time. This is the
+# suite whose absence cost capital on the 27th: the unit suite's mock pool was kinder
+# than the pool. It needs the network, so it is separate from CI — a testnet outage is
+# not a reason to fail a build — and runs every six hours plus on demand.
+on:
+  schedule:
+    - cron: "17 */6 * * *"
+  workflow_dispatch:
+
+jobs:
+  fork:
+    if: github.repository == 'PugarHuda/abadi'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: stable
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: forge install foundry-rs/forge-std --no-git
+      - name: Fork Shannon and run the venue suite
+        # Finds a live window, prices inside its book, forks at the current block, and
+        # plays the taker against the vault's own legs through the real BinaryPool.
+        run: node scripts/fork-test.ts

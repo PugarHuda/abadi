@@ -215,7 +215,8 @@ node scripts/operator.ts   # read the book and quote inside it  (needs .env)
 node scripts/verify.ts     # read our orders back off the book
 node scripts/attest.ts     # is the live address running this source? (needs forge build)
 node scripts/ledger.ts     # every episode the vaults have run, marked from chain events
-node scripts/bot.ts        # the requote loop  (CYCLES=3 INTERVAL=30 SHORTEST=1 to try it)
+node scripts/bot.ts        # the requote loop  (CYCLES=3 INTERVAL=30 SHORTEST=1 ACTIVE=3 SIZE=100)
+node scripts/fork-test.ts  # the vault against the real pool and module, on a fork of Shannon
 ```
 
 `.env` needs `PRIVATE_KEY` for anything that writes. Deploy:
@@ -250,14 +251,26 @@ bot skips arming and says so until then. `sweepNative` brings the reserve back o
   the bot rather than by hand, closed a naked leg that lost — the shape the old `settle`
   refused forever — at block 473130786.
   [`docs/evidence/reactivity-live-2026-08-27.md`](docs/evidence/reactivity-live-2026-08-27.md)
-- `scripts/bot.ts` — the requote loop: settles what resolved, finalizes what expired
-  through the venue's permissionless keeper entry, flattens a dead quote's complete set,
+- `scripts/bot.ts` — the requote loop, three markets at a time: settles what resolved,
+  finalizes what expired through the venue's permissionless keeper entry, pulls and
+  requotes an unfilled quote the book has walked away from, flattens a completed one,
   quotes into idle slots, and arms a wake-up at each window's expiry so the chain closes
-  the position even if the bot is down
+  the position even if the bot is down. First wide run: three complete sets flattened in
+  one cycle, one of them from a requote
+- **The vault against the real venue, on a fork.** `test/fork/Venue.fork.t.sol` forks
+  Shannon, deploys the vault, quotes a live window, then plays the taker — crossing the
+  vault's own legs through the real BinaryPool so the real module mints the pair and
+  merges it. Four tests, no mock anywhere; the shape of every defect the mock pool hid.
+  Runs every six hours on GitHub and on demand with `node scripts/fork-test.ts`
 - The site reads the vault live in the visitor's browser — four `eth_call`s to the public
-  RPC, no server of ours, and an explicit failure state rather than a stale number
-- 73 tests passing, including two fuzzed invariants; axe-core WCAG 2.1 AA on every page in
-  CI; `scripts/attest.ts` says the live address is running this source
+  RPC, no server of ours, and an explicit failure state rather than a stale number. The
+  dashboard also renders the whole track record from the explorer's log API, decoded in
+  the browser against the vault's ABI, so the numbers above can be checked without
+  trusting this file
+- 73 unit tests including two fuzzed invariants, 4 fork tests against the venue, 36
+  browser tests (axe-core WCAG 2.1 AA, Core Web Vitals, touch, every cited transaction
+  checked against the explorer); `scripts/attest.ts` says the live address is running
+  this source
 
 **What it cost to get here**
 

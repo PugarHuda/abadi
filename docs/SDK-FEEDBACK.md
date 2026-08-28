@@ -3,10 +3,10 @@
 From building **Abadi**, a market-making vault on Event Contracts, on Shannon testnet.
 Everything below cost us real debugging time and is reproducible.
 
-Issues 1–6 are from 2026-08-26 and are ordered by how much time each one cost. Issues 7
-and 8 are from 2026-08-27, found by settling a real position rather than by reading, and
-between them they cost us more than the first six put together — they are appended rather
-than reordered so the numbering people have already read stays put.
+Issues 1–6 are from 2026-08-26 and are ordered by how much time each one cost. Everything
+after is appended in the order it was found rather than reordered, so numbering people
+have already read stays put: 7–8 from settling a real position, 9–10 from the first live
+reactivity callbacks, 11 from explorer verification, 12 from trying to fork the chain.
 
 ---
 
@@ -345,6 +345,37 @@ Same source, same compiler, same optimizer, same explorer. Only the EVM target d
 
 **How we found it:** by giving up on the real contract and verifying something too small
 to have any other reason to fail.
+
+---
+
+## 12. The RPC rejects EIP-1898 block objects, so Foundry cannot fork Shannon
+
+**Cost: the venue-integration test suite could not run at all until it was proxied.**
+
+Foundry's fork backend addresses state by block *hash* for every account read, in the
+EIP-1898 form the spec allows:
+
+```
+eth_getBalance ["0x3ecc…", {"blockHash": "0x561b…", "requireCanonical": false}]
+  -> {"code": -32602, "message": "invalid parameters"}
+```
+
+Both `api.infra.testnet.somnia.network` and `dream-rpc.somnia.network` answer the same.
+The identical call with a hex block number succeeds, so the node has the data; it only
+refuses the object form. Foundry surfaces this as
+`failed to get account for 0x0000…0000` on the first read and the whole fork aborts.
+`eth_getAccountInfo` is also unsupported, which Foundry tolerates; `-32602` it does not.
+
+**Suggestions**
+
+- Accept EIP-1898 `{blockHash}` / `{blockNumber}` objects on the state-read methods.
+  It is the standard, and it is what the most common EVM test tool sends.
+- Until then, say so in the docs next to the RPC URLs, with the workaround. A one-line
+  note would have saved the diagnosis.
+
+**How we found it:** a twenty-line logging proxy between forge and the RPC, which
+printed the first request the node refused. `scripts/fork-test.ts` now carries a shim
+that rewrites the object into the number, and the fork suite runs through it.
 
 ---
 
