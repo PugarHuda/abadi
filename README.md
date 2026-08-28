@@ -262,7 +262,8 @@ bot skips arming and says so until then. `sweepNative` brings the reserve back o
   every candidate's book is read twice, twenty seconds apart, and a window whose mid moved
   three ticks in between is not quoted — every adverse fill in the ledger came from a
   trending hour, and one adverse fill costs what twenty complete sets earn. Size halves
-  on the 900s tier. It settles what resolved,
+  on the 900s tier, and windows priced under 0.08 or over 0.92 are left alone — the only
+  thing that can happen to the expensive leg there is the tail event. It settles what resolved,
   finalizes what expired through the venue's permissionless keeper entry, pulls and
   requotes an unfilled quote the book has walked away from, flattens a completed one,
   quotes into idle slots, and arms a wake-up at each window's expiry so the chain closes

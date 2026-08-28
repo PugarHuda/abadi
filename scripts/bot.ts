@@ -32,6 +32,10 @@
  *                       being wrong sometimes, not for standing in front of a move.
  *       MOMENTUM_WAIT=20  seconds between the two book samples
  *       SHORT_SIZE=0.5  size multiplier on the 900s tier, where a move is most of the window
+ *       EDGE=0.08       do not quote a window priced under EDGE or over 1-EDGE: the spread
+ *                       there is a few ticks wide, one leg is nearly free and the other
+ *                       is nearly the whole dollar, and the only thing that can happen
+ *                       to the expensive leg is the tail event
  */
 import { createPublicClient, createWalletClient, formatEther, http, parseAbi } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
@@ -79,6 +83,7 @@ const SHORTEST = !!process.env.SHORTEST;
 const MOMENTUM_TICKS = BigInt(process.env.MOMENTUM_TICKS ?? 3);
 const MOMENTUM_WAIT = Number(process.env.MOMENTUM_WAIT ?? 20);
 const SHORT_SIZE = Number(process.env.SHORT_SIZE ?? 0.5);
+const EDGE = Number(process.env.EDGE ?? 0.08);
 
 /** Contracts per side for a window: smaller where a move eats most of the window. */
 function sizeFor(intervalSec: number): bigint {
@@ -273,6 +278,12 @@ async function cycle(n: number, bySymbol: Map<string, any>) {
       const bid = book?.bids?.[0]?.[0], ask = book?.asks?.[0]?.[0];
       if (bid === undefined || ask === undefined) continue;
 
+      const midNow = (bid + ask) / 2;
+      if (midNow < EDGE || midNow > 1 - EDGE) {
+        log(`skip     ${c.symbol}  mid ${midNow.toFixed(3)} — priced as near-certain, no two-sided trade here`);
+        quotedMarkets.add(c.marketId.toLowerCase());
+        continue;
+      }
       const moved = ticksAway((toWei(then.bid) + toWei(then.ask)) / 2n, bid, ask);
       if (moved >= MOMENTUM_TICKS) {
         log(`skip     ${c.symbol}  mid moved ${moved} ticks in ${MOMENTUM_WAIT}s — trending, not quoting`);
