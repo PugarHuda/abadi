@@ -55,13 +55,23 @@
   .action { border: 1px solid var(--ink-line); background: var(--ink-raised); padding: 22px clamp(16px, 2.4vw, 26px); }
   .action h3 { font-family: var(--display); font-size: 18px; font-weight: 600; margin: 0 0 6px; letter-spacing: -0.01em; }
   .action p { margin: 0 0 16px; color: var(--cotton-dim); font-size: 14px; }
-  .row { display: flex; gap: 10px; flex-wrap: wrap; }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; }
+  .row.all { margin-top: 12px; align-items: center; }
+  .field { flex: 1 1 140px; min-width: 0; }
   label { display: block; font-size: 13px; color: var(--cotton-dim); margin-bottom: 6px; }
   input[type=text] {
     font: inherit; font-family: var(--mono); font-size: 16px; color: var(--cotton);
-    background: var(--ink); border: 1px solid var(--ink-line); padding: 11px 12px; width: 100%; max-width: 240px;
+    background: var(--ink); border: 1px solid var(--ink-line); padding: 11px 12px; width: 100%;
     caret-color: var(--turmeric);
   }
+  button.max { padding: 12px 14px; color: var(--cotton-dim); }
+  .preview { font-family: var(--mono); font-size: 13px; color: var(--cotton-dim); }
+  .status { margin: 0 0 16px; padding: 12px 14px; border: 1px solid var(--ink-line); background: var(--ink-raised); font-size: 15px; }
+  .status[data-tone="busy"] { border-color: var(--turmeric); }
+  .status[data-tone="error"] { border-color: var(--turmeric); color: var(--cotton); }
+  .status a { margin-left: 6px; }
+  .nowallet[hidden] { display: none; }
+  .log .empty { color: var(--cotton-dim); }
   input[type=text]:focus { border-color: var(--turmeric); outline: none; }
   .guard { margin: 12px 0 0; padding: 12px 14px; border: 1px solid var(--turmeric); color: var(--cotton); font-size: 14px; }
   .guard[hidden] { display: none; }
@@ -78,12 +88,13 @@
 
   .note { color: var(--cotton-dim); max-width: 66ch; font-size: 15px; }
   .note b { color: var(--cotton); font-weight: 500; }
+  #wake b { font-family: var(--mono); font-weight: 600; }
 
   @media (max-width: 640px) { .actions { grid-template-columns: 1fr; } }
   @media (prefers-reduced-motion: reduce) { button { transition: none; } }
 </style>
 
-<div class="wrap" id="app" data-busy="false">
+<main class="wrap" id="app" data-busy="false">
 
   <header class="masthead">
     <a class="lockup" href="/" aria-label="Abadi home">
@@ -110,11 +121,17 @@
     </div>
     <button class="lead" id="connect" type="button">Connect wallet</button>
   </div>
+  <p class="note nowallet" id="nowallet" hidden>
+    No wallet in this browser. Install <a href="https://metamask.io/download/" target="_blank" rel="noopener">MetaMask</a>
+    or <a href="https://rabby.io/" target="_blank" rel="noopener">Rabby</a>, then reload this page. Everything below
+    still reads live from the chain without one.
+  </p>
   <p class="note">
     Deposits mint ERC-4626 shares of the vault. The operator key can quote and cancel and
     cannot move a token; <b>settle</b> is permissionless and pays the vault. Your shares are
     worth their slice of NAV at every moment, and NAV marks a naked leg at zero.
   </p>
+  <p class="note" id="wake">Self-wake reserve: <b data-wake="stt">…</b> of the 32 STT the chain requires before the vault may arm its own settlement. <span data-wake="verdict"></span></p>
 
   <h2>Balances <span>read from the chain every 30 seconds</span></h2>
   <div class="panel">
@@ -125,11 +142,12 @@
       <div><dt>Worth today</dt><dd><span id="worth">—</span> <small>tUSDC</small></dd></div>
       <div><dt>Vault NAV</dt><dd><span id="nav">…</span> <small>tUSDC</small></dd></div>
       <div><dt>Idle in vault</dt><dd><span id="idle">…</span> <small>tUSDC</small></dd></div>
-      <div><dt>Per share</dt><dd><span id="share">…</span></dd></div>
+      <div><dt>Per share</dt><dd><span id="share">…</span> <small>tUSDC / abLIQ</small></dd></div>
     </dl>
   </div>
 
   <h2>Actions <span>each one is a transaction your wallet signs</span></h2>
+  <p class="status" id="status" role="status">Connect a wallet to enable these.</p>
   <div class="actions">
     <div class="action">
       <h3>Get test collateral</h3>
@@ -139,20 +157,29 @@
     <div class="action">
       <h3>Deposit</h3>
       <p>Approves the vault for the amount if needed, then deposits. Two signatures the first time, one after.</p>
-      <label for="amount">Amount in tUSDC</label>
-      <div class="row">
-        <input id="amount" type="text" inputmode="decimal" placeholder="100" autocomplete="off">
-        <button id="deposit" class="lead" type="button" disabled>Deposit</button>
-      </div>
+      <form class="row" id="depositForm">
+        <div class="field">
+          <label for="amount">Amount in tUSDC</label>
+          <input id="amount" type="text" inputmode="decimal" placeholder="100" autocomplete="off">
+        </div>
+        <button id="amountMax" class="max" type="button" disabled>Max</button>
+        <button id="deposit" class="lead" type="submit" disabled>Deposit</button>
+      </form>
     </div>
     <div class="action">
       <h3>Withdraw</h3>
-      <p>Redeems shares for tUSDC from what is idle. Capital resting in a quote comes back as the quote closes.</p>
-      <label for="withdrawShares">Shares to redeem</label>
-      <div class="row">
-        <input id="withdrawShares" type="text" inputmode="decimal" placeholder="100" autocomplete="off">
-        <button id="withdraw" type="button" disabled>Redeem</button>
-        <button id="withdrawAll" type="button" disabled>Redeem all</button>
+      <p>Takes tUSDC out of what is idle and burns the shares it costs. Capital resting in a quote comes back as the quote closes.</p>
+      <form class="row" id="withdrawForm">
+        <div class="field">
+          <label for="withdrawAmount">Amount in tUSDC</label>
+          <input id="withdrawAmount" type="text" inputmode="decimal" placeholder="100" autocomplete="off">
+        </div>
+        <button id="withdrawMax" class="max" type="button" disabled>Max</button>
+        <button id="withdraw" type="submit" disabled>Withdraw</button>
+      </form>
+      <div class="row all">
+        <button id="withdrawAll" type="button" disabled>Redeem all shares</button>
+        <span class="preview" id="allPreview"></span>
       </div>
       <p class="guard" id="guard" hidden>
         You hold the last share and a quote is still open. Redeeming everything now would hand
@@ -161,8 +188,8 @@
       </p>
     </div>
     <div class="action">
-      <h3>Where to watch it</h3>
-      <p>Every transaction lands in the activity list below with an explorer link. The vault's whole history is on <a href="/dashboard">the working</a>.</p>
+      <h3>Gas</h3>
+      <p>Every action costs a little STT. If <b>Your STT</b> reads zero, the <a href="https://cloud.google.com/application/web3/faucet/somnia/shannon" target="_blank" rel="noopener">Somnia faucet</a> gives 0.5 STT a day, which covers dozens of transactions here.</p>
     </div>
   </div>
 
@@ -174,9 +201,11 @@
     </table>
   </div>
 
-  <h2>Activity <span>this session</span></h2>
-  <ul class="log" id="log"></ul>
+  <h2>Activity <span>this session, newest first</span></h2>
+  <ul class="log" id="log" aria-live="polite" aria-relevant="additions">
+    <li class="empty" id="logEmpty">Nothing yet. Transactions you send appear here with a link to the explorer.</li>
+  </ul>
 
-</div>
+</main>
 
 <script src="/app.js" defer></script>

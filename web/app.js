@@ -20,6 +20,8 @@
     balanceOf: "0x70a08231",     // balanceOf(address)
     deposit: "0x6e553f65",       // deposit(uint256,address)
     redeem: "0xba087652",        // redeem(uint256,address,address)
+    withdraw: "0xb460af94",      // withdraw(uint256,address,address)
+    minHandlerBalance: "0x359f27e8", // MIN_HANDLER_BALANCE()
     convertToAssets: "0x07a2d13a",
     totalAssets: "0x01e1d114",
     idleAssets: "0xe16b03a3",
@@ -39,6 +41,7 @@
     balanceOf: function (owner) { return SEL.balanceOf + wordA(owner); },
     deposit: function (assets, receiver) { return SEL.deposit + wordU(assets) + wordA(receiver); },
     redeem: function (shares, receiver, owner) { return SEL.redeem + wordU(shares) + wordA(receiver) + wordA(owner); },
+    withdraw: function (assets, receiver, owner) { return SEL.withdraw + wordU(assets) + wordA(receiver) + wordA(owner); },
     convertToAssets: function (shares) { return SEL.convertToAssets + wordU(shares); },
     slots: function (i) { return SEL.slots + wordU(i); }
   };
@@ -65,31 +68,64 @@
   function call(to, data) { return rpc("eth_call", [{ to: to, data: data }, "latest"]); }
 
   // ---------------------------------------------------------------- state + view
-  var state = { account: null, chainOk: false, busy: false, provider: null };
+  var state = { account: null, chainOk: false, busy: false, usdc: 0n, stt: 0n, shares: 0n, worth: 0n, confirmAll: null };
   var els = {};
   ["connect", "wallet", "network", "usdc", "stt", "shares", "worth", "nav", "share", "idle",
-   "amount", "deposit", "withdrawShares", "withdraw", "withdrawAll", "faucet", "log", "slots", "guard"]
+   "amount", "amountMax", "deposit", "depositForm", "withdrawAmount", "withdrawMax", "withdraw", "withdrawForm",
+   "withdrawAll", "allPreview", "faucet", "log", "logEmpty", "slots", "guard", "status", "nowallet", "wake"]
     .forEach(function (id) { els[id] = document.getElementById(id); });
+  var wakeStt = els.wake.querySelector("[data-wake=stt]");
+  var wakeVerdict = els.wake.querySelector("[data-wake=verdict]");
+  var STT_FAUCET = "https://cloud.google.com/application/web3/faucet/somnia/shannon";
 
   function usd(v) { return (Number(v) / 1e6).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
   function stt(v) { return (Number(v) / 1e18).toFixed(3); }
   function px(v) { return (Number(v) / 1e6).toFixed(3); }
   function short(a) { return a.slice(0, 6) + "…" + a.slice(-4); }
 
-  function say(text, href) {
+  /** One sentence, in two places: the status strip beside the buttons, and the log. */
+  function say(text, href, tone) {
+    if (els.logEmpty) { els.logEmpty.remove(); els.logEmpty = null; }
     var li = document.createElement("li");
     var t = document.createElement("time");
-    t.textContent = new Date().toISOString().slice(11, 19) + "Z";
+    t.textContent = new Date().toISOString().slice(11, 19) + " UTC";
     li.appendChild(t);
     li.appendChild(document.createTextNode(" " + text + " "));
-    if (href) { var a = document.createElement("a"); a.href = href; a.textContent = "explorer"; a.target = "_blank"; a.rel = "noopener"; li.appendChild(a); }
+    if (href) {
+      var a = document.createElement("a"); a.href = href; a.target = "_blank"; a.rel = "noopener";
+      a.textContent = "view " + href.slice(-8) + " on the explorer";
+      li.appendChild(a);
+    }
     els.log.prepend(li);
+    status(text, tone || "info", href);
   }
 
-  function setBusy(b) {
+  function status(text, tone, href) {
+    els.status.textContent = text;
+    if (href) { var a = document.createElement("a"); a.href = href; a.target = "_blank"; a.rel = "noopener"; a.textContent = "explorer"; els.status.appendChild(a); }
+    els.status.setAttribute("data-tone", tone || "info");
+  }
+
+  var pressed = null, pressedLabel = "";
+  function setBusy(b, button) {
     state.busy = b;
-    [els.deposit, els.withdraw, els.withdrawAll, els.faucet].forEach(function (x) { x.disabled = b || !state.account || !state.chainOk; });
+    var ready = !!state.account && state.chainOk;
+    [els.deposit, els.withdraw, els.faucet, els.amountMax, els.withdrawMax].forEach(function (x) { x.disabled = b || !ready; });
+    els.withdrawAll.disabled = b || !ready || els.withdrawAll.dataset.blocked === "true";
     document.getElementById("app").setAttribute("data-busy", b ? "true" : "false");
+    if (b && button) { pressed = button; pressedLabel = button.textContent; button.textContent = "Waiting for wallet…"; }
+    if (!b && pressed) { pressed.textContent = pressedLabel; pressed = null; }
+  }
+
+  /** The product's claim, on the page where money changes hands: can the vault wake itself? */
+  function loadWake() {
+    return Promise.all([rpc("eth_getBalance", [VAULT, "latest"]), call(VAULT, SEL.minHandlerBalance)]).then(function (r) {
+      var have = BigInt(r[0]), need = u256(r[1]);
+      wakeStt.textContent = stt(have) + " STT";
+      wakeVerdict.textContent = have >= need
+        ? "Armed wake-ups will settle expired windows with nobody calling."
+        : "Below the floor, so the scheduled keeper settles instead; the vault still never needs a trusted key.";
+    }).catch(function () { wakeStt.textContent = "unreadable"; wakeVerdict.textContent = ""; });
   }
 
   function loadVault() {
@@ -127,23 +163,30 @@
     var a = state.account;
     return Promise.all([call(USDC, A.encode.balanceOf(a)), rpc("eth_getBalance", [a, "latest"]), call(VAULT, A.encode.balanceOf(a))])
       .then(function (r) {
-        var shares = u256(r[2]);
-        state.shares = shares;
-        els.usdc.textContent = usd(u256(r[0]));
-        els.stt.textContent = stt(BigInt(r[1]));
-        els.shares.textContent = usd(shares);
-        return call(VAULT, A.encode.convertToAssets(shares));
+        state.usdc = u256(r[0]); state.stt = BigInt(r[1]); state.shares = u256(r[2]);
+        els.usdc.textContent = usd(state.usdc);
+        els.stt.textContent = stt(state.stt);
+        els.shares.textContent = usd(state.shares);
+        return call(VAULT, A.encode.convertToAssets(state.shares));
       })
       .then(function (hex) {
-        els.worth.textContent = usd(u256(hex));
+        state.worth = u256(hex);
+        els.worth.textContent = usd(state.worth);
         var last = state.supply > 0n && state.shares === state.supply;
+        var blocked = (last && state.openSlots > 0) || state.shares === 0n;
         els.guard.hidden = !(last && state.openSlots > 0);
-        els.withdrawAll.disabled = state.busy || !state.chainOk || (last && state.openSlots > 0) || state.shares === 0n;
+        els.withdrawAll.dataset.blocked = blocked ? "true" : "false";
+        els.withdrawAll.disabled = state.busy || !state.chainOk || blocked;
+        els.allPreview.textContent = state.shares > 0n ? "≈ " + usd(state.worth) + " tUSDC for " + usd(state.shares) + " shares" : "";
+        if (!state.busy && state.account && state.chainOk) status("Ready. Balances refresh every 30 seconds.", "info");
       });
   }
 
   function refresh() {
-    return loadVault().then(loadAccount).catch(function (e) { say("Could not read the chain: " + e.message); });
+    if (document.visibilityState === "hidden") return Promise.resolve();
+    return loadVault().then(loadWake).then(loadAccount).catch(function (e) {
+      status("Could not read the chain (" + e.message + "). Numbers on this page may be stale until the next refresh.", "error");
+    });
   }
 
   // ---------------------------------------------------------------- wallet
@@ -170,6 +213,8 @@
       els.network.textContent = "";
       els.connect.textContent = provider() ? "Connect wallet" : "No wallet found";
       els.connect.disabled = !provider();
+      els.nowallet.hidden = !!provider();
+      status(provider() ? "Connect a wallet to enable these." : "No wallet in this browser, so the actions are off. The numbers are still live.", "info");
       return;
     }
     els.wallet.textContent = short(state.account);
@@ -202,9 +247,10 @@
   }
 
   function send(label, to, data) {
+    status(label + ": waiting for your signature in the wallet…", "busy");
     return provider().request({ method: "eth_sendTransaction", params: [{ from: state.account, to: to, data: data }] })
       .then(function (hash) {
-        say(label + " sent.", EXPLORER + "/tx/" + hash);
+        say(label + " sent; waiting for the chain.", EXPLORER + "/tx/" + hash, "busy");
         return waitFor(hash).then(function (r) {
           if (r.status !== "0x1") throw new Error(label + " reverted");
           say(label + " confirmed in block " + Number(BigInt(r.blockNumber)).toLocaleString("en-US") + ".", EXPLORER + "/tx/" + hash);
@@ -214,49 +260,91 @@
   }
 
   function amountUsd(input) {
-    var v = Number(String(input.value).replace(/,/g, ""));
-    if (!(v > 0)) throw new Error("Enter an amount above zero.");
+    var raw = String(input.value).trim().replace(/,/g, "");
+    if (raw === "") throw new Error("Enter an amount in tUSDC first.");
+    var v = Number(raw);
+    if (!isFinite(v) || !(v > 0)) throw new Error("Enter an amount above zero, in tUSDC.");
+    if (/\.\d{7,}/.test(raw)) throw new Error("tUSDC has six decimals; enter no more than six.");
     return BigInt(Math.round(v * 1e6));
   }
 
-  function run(fn) {
+  /** The checks the chain would make, made here first, so a mistake costs no gas. */
+  function preflight(kind, amt) {
+    if (state.stt === 0n) throw new Error("Your wallet holds no STT for gas. Get 0.5 STT from the Somnia faucet (link in the Gas panel), then try again.");
+    if (kind === "deposit" && amt > state.usdc) throw new Error("You have " + usd(state.usdc) + " tUSDC; enter that or less, or mint more from the faucet.");
+    if (kind === "withdraw" && amt > state.worth) throw new Error("Your shares are worth " + usd(state.worth) + " tUSDC; enter that or less.");
+  }
+
+  function run(fn, button) {
     if (state.busy) return;
-    setBusy(true);
-    Promise.resolve().then(fn).catch(function (e) { say(e && e.message ? e.message : String(e)); }).then(function () { setBusy(false); return refresh(); });
+    setBusy(true, button);
+    Promise.resolve().then(fn)
+      .catch(function (e) {
+        var m = e && e.message ? e.message : String(e);
+        if (/user rejected|denied|4001/i.test(m)) m = "You cancelled in the wallet. Nothing was sent.";
+        else if (/insufficient funds/i.test(m)) m = "The wallet has no STT to pay gas. Get some from the Somnia faucet (Gas panel), then try again.";
+        say(m, null, "error");
+      })
+      .then(function () { setBusy(false); return refresh(); });
   }
 
   // ---------------------------------------------------------------- actions
   els.connect.addEventListener("click", connect);
 
   els.faucet.addEventListener("click", function () {
-    run(function () { return send("Faucet 10,000 tUSDC", USDC, A.encode.faucet(10_000_000_000n)); });
+    run(function () {
+      if (state.stt === 0n) throw new Error("Your wallet holds no STT for gas. Get 0.5 STT from the Somnia faucet (link in the Gas panel), then try again.");
+      return send("Mint 10,000 tUSDC", USDC, A.encode.faucet(10_000_000_000n));
+    }, els.faucet);
   });
 
-  els.deposit.addEventListener("click", function () {
+  els.amountMax.addEventListener("click", function () { els.amount.value = (Number(state.usdc) / 1e6).toFixed(6).replace(/\.?0+$/, ""); els.amount.focus(); });
+  els.withdrawMax.addEventListener("click", function () { els.withdrawAmount.value = (Number(state.worth) / 1e6).toFixed(6).replace(/\.?0+$/, ""); els.withdrawAmount.focus(); });
+
+  els.depositForm.addEventListener("submit", function (ev) {
+    ev.preventDefault();
     run(function () {
       var amt = amountUsd(els.amount);
+      preflight("deposit", amt);
       return call(USDC, A.encode.allowance(state.account, VAULT)).then(function (hex) {
         if (u256(hex) >= amt) return;
-        return send("Approve " + usd(amt) + " tUSDC", USDC, A.encode.approve(VAULT, amt));
+        return send("Approve " + usd(amt) + " tUSDC for the vault", USDC, A.encode.approve(VAULT, amt));
       }).then(function () {
         return send("Deposit " + usd(amt) + " tUSDC", VAULT, A.encode.deposit(amt, state.account));
-      });
-    });
+      }).then(function () { els.amount.value = ""; });
+    }, els.deposit);
   });
 
-  els.withdraw.addEventListener("click", function () {
+  els.withdrawForm.addEventListener("submit", function (ev) {
+    ev.preventDefault();
     run(function () {
-      var shares = amountUsd(els.withdrawShares);
-      return send("Redeem " + usd(shares) + " shares", VAULT, A.encode.redeem(shares, state.account, state.account));
-    });
+      var amt = amountUsd(els.withdrawAmount);
+      preflight("withdraw", amt);
+      return send("Withdraw " + usd(amt) + " tUSDC", VAULT, A.encode.withdraw(amt, state.account, state.account))
+        .then(function () { els.withdrawAmount.value = ""; });
+    }, els.withdraw);
   });
 
+  // Redeem all is the one irreversible-feeling action, so it asks twice: the first press
+  // shows exactly what will happen and becomes the confirmation; five seconds of silence
+  // puts it back.
   els.withdrawAll.addEventListener("click", function () {
+    if (state.confirmAll === null) {
+      els.withdrawAll.textContent = "Confirm: redeem " + usd(state.shares) + " shares for ≈ " + usd(state.worth) + " tUSDC";
+      status("Press again within five seconds to redeem every share you hold.", "busy");
+      state.confirmAll = setTimeout(function () { state.confirmAll = null; els.withdrawAll.textContent = "Redeem all shares"; status("Ready.", "info"); }, 5000);
+      return;
+    }
+    clearTimeout(state.confirmAll); state.confirmAll = null;
+    els.withdrawAll.textContent = "Redeem all shares";
     run(function () {
+      if (state.stt === 0n) throw new Error("Your wallet holds no STT for gas. Get 0.5 STT from the Somnia faucet (link in the Gas panel), then try again.");
       if (!state.shares || state.shares === 0n) throw new Error("No shares to redeem.");
       return send("Redeem all " + usd(state.shares) + " shares", VAULT, A.encode.redeem(state.shares, state.account, state.account));
-    });
+    }, els.withdrawAll);
   });
+
+  document.addEventListener("visibilitychange", function () { if (document.visibilityState === "visible") refresh(); });
 
   if (provider()) {
     provider().on && provider().on("accountsChanged", function (accs) { state.account = accs[0] || null; paintWallet(); refresh(); });

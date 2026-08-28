@@ -47,6 +47,13 @@ test.describe("app without a wallet", () => {
     await page.goto(BASE + "/app", { waitUntil: "networkidle" });
     await expect(page.locator("#connect")).toHaveText(/no wallet found/i);
     await expect(page.locator("#connect")).toBeDisabled();
+    // A dead end is not allowed: the way out is on the page, with links.
+    await expect(page.locator("#nowallet")).toBeVisible();
+    await expect(page.locator("#nowallet a[href*='metamask']")).toBeVisible();
+    await expect(page.locator("#status")).toContainText(/no wallet/i);
+    await expect(page.locator("#logEmpty")).toBeVisible();
+    // The product's claim is on the money page, live: the self-wake reserve.
+    await expect.poll(async () => page.locator("[data-wake=stt]").textContent(), { timeout: 20000 }).toMatch(/\d+\.\d{3} STT/);
     await expect(page.locator("#deposit")).toBeDisabled();
     await expect(page.locator("#faucet")).toBeDisabled();
     await expect.poll(async () => page.locator("#nav").textContent(), { timeout: 20000 }).toMatch(/^\d{1,3}(,\d{3})*\.\d{2}$/);
@@ -71,29 +78,38 @@ test.describe("app with a wallet", () => {
     await expect(page.locator("#connect")).toHaveText(/connected/i);
   });
 
-  test("a deposit sends approve then deposit, encoded exactly, to the right contracts", async ({ page }) => {
+  test("a deposit above the wallet's balance is refused before anything is signed", async ({ page }) => {
     await page.goto(BASE + "/app", { waitUntil: "networkidle" });
-    const vault = await page.evaluate(() => (window as any).ABADI.vault as string);
     await page.locator("#connect").click();
     await expect(page.locator("#deposit")).toBeEnabled();
-
-    await page.locator("#amount").fill("100");
+    // Wait for the balances to arrive, then ask for more tUSDC than the account holds.
+    await expect.poll(async () => page.locator("#usdc").textContent(), { timeout: 20000 }).toMatch(/^\d/);
+    await page.locator("#amount").fill("999999999");
     await page.locator("#deposit").click();
+    await expect(page.locator("#status")).toContainText(/you have .* tUSDC/i);
+    expect(await page.evaluate(() => (window as any).__sent.length)).toBe(0);
+  });
 
-    // The page waits for a receipt it will never get from a stub, so read what was sent.
-    await expect.poll(async () => page.evaluate(() => (window as any).__sent.length), { timeout: 15000 }).toBeGreaterThanOrEqual(1);
-    const sent = await page.evaluate(() => (window as any).__sent as { to: string; data: string; from: string }[]);
-
+  test("approve and deposit are encoded exactly as the ABI says", async ({ page }) => {
+    await page.goto(BASE + "/app", { waitUntil: "networkidle" });
+    const vault = await page.evaluate(() => (window as any).ABADI.vault as string);
+    const enc = await page.evaluate((acct) => {
+      const e = (window as any).ABADI_APP.encode;
+      const v = (window as any).ABADI.vault;
+      return { approve: e.approve(v, 100000000n), deposit: e.deposit(100000000n, acct), withdraw: e.withdraw(12500000n, acct, acct) };
+    }, ACCOUNT);
     const amount = 100_000_000n;
-    expect(sent[0].to.toLowerCase()).toBe(USDC);
-    expect(sent[0].from.toLowerCase()).toBe(ACCOUNT);
-    expect(sent[0].data).toBe("0x095ea7b3" + addr(vault) + word(amount)); // approve(vault, 100e6)
+    expect(enc.approve).toBe("0x095ea7b3" + addr(vault) + word(amount));
+    expect(enc.deposit).toBe("0x6e553f65" + word(amount) + addr(ACCOUNT));
+    expect(enc.withdraw).toBe("0xb460af94" + word(12_500_000n) + addr(ACCOUNT) + addr(ACCOUNT));
   });
 
   test("the faucet asks the token for exactly 10,000 tUSDC", async ({ page }) => {
     await page.goto(BASE + "/app", { waitUntil: "networkidle" });
     await page.locator("#connect").click();
     await expect(page.locator("#faucet")).toBeEnabled();
+    // The gas pre-check reads the wallet's STT first; wait for that read to land.
+    await expect.poll(async () => page.locator("#stt").textContent(), { timeout: 20000 }).toMatch(/^\d/);
     await page.locator("#faucet").click();
     await expect.poll(async () => page.evaluate(() => (window as any).__sent.length), { timeout: 15000 }).toBe(1);
     const sent = await page.evaluate(() => (window as any).__sent[0] as { to: string; data: string });
@@ -101,17 +117,35 @@ test.describe("app with a wallet", () => {
     expect(sent.data).toBe("0x57915897" + word(10_000_000_000n)); // faucet(10_000e6)
   });
 
-  test("redeem encodes shares, receiver and owner as the connected account", async ({ page }) => {
+  test("a withdrawal within what the shares are worth is sent as ERC-4626 withdraw(assets)", async ({ page }) => {
     await page.goto(BASE + "/app", { waitUntil: "networkidle" });
     const vault = await page.evaluate(() => (window as any).ABADI.vault as string);
     await page.locator("#connect").click();
     await expect(page.locator("#withdraw")).toBeEnabled();
-    await page.locator("#withdrawShares").fill("12.5");
+    await expect.poll(async () => page.locator("#worth").textContent(), { timeout: 20000 }).toMatch(/^\d/);
+    await page.locator("#withdrawAmount").fill("12.5");
     await page.locator("#withdraw").click();
     await expect.poll(async () => page.evaluate(() => (window as any).__sent.length), { timeout: 15000 }).toBe(1);
     const sent = await page.evaluate(() => (window as any).__sent[0] as { to: string; data: string });
     expect(sent.to.toLowerCase()).toBe(vault.toLowerCase());
-    expect(sent.data).toBe("0xba087652" + word(12_500_000n) + addr(ACCOUNT) + addr(ACCOUNT));
+    expect(sent.data).toBe("0xb460af94" + word(12_500_000n) + addr(ACCOUNT) + addr(ACCOUNT));
+    await expect(page.locator("#withdraw")).toHaveText(/waiting for wallet/i);
+    await expect(page.locator("#status")).toContainText(/waiting/i);
+  });
+
+  test("redeem all asks twice and shows what it will do", async ({ page }) => {
+    await page.goto(BASE + "/app", { waitUntil: "networkidle" });
+    await page.locator("#connect").click();
+    await expect.poll(async () => page.locator("#worth").textContent(), { timeout: 20000 }).toMatch(/^\d/);
+    await expect(page.locator("#allPreview")).toContainText(/≈ .* tUSDC for .* shares/);
+    await expect(page.locator("#withdrawAll")).toBeEnabled();
+    await page.locator("#withdrawAll").click();
+    await expect(page.locator("#withdrawAll")).toHaveText(/confirm: redeem .* shares for ≈ .* tUSDC/i);
+    expect(await page.evaluate(() => (window as any).__sent.length)).toBe(0);
+    await page.locator("#withdrawAll").click();
+    await expect.poll(async () => page.evaluate(() => (window as any).__sent.length), { timeout: 15000 }).toBe(1);
+    const sent = await page.evaluate(() => (window as any).__sent[0] as { data: string });
+    expect(sent.data.startsWith("0xba087652")).toBe(true);
   });
 
   test("an empty amount is refused before anything is sent", async ({ page }) => {
@@ -119,7 +153,7 @@ test.describe("app with a wallet", () => {
     await page.locator("#connect").click();
     await expect(page.locator("#deposit")).toBeEnabled();
     await page.locator("#deposit").click();
-    await expect(page.locator("#log li").first()).toContainText(/amount above zero/i);
+    await expect(page.locator("#status")).toContainText(/enter an amount/i);
     expect(await page.evaluate(() => (window as any).__sent.length)).toBe(0);
   });
 });
