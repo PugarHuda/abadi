@@ -247,9 +247,10 @@ bot skips arming and says so until then. `sweepNative` brings the reserve back o
 **Run against the venue, on Shannon**
 
 - Quoting inside the incumbent's spread, top of book, both legs filling into complete sets
-- `settle()` and `flatten()`, each several times — seven complete-set episodes so far,
-  **+17.00 tUSDC on 683.00 of basis (2.49%)**, every one read back off the chain by
-  `scripts/ledger.ts` rather than remembered
+- `settle()` and `flatten()`, dozens of times — **37 episodes, 28 complete sets,
+  +66.60 tUSDC on 2,733.40 of basis (2.44%), 7% of filled quotes adverse** at the last
+  ledger run, every one read back off the chain by `scripts/ledger.ts` rather than
+  remembered, and growing every fifteen minutes
 - **The vault wakes itself up.** A 900s window was quoted, expired, resolved, and the
   reactivity precompile called the vault at the armed second; the vault redeemed its own
   position and freed the slot with nobody calling it. Tx `0x66c0e1ec…`, block 472752861.
