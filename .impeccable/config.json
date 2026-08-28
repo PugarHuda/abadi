@@ -1,0 +1,15 @@
+{
+  "detector": {
+    "ignoreRules": [
+      "content-hidden-at-rest"
+    ],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "line-length",
+        "value": "~138 chars/line (aim for <80)",
+        "createdAt": "2026-08-28T05:05:45.097Z"
+      }
+    ]
+  }
+}

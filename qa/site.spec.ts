@@ -214,23 +214,23 @@ test.describe("deck", () => {
     await page.goto(BASE + "/deck", { waitUntil: "networkidle" });
     await expect(page.locator(".slide.on")).toHaveCount(1);
     await expect(page.locator(".slide")).toHaveCount(10);
-    await expect(page.locator(".slide.on .n")).toHaveText("01");
+    await expect(page.locator(".slide.on")).toHaveAttribute("data-i", "0");
   });
 
   test("arrow keys move forward and back", async ({ page }) => {
     await page.goto(BASE + "/deck", { waitUntil: "networkidle" });
     await page.keyboard.press("ArrowRight");
-    await expect(page.locator(".slide.on .n")).toHaveText("02");
+    await expect(page.locator(".slide.on")).toHaveAttribute("data-i", "1");
     await page.keyboard.press("ArrowRight");
-    await expect(page.locator(".slide.on .n")).toHaveText("03");
+    await expect(page.locator(".slide.on")).toHaveAttribute("data-i", "2");
     await page.keyboard.press("ArrowLeft");
-    await expect(page.locator(".slide.on .n")).toHaveText("02");
+    await expect(page.locator(".slide.on")).toHaveAttribute("data-i", "1");
   });
 
   test("space advances and does not also scroll the page", async ({ page }) => {
     await page.goto(BASE + "/deck", { waitUntil: "networkidle" });
     await page.keyboard.press("Space");
-    await expect(page.locator(".slide.on .n")).toHaveText("02");
+    await expect(page.locator(".slide.on")).toHaveAttribute("data-i", "1");
     const y = await page.evaluate(() => window.scrollY);
     expect(y, "space scrolled instead of only advancing").toBe(0);
   });
@@ -241,14 +241,14 @@ test.describe("deck", () => {
     await expect(page.locator("#next")).toBeEnabled();
 
     await page.keyboard.press("End");
-    await expect(page.locator(".slide.on .n")).toHaveText("10");
+    await expect(page.locator(".slide.on")).toHaveAttribute("data-i", "9");
     await expect(page.locator("#next")).toBeDisabled();
     await expect(page.locator("#prev")).toBeEnabled();
   });
 
   test("a hash deep link opens that slide", async ({ page }) => {
     await page.goto(BASE + "/deck#7", { waitUntil: "networkidle" });
-    await expect(page.locator(".slide.on .n")).toHaveText("07");
+    await expect(page.locator(".slide.on")).toHaveAttribute("data-i", "6");
     await expect(page.locator(".slide.on")).toContainText("directional exposure");
   });
 
@@ -261,10 +261,10 @@ test.describe("deck", () => {
 
   test("progress rail tracks position", async ({ page }) => {
     await page.goto(BASE + "/deck", { waitUntil: "networkidle" });
-    const width = () => page.evaluate(() => (document.querySelector(".bar i") as HTMLElement).style.width);
-    expect(await width()).toBe("10%");
+    const width = () => page.evaluate(() => (document.querySelector(".bar i") as HTMLElement).style.transform);
+    expect(await width()).toBe("scaleX(0.1)");
     await page.keyboard.press("End");
-    expect(await width()).toBe("100%");
+    expect(await width()).toBe("scaleX(1)");
   });
 
   test("keyboard focus is visible on the controls", async ({ page }) => {

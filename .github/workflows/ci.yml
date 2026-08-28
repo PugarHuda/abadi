@@ -142,6 +142,14 @@ jobs:
           npx wait-on http://localhost:4321/ --timeout 30000
           BASE=http://localhost:4321 npx playwright test
 
+      - name: Design detector (Impeccable)
+        # 59 deterministic checks for the defaults AI-built interfaces reach for —
+        # tracked-caps eyebrows, undersized UI text, layout transitions, neon-on-dark —
+        # run against the rendered pages so contrast is measured on the real background.
+        # Waivers live in .impeccable/config.json with their reason. Any finding fails.
+        run: |
+          npx --yes impeccable detect --no-advisory             http://localhost:4321/ http://localhost:4321/dashboard             http://localhost:4321/deck http://localhost:4321/404
+
       - uses: actions/upload-artifact@v4
         if: failure()
         with:

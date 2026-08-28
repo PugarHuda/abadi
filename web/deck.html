@@ -1,3 +1,4 @@
+<!-- impeccable-disable content-hidden-at-rest: one slide is shown at a time by design -->
 <title>Abadi Deck</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -33,7 +34,7 @@
   }
   .n {
     position: absolute; top: 34px; left: 40px;
-    font-family: var(--mono); font-size: 10px; letter-spacing: .2em;
+    font-family: var(--mono); font-size: 12px;
     color: var(--cotton-dim);
   }
   h2 {
@@ -44,10 +45,6 @@
   h2 em { font-style: normal; color: var(--turmeric); }
   p { font-size: clamp(16px, 1.9vw, 19px); margin: 0 0 16px; max-width: 60ch; }
   p.dim { color: var(--cotton-dim); }
-  .kicker {
-    font-family: var(--mono); font-size: 11px; letter-spacing: .2em;
-    text-transform: uppercase; color: var(--turmeric); margin-bottom: 22px;
-  }
   code, .mono { font-family: var(--mono); font-size: 0.88em; }
   pre {
     font-family: var(--mono); font-size: clamp(11px, 1.5vw, 14px);
@@ -65,8 +62,8 @@
     border-bottom: 1px solid var(--ink-line); font-size: 15px;
   }
   th {
-    font-family: var(--mono); font-size: 10px; font-weight: 400;
-    letter-spacing: .16em; text-transform: uppercase; color: var(--cotton-dim);
+    font-family: var(--body); font-size: 13px; font-weight: 500;
+    color: var(--cotton-dim);
   }
   td.num { font-family: var(--mono); font-size: 14px; text-align: right; }
   tr.hi td { color: var(--turmeric); }
@@ -81,11 +78,11 @@
   .cover .line {
     font-family: var(--display); font-weight: 600;
     font-size: clamp(20px, 3.2vw, 32px); letter-spacing: -0.02em;
-    max-width: 22ch; line-height: 1.2; margin: 0 0 30px;
+    max-width: 22ch; line-height: 1.3; margin: 0 0 30px;
   }
   .cover .meta {
-    font-family: var(--mono); font-size: 11px; letter-spacing: .14em;
-    color: var(--cotton-dim); text-transform: uppercase;
+    font-family: var(--body); font-size: 14px;
+    color: var(--cotton-dim);
     margin-left: 0;
   }
 
@@ -99,7 +96,7 @@
   .two { display: grid; grid-template-columns: 1fr 1fr; gap: 34px; }
   @media (max-width: 720px) { .two { grid-template-columns: 1fr; } }
 
-  .tick { color: var(--teal); }
+  .tick { color: var(--cotton); }
   .cross { color: var(--turmeric); }
 
   ul { padding-left: 20px; margin: 0 0 16px; max-width: 60ch; }
@@ -127,11 +124,11 @@
     overflow-y: auto;
   }
   .slide > * { max-width: 980px; width: 100%; margin-left: auto; margin-right: auto; }
+  .slide > p, .slide > ul { max-width: min(62ch, 980px); margin-left: 0; margin-right: auto; }
   .slide.on {
     opacity: 1; visibility: visible; transform: none;
     transition: opacity .34s ease, transform .34s ease, visibility 0s;
   }
-  .slide .n { position: absolute; top: clamp(22px,3vh,34px); left: clamp(28px,7vw,96px); }
   .cover .mark {
     height: clamp(60px,9vh,104px); width: auto; align-self: flex-start;
     display: block; margin: 0 0 clamp(10px,1.8vh,20px);
@@ -142,7 +139,7 @@
     position: fixed; left: 0; right: 0; bottom: 0; height: 2px;
     background: var(--ink-line); z-index: 20;
   }
-  .bar i { display: block; height: 100%; background: var(--turmeric); transition: width .34s ease; }
+  .bar i { display: block; height: 100%; width: 100%; transform-origin: left; background: var(--turmeric); transition: transform .34s cubic-bezier(.2,.8,.2,1); }
 
   .nav {
     position: fixed; bottom: 22px; right: clamp(20px,4vw,40px);
@@ -159,15 +156,15 @@
   .nav button:disabled { opacity: .3; cursor: default; }
   .nav button:focus-visible { outline: 2px solid var(--turmeric); outline-offset: 2px; }
   .count {
-    font-family: var(--mono); font-size: 11px; letter-spacing: .12em;
+    font-family: var(--mono); font-size: 12px;
     color: var(--cotton-dim); margin-right: 10px;
   }
   .count b { color: var(--cotton); font-weight: 400; }
 
   .hint {
     position: fixed; bottom: 24px; left: clamp(28px,7vw,96px);
-    font-family: var(--mono); font-size: 10px; letter-spacing: .16em;
-    color: var(--cotton-dim); text-transform: uppercase; z-index: 20;
+    font-family: var(--body); font-size: 13px;
+    color: var(--cotton-dim); z-index: 20;
     transition: opacity .4s ease;
   }
   .hint.gone { opacity: 0; }
@@ -184,7 +181,6 @@
 
 <div class="deck">
 <section class="slide cover" data-i="0">
-  <span class="n">01</span>
   <svg class="mark" viewBox="6 1 20 30" aria-hidden="true">
     <rect x="6" y="6" width="12.4" height="20" fill="#E0A045"/>
         <rect x="18.4" y="6" width="7.6" height="20" fill="#4FA396"/>
@@ -195,15 +191,11 @@
   <p class="meta">Somnia × DreamDEX Event Contracts Hackathon · Shannon testnet</p>
 </section>
 <section class="slide" data-i="1">
-  <span class="n">02</span>
-  <div class="kicker">The problem</div>
   <h2>Every position dies on a timer.</h2>
   <p>DreamDEX runs six window tiers on two assets — sixty seconds through twenty-four hours. Twelve series live at once, each expiring and respawning on schedule.</p>
   <p class="dim">Liquidity has to be re-placed every window, on every series, forever. Nobody does that by hand — and the book shows it: a flat 2.9% spread on every market regardless of tenor, volatility, or moneyness. That is the signature of one naive quoter, not a competitive book.</p>
 </section>
 <section class="slide" data-i="2">
-  <span class="n">03</span>
-  <div class="kicker">What we measured first</div>
   <h2>Does up win more often than the market prices it to?</h2>
   <table>
     <tr><th>Tier</th><th>n</th><th style="text-align:right">Up won</th><th style="text-align:right">z vs fair coin</th></tr>
@@ -218,8 +210,6 @@
   <p class="dim">No. Four hundredths of a standard error from a coin flip, across every settled market on the venue.</p>
 </section>
 <section class="slide" data-i="3">
-  <span class="n">04</span>
-  <div class="kicker">What that decides</div>
   <h2>With a coin flip and a 3% spread, only one side of the trade is positive.</h2>
   <pre>taker  crosses the spread   <b>−1.45%</b> per contract
 maker  collects the spread  <b>+1.45%</b> per fill</pre>
@@ -229,8 +219,6 @@ after 7 days  (672 rolls)   <b>37.7%</b></pre>
   <p class="dim">Zero fees don't save it — the spread is the cost. We cut that product on the evidence and built the other side of the trade instead.</p>
 </section>
 <section class="slide" data-i="4">
-  <span class="n">05</span>
-  <div class="kicker">The mechanism</div>
   <h2>Quote both sides holding <em>nothing</em>.</h2>
   <p>DreamDEX keeps one book with a fill path most venues don't have: two opposite-side <em>buyers</em> cross with no seller at all, and the pool mints a fresh up/down pair from their combined collateral.</p>
   <pre>BUY_YES  @ p        escrows  p         <i>per contract</i>
@@ -240,8 +228,6 @@ pair cost                    <b>1 − s</b></pre>
   <p class="dim">Both legs fill and the vault holds a complete set — worth exactly 1 at settlement whichever side wins. The spread is captured with zero directional exposure, and no inventory was ever required.</p>
 </section>
 <section class="slide" data-i="5">
-  <span class="n">06</span>
-  <div class="kicker">Live on Shannon</div>
   <h2>We quoted inside, and the market tightened.</h2>
   <pre>theirs   0.742 / 0.772     spread 0.030
 ours     <b>0.744 / 0.770</b>     spread 0.026   <i>inside</i>
@@ -255,8 +241,6 @@ spread after   <b>0.030 → 0.025</b>   <i>the incumbent responded</i></pre>
   <p class="dim">Abadi's bid became the best bid on the market. One vault quoting inside made prices better for everyone else trading it — the ecosystem claim as a screenshot, not an assertion.</p>
 </section>
 <section class="slide" data-i="6">
-  <span class="n">07</span>
-  <div class="kicker">Then both legs filled</div>
   <div class="two">
     <div>
       <pre>paid                <b>97.40</b>
@@ -269,14 +253,12 @@ locked in           <b>+2.60</b></pre>
     </div>
     <div>
       <div class="big">0.00</div>
-      <p class="kicker" style="margin:0 0 10px">directional exposure</p>
+      <p class="dim" style="margin:0 0 10px">directional exposure</p>
       <p class="dim" style="font-size:15px">The number a market maker is judged on. The 2.60 isn't a bet that paid — it's the spread, collected.</p>
     </div>
   </div>
 </section>
 <section class="slide" data-i="7">
-  <span class="n">08</span>
-  <div class="kicker">Custody</div>
   <h2>The key that steers the quotes can't move a token.</h2>
   <p>BinaryPool has no operator gate. The DreamDEX team confirmed the only shape that works today is a contract that owns its own orders — which is what Abadi is.</p>
   <table>
@@ -288,8 +270,6 @@ locked in           <b>+2.60</b></pre>
   <p class="dim"><code>settle()</code> is permissionless — proceeds go to the vault, never the caller, and a settled market leaves the live list so redemption has to be pulled. <code>flatten()</code> is operator-only while a market still trades, because cancelling a live quote destroys the spread; open to anyone once it can't.</p>
 </section>
 <section class="slide" data-i="8">
-  <span class="n">09</span>
-  <div class="kicker">What we found for DreamDEX</div>
   <h2>Four assumptions died on contact with the chain.</h2>
   <ul>
     <li><b>Prices scale to the collateral's decimals</b>, not 1e18 — and a wrong scale reverts as <code>PostOnlyWouldCross</code>, sending you to look at spreads instead of units.</li>
@@ -304,8 +284,6 @@ locked in           <b>+2.60</b></pre>
   <p class="dim">All reported back with reproduction steps, alongside what genuinely worked: the Gotchas page, unpruned history, and a dev channel that answered a hard question in under an hour.</p>
 </section>
 <section class="slide" data-i="9">
-  <span class="n">10</span>
-  <div class="kicker">Status</div>
   <h2>One vault. Full lifecycle. Honest about the rest.</h2>
   <table>
     <tr><th>Run against the venue</th><th></th></tr>
@@ -345,7 +323,7 @@ locked in           <b>+2.60</b></pre>
     i = n;
     slides[i].classList.add('on');
     slides[i].scrollTop = 0;
-    bar.style.width = ((i + 1) / slides.length * 100) + '%';
+    bar.style.transform = 'scaleX(' + ((i + 1) / slides.length) + ')';
     count.textContent = String(i + 1).padStart(2, '0');
     prev.disabled = i === 0;
     next.disabled = i === slides.length - 1;

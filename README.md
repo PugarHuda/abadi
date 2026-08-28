@@ -276,6 +276,12 @@ bot skips arming and says so until then. `sweepNative` brings the reserve back o
   browser tests (axe-core WCAG 2.1 AA, Core Web Vitals, touch, every cited transaction
   checked against the explorer); `scripts/attest.ts` says the live address is running
   this source
+- The site passes [Impeccable](https://impeccable.style)'s 59-rule design detector on
+  every rendered page, desktop and mobile, as a CI gate. Its first run found 131 of the
+  defaults AI-built interfaces reach for — 10px tracked-caps labels, eyebrows above
+  headings, monospace as a costume, transitions on `width`, teal text reading as neon
+  — and they are gone. Product truth lives in `PRODUCT.md`; waivers with reasons in
+  `.impeccable/config.json`
 
 **What it cost to get here**
 

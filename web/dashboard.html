@@ -51,17 +51,16 @@
   .home { display: flex; align-items: center; gap: 14px; text-decoration: none; color: inherit; }
   .home svg { height: 52px; width: auto; display: block; flex: none; }
   .gloss {
-    font-family: var(--mono); font-size: 11px; font-weight: 300;
-    letter-spacing: 0.16em; text-transform: uppercase;
+    font-family: var(--body); font-size: 14px; line-height: 1.45;
     color: var(--cotton-dim); text-align: right; max-width: 30ch;
   }
-  .gloss b { color: var(--cotton); font-weight: 400; }
+  .gloss b { color: var(--cotton); font-weight: 500; }
 
   /* ---------- thesis ---------- */
   .thesis {
     font-family: var(--display); font-weight: 600;
     font-size: clamp(21px, 3.2vw, 31px);
-    line-height: 1.25; letter-spacing: -0.02em;
+    line-height: 1.35; letter-spacing: -0.02em;
     margin: 44px 0 8px; max-width: 24ch;
   }
   .thesis em { font-style: normal; color: var(--turmeric); }
@@ -74,13 +73,13 @@
   .live[data-state="unreachable"] .live-err { display: block; }
   .live[data-state="unreachable"] .live-grid, .live[data-state="unreachable"] .live-slots { display: none; }
   .live-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin: 0; }
-  .live-grid dt { font-family: var(--mono); font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--cotton-dim); }
+  .live-grid dt { font-family: var(--body); font-size: 13px; color: var(--cotton-dim); }
   .live-grid dd { margin: 4px 0 0; font-family: var(--mono); font-size: clamp(15px, 2vw, 20px); font-weight: 600; font-variant-numeric: tabular-nums; }
-  .live-grid small { font-size: 10px; font-weight: 300; color: var(--cotton-dim); }
+  .live-grid small { font-size: 12px; font-weight: 300; color: var(--cotton-dim); }
   .live-slots { list-style: none; margin: 16px 0 0; padding: 14px 0 0; border-top: 1px solid var(--ink-line); font-family: var(--mono); font-size: 12px; color: var(--cotton-dim); }
   .live-slots li { padding: 3px 0; }
   .live-slots b { color: var(--turmeric); font-weight: 600; }
-  .live-foot { margin: 14px 0 0; font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--cotton-dim); }
+  .live-foot { margin: 14px 0 0; font-family: var(--body); font-size: 13px; color: var(--cotton-dim); }
   .live[data-state="loading"] [data-live] { color: var(--cotton-dim); }
   @media (max-width: 620px) { .live-grid { grid-template-columns: repeat(2, 1fr); } }
 
@@ -91,22 +90,24 @@
   .ledger-live[data-state="unreachable"] .live-grid, .ledger-live[data-state="unreachable"] .tablewrap { display: none; }
   .ledger-live[data-state="loading"] [data-ledger] { color: var(--cotton-dim); }
   .tablewrap { overflow-x: auto; margin-top: 16px; }
-  table.episodes { font-family: var(--mono); font-size: 11px; white-space: nowrap; }
+  table.episodes { font-family: var(--mono); font-size: 12px; white-space: nowrap; }
   table.episodes th, table.episodes td { padding: 7px 12px 7px 0; }
-  table.episodes td.pos { color: var(--teal); }
+  table.episodes td.pos { color: var(--cotton); }
   table.episodes td.neg { color: var(--turmeric); }
   table.episodes td.open { color: var(--cotton-dim); }
 
+  /* prose never runs the full 1000px: ~68 characters is where the eye stops losing the line */
+  .wrap p, .wrap .sub { max-width: 68ch; }
+
   /* ---------- section frame ---------- */
   .eyebrow {
-    font-family: var(--mono); font-size: 10px; font-weight: 400;
-    letter-spacing: 0.2em; text-transform: uppercase;
-    color: var(--cotton-dim);
-    padding-bottom: 10px; margin: 68px 0 22px;
+    font-family: var(--display); font-size: 21px; font-weight: 600;
+    letter-spacing: -0.015em; color: var(--cotton);
+    padding-bottom: 12px; margin: 68px 0 22px;
     border-bottom: 1px solid var(--ink-line);
     display: flex; justify-content: space-between; gap: 16px;
   }
-  .eyebrow span { color: var(--cotton-dim); }
+  .eyebrow span { font-family: var(--body); font-size: 14px; font-weight: 400; color: var(--cotton-dim); }
 
   /* ---------- the rail: probability is bounded, so show the whole of it ---------- */
   .rail-frame { margin: 30px 0 8px; }
@@ -127,26 +128,26 @@
   .band.ours   { border-color: var(--turmeric); background: rgba(224,160,69,.16); }
   .band b {
     position: absolute; top: -21px; left: 50%; transform: translateX(-50%);
-    font-family: var(--mono); font-size: 10px; font-weight: 400;
+    font-family: var(--mono); font-size: 12px; font-weight: 400;
     letter-spacing: .08em; white-space: nowrap;
   }
   .band.theirs b { color: var(--cotton); }
   .band.ours b   { color: var(--turmeric); top: auto; bottom: -21px; }
   .rail-ends {
     display: flex; justify-content: space-between;
-    font-family: var(--mono); font-size: 10px; color: var(--cotton-dim);
-    letter-spacing: .1em; margin-top: 30px;
+    font-family: var(--mono); font-size: 12px; color: var(--cotton-dim);
+    margin-top: 30px;
   }
   .rail-note { color: var(--cotton-dim); font-size: 14px; max-width: 62ch; margin: 22px 0 0; }
 
   /* ---------- ladder ---------- */
   .ladder { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; margin-top: 34px; }
   .col-head {
-    font-family: var(--mono); font-size: 10px; letter-spacing: .18em;
+    font-family: var(--mono); font-size: 12px;
     text-transform: uppercase; padding: 0 12px 9px;
   }
   .col-head.bid { color: var(--turmeric); }
-  .col-head.ask { color: var(--teal); text-align: right; }
+  .col-head.ask { color: var(--cotton); text-align: right; }
   .lvl {
     display: flex; justify-content: space-between; align-items: center;
     font-family: var(--mono); font-size: 14px;
@@ -169,7 +170,7 @@
   .asks .mine { box-shadow: inset -2px 0 0 var(--turmeric); }
   .mine .px { color: var(--wax); font-weight: 600; }
   .tag {
-    font-family: var(--mono); font-size: 9px; letter-spacing: .16em;
+    font-family: var(--mono); font-size: 12px;
     color: var(--turmeric); margin-left: 10px;
   }
   .asks .tag { margin: 0 10px 0 0; }
@@ -196,7 +197,7 @@
   }
   .zero .l { max-width: 34ch; }
   .zero .l b {
-    display: block; font-family: var(--mono); font-size: 11px;
+    display: block; font-family: var(--mono); font-size: 12px;
     letter-spacing: .18em; text-transform: uppercase; color: var(--turmeric);
     font-weight: 400; margin-bottom: 7px;
   }
@@ -218,14 +219,14 @@
     background: var(--teal);
   }
   .tier .t {
-    font-family: var(--mono); font-size: 10px; color: var(--cotton-dim);
+    font-family: var(--mono); font-size: 12px; color: var(--cotton-dim);
     letter-spacing: .08em; padding-top: 9px;
   }
   .tier .v { font-family: var(--mono); font-size: 12px; color: var(--cotton); }
   .cal-axis {
     display: flex; justify-content: space-between;
-    font-family: var(--mono); font-size: 10px; color: var(--cotton-dim);
-    letter-spacing: .1em; margin-top: 18px;
+    font-family: var(--mono); font-size: 12px; color: var(--cotton-dim);
+    margin-top: 18px;
     border-top: 1px solid var(--ink-line); padding-top: 12px;
   }
 
@@ -242,9 +243,9 @@
 
   .foot {
     margin-top: 76px; padding-top: 22px; border-top: 1px solid var(--ink-line);
-    font-family: var(--mono); font-size: 11px; color: var(--cotton-dim);
+    font-family: var(--mono); font-size: 12px; color: var(--cotton-dim);
     display: flex; justify-content: space-between; gap: 18px; flex-wrap: wrap;
-    letter-spacing: .07em;
+    letter-spacing: 0;
   }
   .foot a { color: var(--cotton-dim); }
 
@@ -286,7 +287,7 @@
   <!-- ============ the rail ============ -->
 
   <!-- ============ live, from the chain ============ -->
-  <div class="eyebrow">Live from the chain <span>read in your browser, no server of ours</span></div>
+  <h2 class="eyebrow">Live from the chain <span>read in your browser, no server of ours</span></h2>
 
   <div class="live" id="live" data-state="loading">
     <p class="live-err" data-live="error"></p>
@@ -304,7 +305,7 @@
     </p>
   </div>
 
-  <div class="eyebrow">Where the market sits <span>ETH-0-27AUG26 · 24h tier</span></div>
+  <h2 class="eyebrow">Where the market sits <span>ETH-0-27AUG26 · 24h tier</span></h2>
 
   <div class="rail-frame">
     <div class="rail">
@@ -324,7 +325,7 @@
   </p>
 
   <!-- ============ ladder ============ -->
-  <div class="eyebrow">The book, as read back <span>after quoting</span></div>
+  <h2 class="eyebrow">The book, as read back <span>after quoting</span></h2>
 
   <div class="ladder">
     <div class="bids">
@@ -363,7 +364,7 @@
   </div>
 
   <!-- ============ track record, live ============ -->
-  <div class="eyebrow">Track record, live from the chain <span>every vault, every episode</span></div>
+  <h2 class="eyebrow">Track record, live from the chain <span>every vault, every episode</span></h2>
 
   <div class="ledger-live" id="ledger" data-state="loading">
     <p class="live-err" data-ledger="error"></p>
@@ -383,7 +384,7 @@
   </div>
 
   <!-- ============ the position ============ -->
-  <div class="eyebrow">What filled <span>both legs taken</span></div>
+  <h2 class="eyebrow">What filled <span>both legs taken</span></h2>
 
   <dl class="ledger">
     <div class="row"><dt>Paid at quote time</dt><dd>97.40 tUSDC</dd></div>
@@ -425,7 +426,7 @@
   </div>
 
   <!-- ============ calibration ============ -->
-  <div class="eyebrow">Why quote instead of predict <span>2,422 settled markets</span></div>
+  <h2 class="eyebrow">Why quote instead of predict <span>2,422 settled markets</span></h2>
 
   <div class="cal">
     <div class="tier"><div class="plot"><div class="bar" style="top:50%; height:1.6%"></div></div>

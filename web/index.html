@@ -50,11 +50,10 @@
     letter-spacing: -0.045em; line-height: 0.9; margin: 0;
   }
   .gloss {
-    font-family: var(--mono); font-size: 11px; font-weight: 300;
-    letter-spacing: 0.16em; text-transform: uppercase;
-    color: var(--cotton-dim); text-align: right; max-width: 32ch;
+    font-family: var(--body); font-size: 14px; line-height: 1.45;
+    color: var(--cotton-dim); text-align: right; max-width: 30ch;
   }
-  .gloss b { color: var(--cotton); font-weight: 400; }
+  .gloss b { color: var(--cotton); font-weight: 500; }
 
   /* ---------- thesis ---------- */
   .hero { margin: 56px 0 0; }
@@ -82,8 +81,7 @@
   .rig-head {
     display: flex; justify-content: space-between; align-items: baseline;
     gap: 16px; flex-wrap: wrap;
-    font-family: var(--mono); font-size: 10px; font-weight: 400;
-    letter-spacing: 0.2em; text-transform: uppercase; color: var(--cotton-dim);
+    font-family: var(--body); font-size: 14px; color: var(--cotton-dim);
     margin-bottom: 26px;
   }
 
@@ -108,8 +106,8 @@
   }
   .ends {
     display: flex; justify-content: space-between;
-    font-family: var(--mono); font-size: 10px; color: var(--cotton-dim);
-    margin-top: 6px; letter-spacing: 0.1em;
+    font-family: var(--mono); font-size: 12px; color: var(--cotton-dim);
+    margin-top: 6px;
   }
 
   .legs { margin: 26px 0 0; }
@@ -118,15 +116,14 @@
     gap: 14px; padding: 7px 0;
     font-family: var(--mono); font-size: 12px;
   }
-  .leg .name { color: var(--cotton-dim); font-size: 10px; letter-spacing: 0.16em; }
+  .leg .name { font-family: var(--body); color: var(--cotton-dim); font-size: 13px; }
   .leg .val { font-weight: 600; font-variant-numeric: tabular-nums; }
   .leg .bar { height: 9px; background: var(--ink); position: relative; overflow: hidden; }
   .leg .bar i { position: absolute; inset: 0 auto 0 0; display: block; }
   .leg.up .val { color: var(--turmeric); }
   .leg.up .bar i { background: var(--turmeric); }
-  .leg.down .val { color: var(--teal); }
+  .leg.down .val { color: var(--cotton); }
   .leg.down .bar i { background: var(--teal); }
-  .anim .leg .bar i, .anim .knob { transition: width .09s linear, left .09s linear; }
 
   .sum {
     display: grid; grid-template-columns: 5.5ch 8ch 1fr; align-items: center;
@@ -134,7 +131,7 @@
     border-top: 1px solid var(--ink-line);
     font-family: var(--mono); font-size: 12px;
   }
-  .sum .name { color: var(--cotton-dim); font-size: 10px; letter-spacing: 0.16em; }
+  .sum .name { font-family: var(--body); color: var(--cotton-dim); font-size: 13px; }
   .sum .val { font-weight: 600; font-size: 15px; font-variant-numeric: tabular-nums; }
   .sum .whole { height: 9px; display: flex; }
   .sum .whole b { display: block; height: 100%; }
@@ -152,49 +149,45 @@
   .live[data-state="unreachable"] .live-err { display: block; }
   .live[data-state="unreachable"] .live-grid, .live[data-state="unreachable"] .live-slots { display: none; }
   .live-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin: 0; }
-  .live-grid dt { font-family: var(--mono); font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--cotton-dim); }
+  .live-grid dt { font-family: var(--body); font-size: 13px; color: var(--cotton-dim); }
   .live-grid dd { margin: 4px 0 0; font-family: var(--mono); font-size: clamp(15px, 2vw, 20px); font-weight: 600; font-variant-numeric: tabular-nums; }
-  .live-grid small { font-size: 10px; font-weight: 300; color: var(--cotton-dim); }
+  .live-grid small { font-size: 12px; font-weight: 300; color: var(--cotton-dim); }
   .live-slots { list-style: none; margin: 16px 0 0; padding: 14px 0 0; border-top: 1px solid var(--ink-line); font-family: var(--mono); font-size: 12px; color: var(--cotton-dim); }
   .live-slots li { padding: 3px 0; }
   .live-slots b { color: var(--turmeric); font-weight: 600; }
-  .live-foot { margin: 14px 0 0; font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--cotton-dim); }
+  .live-foot { margin: 14px 0 0; font-family: var(--body); font-size: 13px; color: var(--cotton-dim); }
   .live[data-state="loading"] [data-live] { color: var(--cotton-dim); }
   @media (max-width: 620px) { .live-grid { grid-template-columns: repeat(2, 1fr); } }
 
   /* ---------- section frame ---------- */
   .eyebrow {
-    font-family: var(--mono); font-size: 10px; font-weight: 400;
-    letter-spacing: 0.2em; text-transform: uppercase;
-    color: var(--cotton-dim);
-    padding-bottom: 10px; margin: 76px 0 22px;
+    font-family: var(--display); font-size: 21px; font-weight: 600;
+    letter-spacing: -0.015em; color: var(--cotton);
+    padding-bottom: 12px; margin: 76px 0 22px;
     border-bottom: 1px solid var(--ink-line);
-    display: flex; justify-content: space-between; gap: 16px;
+    display: flex; justify-content: space-between; align-items: baseline; gap: 16px;
   }
-  .eyebrow span { color: var(--cotton-dim); }
+  .eyebrow span { font-family: var(--body); font-size: 14px; font-weight: 400; color: var(--cotton-dim); }
 
   p.note { max-width: 62ch; color: var(--cotton-dim); }
   p.note b { color: var(--cotton); font-weight: 500; }
 
   /* ---------- the arithmetic ---------- */
   .maths {
-    font-family: var(--mono); font-size: clamp(11px, 1.6vw, 13px);
+    font-family: var(--mono); font-size: clamp(12px, 1.6vw, 13px);
     background: var(--ink-raised); border: 1px solid var(--ink-line);
     padding: 22px clamp(16px, 2.4vw, 26px); margin: 0 0 22px;
     overflow-x: auto; line-height: 2;
   }
   .maths .k { color: var(--cotton-dim); }
   .maths .u { color: var(--turmeric); }
-  .maths .d { color: var(--teal); }
+  .maths .d { color: var(--cotton); font-weight: 600; }
   .maths .r { border-top: 1px solid var(--ink-line); display: block; margin-top: 8px; padding-top: 8px; }
 
   /* ---------- custody ---------- */
   table { width: 100%; border-collapse: collapse; font-size: 15px; }
   th, td { text-align: left; padding: 12px 14px 12px 0; border-bottom: 1px solid var(--ink-line); vertical-align: top; }
-  th {
-    font-family: var(--mono); font-size: 10px; font-weight: 400;
-    letter-spacing: 0.16em; text-transform: uppercase; color: var(--cotton-dim);
-  }
+  th { font-family: var(--body); font-size: 13px; font-weight: 500; color: var(--cotton-dim); }
   td.who { font-family: var(--mono); font-size: 12px; color: var(--cotton); white-space: nowrap; }
   td.cannot { color: var(--cotton-dim); }
   td.cannot b { color: var(--turmeric); font-weight: 500; }
@@ -205,17 +198,17 @@
     display: grid; grid-template-columns: 10ch 1fr auto; gap: 16px; align-items: baseline;
     padding: 15px 0; border-bottom: 1px solid var(--ink-line);
   }
-  .ran .what { font-family: var(--mono); font-size: 12px; color: var(--turmeric); }
+  .ran .what { font-family: var(--mono); font-size: 13px; color: var(--turmeric); }
   .ran .said { color: var(--cotton-dim); font-size: 15px; }
   .ran .said b { color: var(--cotton); font-weight: 500; }
-  .ran .tx { font-family: var(--mono); font-size: 11px; white-space: nowrap; }
+  .ran .tx { font-family: var(--mono); font-size: 12px; white-space: nowrap; }
 
   /* ---------- out ---------- */
   .out { display: flex; flex-wrap: wrap; gap: 12px; margin: 34px 0 0; }
   .out a {
-    font-family: var(--mono); font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase;
+    font-family: var(--body); font-size: 15px; font-weight: 500;
     border: 1px solid var(--ink-line); padding: 13px 18px; text-decoration: none;
-    color: var(--cotton);
+    color: var(--cotton); transition: border-color .15s ease-out, color .15s ease-out;
   }
   .out a:hover { border-color: var(--turmeric); color: var(--turmeric); }
   .out a.lead { border-color: var(--turmeric); color: var(--turmeric); }
@@ -223,7 +216,7 @@
 
   .foot {
     margin-top: 64px; padding-top: 22px; border-top: 1px solid var(--ink-line);
-    font-family: var(--mono); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;
+    font-family: var(--mono); font-size: 12px;
     color: var(--cotton-dim);
     display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap;
   }
@@ -236,7 +229,7 @@
     .ran li { grid-template-columns: 1fr; gap: 4px; }
   }
   @media (prefers-reduced-motion: reduce) {
-    .anim .leg .bar i, .anim .knob { transition: none; }
+    .out a { transition: none; }
   }
 </style>
 
@@ -265,8 +258,8 @@
   <!-- ============ the instrument ============ -->
   <div class="rig">
     <div class="rig-head">
-      <span>Drag the price &middot; or use the arrow keys</span>
-      <span>Up &plus; Down</span>
+      <span>Drag the price, or use the arrow keys.</span>
+      <span>Up + Down</span>
     </div>
 
     <div class="track" id="track" role="slider" tabindex="0"
@@ -303,7 +296,7 @@
 
 
   <!-- ============ live, from the chain ============ -->
-  <div class="eyebrow">Live from the chain <span>read in your browser, no server of ours</span></div>
+  <h2 class="eyebrow">Live from the chain <span>read in your browser, no server of ours</span></h2>
 
   <div class="live" id="live" data-state="loading">
     <p class="live-err" data-live="error"></p>
@@ -322,7 +315,7 @@
   </div>
 
   <!-- ============ the trade ============ -->
-  <div class="eyebrow">Where the money comes from <span>zero inventory</span></div>
+  <h2 class="eyebrow">Where the money comes from <span>zero inventory</span></h2>
 
   <div class="maths">
     <span class="k">buy</span> <span class="u">UP</span>  <span class="k">at</span> p<br>
@@ -338,7 +331,7 @@
   </p>
 
   <!-- ============ custody ============ -->
-  <div class="eyebrow">Who can touch what <span>non-custodial</span></div>
+  <h2 class="eyebrow">Who can touch what <span>non-custodial</span></h2>
 
   <table>
     <tr><th>Actor</th><th>Can</th><th>Cannot</th></tr>
@@ -365,7 +358,7 @@
   </table>
 
   <!-- ============ what ran ============ -->
-  <div class="eyebrow">What has actually run <span>Shannon testnet</span></div>
+  <h2 class="eyebrow">What has actually run <span>Shannon testnet</span></h2>
 
   <ul class="ran">
     <li>
@@ -391,7 +384,7 @@
   </ul>
 
   <!-- ============ the honest part ============ -->
-  <div class="eyebrow">What this is not <span>yet</span></div>
+  <h2 class="eyebrow">What this is not <span>yet</span></h2>
 
   <p class="note">
     A handful of fills proves the mechanism, not an edge. The real risk a maker carries is
