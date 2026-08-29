@@ -12,9 +12,28 @@
  *
  * Run: node scripts/ledger.ts            (prints, and writes docs/evidence/ledger-<date>.md)
  */
-import { decodeEventLog, parseAbi } from "viem";
+import { createPublicClient, decodeEventLog, http, parseAbi } from "viem";
 import { readFileSync, writeFileSync } from "node:fs";
-import { PRICE_ONE } from "./lib/somnia.ts";
+import { PRICE_ONE, RPC, addresses, shannon } from "./lib/somnia.ts";
+
+const MODULE_ABI = parseAbi([
+  "function markets(bytes32) view returns (uint256,uint8,uint8,address,uint32,bytes32,address,address,address,address,uint256,uint256,uint64,uint64)",
+]);
+const pub = createPublicClient({ chain: shannon, transport: http(RPC) });
+
+/** Window length in seconds, read from the module. The events do not carry it. */
+const tierCache = new Map<string, number>();
+async function tierOf(marketId: string): Promise<number> {
+  const k = marketId.toLowerCase();
+  if (tierCache.has(k)) return tierCache.get(k)!;
+  try {
+    const rec: any = await pub.readContract({ address: addresses.binaryModule as `0x${string}`, abi: MODULE_ABI, functionName: "markets", args: [marketId as `0x${string}`] });
+    const t = Number(rec[13]) - Number(rec[12]);
+    tierCache.set(k, t);
+    return t;
+  } catch { return 0; }
+}
+const tierName = (t: number) => (t >= 86400 ? "24h" : t >= 14400 ? "4h" : t >= 3600 ? "1h" : t >= 900 ? "15m" : t > 0 ? t + "s" : "?");
 
 const EXPLORER = "https://shannon-explorer.somnia.network/api/v2";
 
@@ -186,6 +205,29 @@ async function main() {
       `${px(ep.bid)} / ${px(ep.ask)} | ${usd(ep.basis)} | ${usd(ep.pairsMerged)} | ${usd(ep.returned)} | ` +
       `${usd(ep.redeemed)}${ep.voided ? " (void)" : ""} | ${ep.closedBy}${ep.cancelled ? "+cancel" : ""} | ${result} |`,
     );
+  }
+
+  // ---- by tier: where the adverse fills live is the number the bot's knobs are tuned on
+  const byTier = new Map<string, { n: number; complete: number; oneSided: number; pnl: bigint; basis: bigint }>();
+  for (const ep of all) {
+    const t = tierName(await tierOf(ep.marketId));
+    const row = byTier.get(t) ?? { n: 0, complete: 0, oneSided: 0, pnl: 0n, basis: 0n };
+    const cash = ep.returned + ep.redeemed;
+    const isComplete = ep.pairsMerged === ep.size || (ep.closedBy === "settle" && ep.redeemed === ep.size);
+    row.n++;
+    if (ep.closedBy !== "open" && !(ep.closedBy === "cancel" && cash === 0n)) {
+      if (isComplete) { row.complete++; row.pnl += cash - ep.basis; row.basis += ep.basis; } else row.oneSided++;
+    }
+    byTier.set(t, row);
+  }
+  say();
+  say("## By window length");
+  say();
+  say("| tier | episodes | complete | one-sided | adverse | realised | on basis |");
+  say("|---|---|---|---|---|---|---|");
+  for (const [t, r] of [...byTier.entries()].sort((a, b) => a[0].localeCompare(b[0]))) {
+    const filled = r.complete + r.oneSided;
+    say(`| ${t} | ${r.n} | ${r.complete} | ${r.oneSided} | ${filled ? ((r.oneSided / filled) * 100).toFixed(0) + "%" : "—"} | ${r.pnl >= 0n ? "+" : ""}${usd(r.pnl)} | ${usd(r.basis)} |`);
   }
 
   say();

@@ -32,6 +32,9 @@
  *                       being wrong sometimes, not for standing in front of a move.
  *       MOMENTUM_WAIT=20  seconds between the two book samples
  *       SHORT_SIZE=0.5  size multiplier on the 900s tier, where a move is most of the window
+ *       MAX_TIER=14400  longest window to quote, seconds. The ledger by tier: 15m and 4h
+ *                       windows 0% adverse, 1h 19%, 24h 25% — a quote resting for a day
+ *                       is a quote standing in front of every move that day
  *       EDGE=0.08       do not quote a window priced under EDGE or over 1-EDGE: the spread
  *                       there is a few ticks wide, one leg is nearly free and the other
  *                       is nearly the whole dollar, and the only thing that can happen
@@ -67,6 +70,7 @@ const VAULT_ABI = parseAbi([
 const MODULE_ABI = parseAbi([
   "function markets(bytes32) view returns (uint256,uint8,uint8,address,uint32,bytes32,address,address,address,address,uint256,uint256,uint64,uint64)",
   "function finalizeMarket(bytes32 marketId)",
+  "function pokeOracle(uint256 oracleQuestionId)",
 ]);
 const MARKET_ABI = parseAbi(["function isResolved() view returns (bool)", "function isVoided() view returns (bool)"]);
 const ERC6909_ABI = parseAbi(["function balanceOf(address,uint256) view returns (uint256)"]);
@@ -84,6 +88,7 @@ const MOMENTUM_TICKS = BigInt(process.env.MOMENTUM_TICKS ?? 3);
 const MOMENTUM_WAIT = Number(process.env.MOMENTUM_WAIT ?? 20);
 const SHORT_SIZE = Number(process.env.SHORT_SIZE ?? 0.5);
 const EDGE = Number(process.env.EDGE ?? 0.08);
+const MAX_TIER = Number(process.env.MAX_TIER ?? 14400);
 
 /** Contracts per side for a window: smaller where a move eats most of the window. */
 function sizeFor(intervalSec: number): bigint {
@@ -127,6 +132,7 @@ async function marketState(marketId: `0x${string}`) {
   // byte at [1] is not a status and reading it as one made the bot try to finalize a
   // market with eight hours still to run.
   const market = rec[8] as `0x${string}`;
+  const questionId = rec[0] as bigint;
   const tradingStart = Number(rec[12]);
   const expiry = Number(rec[13]);
   const now = Date.now() / 1000;
@@ -135,7 +141,7 @@ async function marketState(marketId: `0x${string}`) {
     pub.readContract({ address: market, abi: MARKET_ABI, functionName: "isResolved" }),
     pub.readContract({ address: market, abi: MARKET_ABI, functionName: "isVoided" }),
   ]);
-  return { status, market, expiry, resolved: resolved as boolean, voided: voided as boolean };
+  return { status, market, expiry, questionId, resolved: resolved as boolean, voided: voided as boolean };
 }
 
 async function held(yesId: bigint, noId: bigint) {
@@ -206,8 +212,17 @@ async function cycle(n: number, bySymbol: Map<string, any>) {
       continue;
     }
     if (m.status !== TRADING || m.expiry <= Date.now() / 1000) {
-      // Expired and not resolved: nobody has poked the venue yet. Anyone may.
-      await send(`finalize ${tag}`, "finalizeMarket", [s.marketId], addresses.binaryModule as `0x${string}`, MODULE_ABI);
+      // Expired and not resolved. Nothing can fill now, so any leg still resting is
+      // escrow doing nothing: pull it. cancelQuote returns the resting legs' escrow and
+      // keeps the slot open if it holds tokens, which settle() redeems later.
+      if (s.yesOrderId !== 0n || s.noOrderId !== 0n) {
+        await send(`pull     ${tag}`, "cancelQuote", [BigInt(i)]);
+      }
+      // Then ask the oracle. finalizeMarket reverts MarketNotSettled here; pokeOracle
+      // is the permissionless entry that asks the adapter to resolve. Two 4h windows sat
+      // unresolved for nine hours; the poke was accepted and resolved nothing (SDK
+      // feedback #14), so this is a nudge, not a guarantee. Settle follows when it lands.
+      await send(`poke     ${tag}`, "pokeOracle", [m.questionId], addresses.binaryModule as `0x${string}`, MODULE_ABI);
       continue;
     }
 
@@ -251,7 +266,7 @@ async function cycle(n: number, bySymbol: Map<string, any>) {
   const minHalf = await read<bigint>("minHalfSpread");
   const all = Object.values(await retry("loadMarkets", () => ex.loadMarkets(true)));
   const cands = candidates(all, { shortest: SHORTEST }).filter(
-    (c) => !quotedMarkets.has(c.marketId.toLowerCase()) && hasHeadroom(c),
+    (c) => !quotedMarkets.has(c.marketId.toLowerCase()) && hasHeadroom(c) && c.intervalSec <= MAX_TIER,
   );
 
   // Two looks at every candidate's book, MOMENTUM_WAIT seconds apart. A mid that moved

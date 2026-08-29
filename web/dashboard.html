@@ -90,6 +90,26 @@
   .ledger-live[data-state="unreachable"] .live-grid, .ledger-live[data-state="unreachable"] .tablewrap { display: none; }
   .ledger-live[data-state="loading"] [data-ledger] { color: var(--cotton-dim); }
   .tablewrap { overflow-x: auto; margin-top: 16px; }
+  /* ---------- the one chart: a single series, so no legend; the caption names it ---------- */
+  .chart { margin: 18px 0 0; }
+  .chart figcaption { font-size: 14px; color: var(--cotton-dim); margin: 0 0 8px; display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .chart figcaption span { font-family: var(--mono); font-size: 12px; }
+  .chart-plot { position: relative; height: 220px; }
+  .chart-plot svg { width: 100%; height: 100%; display: block; }
+  .chart .grid { stroke: var(--ink-line); stroke-width: 1; }
+  .chart .axis { fill: var(--cotton-dim); font-family: var(--mono); font-size: 11px; }
+  .chart .line { fill: none; stroke: var(--turmeric); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+  .chart .wash { fill: var(--turmeric); fill-opacity: .1; }
+  .chart .end { fill: var(--turmeric); stroke: var(--ink-raised); stroke-width: 2; vector-effect: non-scaling-stroke; }
+  .chart .endlabel { fill: var(--cotton); font-family: var(--mono); font-size: 12px; font-weight: 600; }
+  .chart .dot { fill: var(--turmeric); stroke: var(--ink-raised); stroke-width: 2; vector-effect: non-scaling-stroke; }
+  .chart .dot.neg { fill: var(--cotton-dim); }
+  .xhair { position: absolute; top: 0; bottom: 22px; width: 1px; background: var(--cotton-dim); pointer-events: none; }
+  .xhair[hidden] { display: none; }
+  .tip { position: absolute; top: 8px; background: var(--ink); border: 1px solid var(--ink-line); padding: 8px 10px; font-size: 13px; pointer-events: none; max-width: 260px; }
+  .tip b { font-family: var(--mono); font-size: 15px; display: block; }
+  .tip[hidden] { display: none; }
+  .chart[data-state="loading"] .chart-plot { opacity: .5; }
   table.episodes { font-family: var(--mono); font-size: 12px; white-space: nowrap; }
   table.episodes th, table.episodes td { padding: 7px 12px 7px 0; }
   table.episodes td.pos { color: var(--cotton); }
@@ -387,6 +407,14 @@
       <div><dt>One-sided</dt><dd data-ledger="onesided">…</dd></div>
       <div><dt>Realised</dt><dd><span data-ledger="pnl">…</span> <small>tUSDC</small></dd></div>
     </dl>
+    <figure class="chart" id="pnlChart" aria-labelledby="pnlTitle" data-state="loading">
+      <figcaption id="pnlTitle">Realised spread, cumulative, tUSDC <span data-ledger="last"></span></figcaption>
+      <div class="chart-plot">
+        <svg viewBox="0 0 720 220" preserveAspectRatio="none" role="img" aria-label="Cumulative realised spread over time"></svg>
+        <div class="xhair" hidden></div>
+        <div class="tip" role="status" hidden></div>
+      </div>
+    </figure>
     <div class="tablewrap">
       <table class="episodes">
         <thead><tr><th>vault</th><th>market</th><th>quoted</th><th>bid / ask</th><th>basis</th><th>back</th><th>closed by</th><th>result</th></tr></thead>

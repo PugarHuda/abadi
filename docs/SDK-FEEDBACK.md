@@ -416,6 +416,43 @@ explorer's internal-transaction view of the cancel.
 
 ---
 
+## 14. Windows can sit unresolved for hours, and the keeper entries do not resolve them
+
+**Cost: two slots of capital parked for a night.**
+
+`ETH-0-28AUG26-1600` and `BTC-0-28AUG26-1600` (4h tier, market ids `…c08f` / `…c090`)
+expired at 16:00 UTC on the 28th. Nine hours later `isResolved()` was still false on
+both. The documented permissionless keeper entries were tried in turn:
+
+```
+finalizeMarket(id)              ->  MarketNotSettled()           (0x1ff09bee)
+pokeOracle(questionId 45975)    ->  success, one event 0xff429c07 from the module,
+pokeOracle(questionId 45976)    ->  success, same — and isResolved() still false a
+                                    minute and an hour later
+```
+
+So `finalizeMarket` needs a resolution that only the oracle path can produce, and
+`pokeOracle` accepts the call, emits an event whose signature is not in the SDK's
+ABIs, and resolves nothing. Whatever the adapter is waiting for is not something an
+integrator can supply or see. Every other window we quoted resolved within a minute of
+expiry; these two are the exception, and the only way to learn that is to hold a
+position in one.
+
+**Suggestions**
+
+- Say what `pokeOracle` does when the adapter has no answer yet, and emit something a
+  keeper can read — `OracleNotAnswered` is documented for the all-fail case, but the
+  partial case is silent.
+- Put the event in the ABI. `0xff429c07` is emitted by the module and appears nowhere
+  in `@somnia-chain/markets-sdk@0.28.1`.
+- A view — `resolvable(marketId)` or similar — so a keeper can tell "not yet" from
+  "never" without spending gas to find out.
+
+**How we found it:** the bot's `finalize` line rejected 74 times overnight in
+`docs/evidence/keeper-local.log`, then `cast call` on each entry in turn.
+
+---
+
 ## What was genuinely good
 
 Not padding — these saved us real time:

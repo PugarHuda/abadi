@@ -263,8 +263,10 @@ bot skips arming and says so until then. `sweepNative` brings the reserve back o
   every candidate's book is read twice, twenty seconds apart, and a window whose mid moved
   three ticks in between is not quoted — every adverse fill in the ledger came from a
   trending hour, and one adverse fill costs what twenty complete sets earn. Size halves
-  on the 900s tier, and windows priced under 0.08 or over 0.92 are left alone — the only
-  thing that can happen to the expensive leg there is the tail event. It settles what resolved,
+  on the 900s tier, windows priced under 0.08 or over 0.92 are left alone — the only
+  thing that can happen to the expensive leg there is the tail event — and the 24h tier
+  is not quoted at all: `scripts/ledger.ts` now breaks the record down by window length,
+  and 15m and 4h windows ran 0% adverse while 24h ran 25%. It settles what resolved,
   finalizes what expired through the venue's permissionless keeper entry, pulls and
   requotes an unfilled quote the book has walked away from, flattens a completed one,
   quotes into idle slots, and arms a wake-up at each window's expiry so the chain closes
@@ -290,7 +292,9 @@ bot skips arming and says so until then. `sweepNative` brings the reserve back o
 - The site reads the vault live in the visitor's browser — four `eth_call`s to the public
   RPC, no server of ours, and an explicit failure state rather than a stale number. The
   dashboard also renders the whole track record from the explorer's log API, decoded in
-  the browser against the vault's ABI, so the numbers above can be checked without
+  the browser against the vault's ABI — as a table, as one cumulative line with a
+  crosshair readout, and as a heartbeat ("last activity 12 min ago") that would be the
+  first thing to change if a keeper died — so the numbers above can be checked without
   trusting this file
 - 76 unit tests including two fuzzed properties and five stateful invariants, 4 fork tests against the venue, 36
   browser tests (axe-core WCAG 2.1 AA, Core Web Vitals, touch, every cited transaction
