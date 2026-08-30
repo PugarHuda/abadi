@@ -247,10 +247,12 @@ bot skips arming and says so until then. `sweepNative` brings the reserve back o
 **Run against the venue, on Shannon**
 
 - Quoting inside the incumbent's spread, top of book, both legs filling into complete sets
-- `settle()` and `flatten()`, dozens of times — **37 episodes, 28 complete sets,
-  +66.60 tUSDC on 2,733.40 of basis (2.44%), 7% of filled quotes adverse** at the last
-  ledger run, every one read back off the chain by `scripts/ledger.ts` rather than
-  remembered, and growing every fifteen minutes
+- `settle()` and `flatten()`, dozens of times — **83 episodes across 9 vaults, 61
+  complete sets, +133.85 tUSDC on 5,641.15 of basis (2.37%), 22% of filled quotes
+  adverse** at the last ledger run, every one read back off the chain by
+  `scripts/ledger.ts` rather than remembered, and growing every fifteen minutes. By
+  window length the record is not uniform: 4h ran 7% adverse over 30 episodes and 15m
+  0% over 6, while 1h ran 36% over 37 and 24h 25% over 10
 - **The vault wakes itself up.** A 900s window was quoted, expired, resolved, and the
   reactivity precompile called the vault at the armed second; the vault redeemed its own
   position and freed the slot with nobody calling it. Tx `0x66c0e1ec…`, block 472752861.
@@ -279,7 +281,7 @@ bot skips arming and says so until then. `sweepNative` brings the reserve back o
   on the 900s tier, windows priced under 0.08 or over 0.92 are left alone — the only
   thing that can happen to the expensive leg there is the tail event — and the 24h tier
   is not quoted at all: `scripts/ledger.ts` now breaks the record down by window length,
-  and 15m and 4h windows ran 0% adverse while 24h ran 25%. It settles what resolved,
+  and 15m and 4h windows run far cleaner than 1h and 24h. It settles what resolved,
   pokes the oracle on what expired and voids it through the market's own escape hatch once
   the oracle is out of time, pulls and
   requotes an unfilled quote the book has walked away from, flattens a completed one,
