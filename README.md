@@ -208,7 +208,7 @@ direction — `flatten` merges what it can and leaves the slot open for `settle(
 ```bash
 npm install
 forge install foundry-rs/forge-std   # forge-std is not vendored
-forge test                 # 76 tests, no network needed
+forge test                 # 78 tests, no network needed
 
 node scripts/probe.ts      # live markets and spreads
 node scripts/history.ts    # settled-market calibration

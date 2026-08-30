@@ -291,7 +291,7 @@ locked in           <b>+2.60</b></pre>
     <tr><td>Both legs filled into a complete set</td><td class="num tick">✓</td></tr>
     <tr><td><code>settle()</code> — redeemed 100.00 on a 97.60 basis</td><td class="num tick">✓</td></tr>
     <tr><td><code>flatten()</code> — merged early, 671s before expiry</td><td class="num tick">✓</td></tr>
-    <tr><td>76 tests, five stateful invariants</td><td class="num tick">✓</td></tr>
+    <tr><td>78 tests, five stateful invariants</td><td class="num tick">✓</td></tr>
     <tr><td>Keeper-free wake-up — the chain settled a window for us</td><td class="num tick">✓</td></tr>
   </table>
   <p><b>A handful of fills proves the mechanism, not the edge.</b> Adverse selection is the real risk a maker carries, and we met it twice in one afternoon — a leg taken while the market walked away from the other. NAV marks that leg at zero, so the loss lands on us and not on whoever deposits next. Measuring the frequency needs many quotes across many windows. The bot and the ledger exist so that number grows without anyone having to trust it.</p>

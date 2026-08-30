@@ -10,7 +10,7 @@
  * for the product: the page's own encoders build the calldata, and the test compares
  * it byte for byte against the ABI encoding written out by hand.
  */
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
 
 const BASE = process.env.BASE ?? "https://abadi-wheat.vercel.app";
 const ACCOUNT = "0x39d2bae5eaeda9283535ddc98f1991c81ed5cd7e";
@@ -41,6 +41,29 @@ const STUB_PROVIDER = `
     };
   })();
 `;
+
+/**
+ * The live vault has exactly one depositor, and it is `ACCOUNT` — so the app's
+ * last-share guard disables "Redeem all" whenever a slot is open, which the bot keeps
+ * true nearly all the time. That guard is the product working; it also made this test
+ * depend on whether the vault happened to be idle, and it went red for good the day the
+ * bot started holding three slots continuously.
+ *
+ * So exactly one read is answered differently: `totalSupply()`, with a number far above
+ * any one balance, which makes this account not the last holder. Nothing else is
+ * touched — the shares, the worth, the NAV and the calldata under test are all still
+ * the live chain and the page's own encoders.
+ */
+async function notTheLastHolder(page: Page) {
+  const TOTAL_SUPPLY = "0x18160ddd";
+  await page.route("**/*", async (route) => {
+    const body = route.request().postData();
+    if (!body || !body.includes(TOTAL_SUPPLY)) return route.continue();
+    const res = await route.fetch();
+    const json = await res.json();
+    await route.fulfill({ response: res, json: { ...json, result: "0x" + (10n ** 24n).toString(16).padStart(64, "0") } });
+  });
+}
 
 test.describe("app without a wallet", () => {
   test("reads the vault live and says plainly there is no wallet", async ({ page }) => {
@@ -134,6 +157,7 @@ test.describe("app with a wallet", () => {
   });
 
   test("redeem all asks twice and shows what it will do", async ({ page }) => {
+    await notTheLastHolder(page);
     await page.goto(BASE + "/app", { waitUntil: "networkidle" });
     await page.locator("#connect").click();
     await expect.poll(async () => page.locator("#worth").textContent(), { timeout: 20000 }).toMatch(/^\d/);
