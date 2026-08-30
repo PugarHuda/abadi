@@ -4,8 +4,10 @@
  * Every cycle it does, in order, the things a human operator did by hand on the 27th:
  *
  *   1. settle    any slot whose market has resolved — permissionless, proceeds to the vault
- *   2. finalize  any slot whose market has expired but not resolved, through the venue's
- *                own permissionless keeper entry, so the next cycle can settle it
+ *   2. free      any slot whose market has expired but not resolved: poke the oracle
+ *                while it still has time, and once that time is up void the window
+ *                through the market's own escape hatch, then finalize and settle — so
+ *                capital never waits on an oracle that went quiet
  *   3. flatten   any slot holding a complete set under a quote the book has walked away
  *                from — the set is worth exactly its size at any price, so leaving it
  *                parked until expiry earns nothing
@@ -71,8 +73,20 @@ const MODULE_ABI = parseAbi([
   "function markets(bytes32) view returns (uint256,uint8,uint8,address,uint32,bytes32,address,address,address,address,uint256,uint256,uint64,uint64)",
   "function finalizeMarket(bytes32 marketId)",
   "function pokeOracle(uint256 oracleQuestionId)",
+  // voidExpired flips the market straight to Voided, so the oracle adapter's onResolved
+  // never fires and the hub's earmark is never released. syncSettlement is the
+  // permissionless nudge that does it, and finalizeMarket then moves the pool's backing
+  // into settlement. Without both, `settle` finds nothing to redeem.
+  "function syncSettlement(bytes32 marketId)",
 ]);
-const MARKET_ABI = parseAbi(["function isResolved() view returns (bool)", "function isVoided() view returns (bool)"]);
+const MARKET_ABI = parseAbi([
+  "function isResolved() view returns (bool)",
+  "function isVoided() view returns (bool)",
+  // Seconds after expiry the oracle still has to answer. `expiry + settlementWindow` is
+  // the instant voidExpired() opens.
+  "function settlementWindow() view returns (uint64)",
+  "function voidExpired()",
+]);
 const ERC6909_ABI = parseAbi(["function balanceOf(address,uint256) view returns (uint256)"]);
 
 const TRADING = 1;
@@ -144,6 +158,17 @@ async function marketState(marketId: `0x${string}`) {
   return { status, market, expiry, questionId, resolved: resolved as boolean, voided: voided as boolean };
 }
 
+/** Seconds the oracle gets after expiry before `voidExpired` opens. Fixed per market. */
+const windowCache = new Map<string, bigint>();
+async function settlementWindow(market: `0x${string}`) {
+  let w = windowCache.get(market);
+  if (w === undefined) {
+    w = (await pub.readContract({ address: market, abi: MARKET_ABI, functionName: "settlementWindow" })) as bigint;
+    windowCache.set(market, w);
+  }
+  return w;
+}
+
 async function held(yesId: bigint, noId: bigint) {
   const [yes, no] = await Promise.all(
     [yesId, noId].map((id) =>
@@ -212,17 +237,28 @@ async function cycle(n: number, bySymbol: Map<string, any>) {
       continue;
     }
     if (m.status !== TRADING || m.expiry <= Date.now() / 1000) {
-      // Expired and not resolved. Nothing can fill now, so any leg still resting is
-      // escrow doing nothing: pull it. cancelQuote returns the resting legs' escrow and
-      // keeps the slot open if it holds tokens, which settle() redeems later.
-      if (s.yesOrderId !== 0n || s.noOrderId !== 0n) {
-        await send(`pull     ${tag}`, "cancelQuote", [BigInt(i)]);
+      // Expired and not resolved. There is no cancel here: past expiry the pool refuses
+      // every write to its book — cancelOrder, cancelOrders, cancelExpiredOrders and
+      // sweepExpiredAtLevel all revert 0x8afbce93, an error the SDK's generated table
+      // cannot name (SDK feedback #15). The previous version of this branch called
+      // cancelQuote anyway and logged its rejection every fifteen minutes for two days
+      // while 196 of escrow sat behind it. Escrow on an expired window comes back one
+      // way only: the market becomes terminal, and settle redeems.
+      //
+      // pokeOracle is the permissionless retry and the first thing to try, but it is a
+      // nudge, not a guarantee — it resolved nothing on those two windows in two days
+      // (SDK feedback #14). The market itself carries the escape hatch: once
+      // `expiry + settlementWindow` has passed, voidExpired() flips it Voided without
+      // the oracle and every holder is made whole at what they put in. Below that gate,
+      // poke and wait; above it, stop poking and take the hatch.
+      const gate = m.expiry + Number(await settlementWindow(m.market));
+      if (Date.now() / 1000 < gate) {
+        await send(`poke     ${tag}`, "pokeOracle", [m.questionId], addresses.binaryModule as `0x${string}`, MODULE_ABI);
+      } else if (await send(`void     ${tag}`, "voidExpired", [], m.market, MARKET_ABI)) {
+        await send(`sync     ${tag}`, "syncSettlement", [s.marketId], addresses.binaryModule as `0x${string}`, MODULE_ABI);
+        await send(`final    ${tag}`, "finalizeMarket", [s.marketId], addresses.binaryModule as `0x${string}`, MODULE_ABI);
+        if (await send(`settle   ${tag}`, "settle", [BigInt(i)])) active--;
       }
-      // Then ask the oracle. finalizeMarket reverts MarketNotSettled here; pokeOracle
-      // is the permissionless entry that asks the adapter to resolve. Two 4h windows sat
-      // unresolved for nine hours; the poke was accepted and resolved nothing (SDK
-      // feedback #14), so this is a nudge, not a guarantee. Settle follows when it lands.
-      await send(`poke     ${tag}`, "pokeOracle", [m.questionId], addresses.binaryModule as `0x${string}`, MODULE_ABI);
       continue;
     }
 
@@ -327,7 +363,13 @@ async function cycle(n: number, bySymbol: Map<string, any>) {
         quotedMarkets.add(c.marketId.toLowerCase());
         idleLeft -= p.escrow;
         active++;
-        await armAt(c.expiry + 45);
+        // Wake the vault AFTER the oracle's window has closed, not 45s after the market's.
+        // At expiry + 45 the market is not resolved yet and not yet voidable either, and
+        // the pool has already frozen its book, so the sweep arrived with nothing it could
+        // do and quietly did nothing. One second past `expiry + settlementWindow` the
+        // market is either resolved — settle — or provably abandoned — void, then settle.
+        const market = (await marketState(c.marketId)).market;
+        await armAt(c.expiry + Number(await settlementWindow(market)) + 15);
         break;
       }
     }

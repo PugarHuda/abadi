@@ -453,6 +453,84 @@ position in one.
 
 ---
 
+**Resolved, 2026-08-30 — by us, not by the oracle.** Both windows were still unresolved
+two days later. The answer was `BinaryMarket.voidExpired()`, which had been callable
+since `expiry + settlementWindow` — **300 seconds** after expiry, so it had been open the
+entire two days while `pokeOracle` was answering "success" every fifteen minutes.
+Nothing in the module's ABI comments, which is where we were looking, points at it: the
+market carries the escape hatch, and the module carries the keeper entries. See issue 15;
+the suggestions above still stand, and `resolvable(marketId)` would have been the view
+that made this a five-minute problem.
+
+---
+
+## 15. A pool freezes its whole book at expiry, including the drains documented as the way out
+
+**Cost: 196.00 tUSDC frozen for two days, plus every exit path in our vault silently
+bricked in the same window.**
+
+Two 4h windows (`…c08f` / `…c090`, issue 14) expired with our legs resting. Every cancel
+the venue offers, simulated from the order owner's own address, answered the same:
+
+```
+cancelOrder(id)                     0x8afbce93
+cancelOrders([ids])                 0x8afbce93
+cancelExpiredOrders([ids])          0x8afbce93
+sweepExpiredAtLevel(isBid,px,5)     0x8afbce93
+```
+
+The last two are the ones `binaryPoolWriteAbi` documents as *"Permissionless keeper
+drains for the resting book (inherited from the OrderBook base, callable by anyone on a
+binary pool). Both return locked escrow to each cleaned order's owner and are
+best-effort (skip non-expired / stale entries rather than reverting)."* They are not
+best-effort here; they revert like the rest.
+
+We measured the boundary on a fork, against a live 24h window (expiry 1788134400,
+`settlementWindow` 300), cancelling as the order's owner:
+
+| t − expiry | `cancelOrder` | `voidExpired` |
+|---|---|---|
+| −5   | ok           | `0xe114c921` |
+| +1   | `0x8afbce93` | `0xe114c921` |
+| +295 | `0x8afbce93` | `0xe114c921` |
+| +315 | `0x8afbce93` | **ok** — and `cancelOrder` succeeds again immediately after |
+
+So the freeze begins at expiry, lasts through the settlement window, and lifts when the
+market goes terminal. That is a coherent rule and probably the right one. What cost us
+the two days is that it is written down nowhere and cannot be read from the chain:
+
+`0x8afbce93` decodes to nothing. It is not in 4byte. The pool implementation
+(`0x82A1Fcda…`) is unverified on the Shannon explorer. And it is not among the 418
+entries in `contractErrorsAbi`, whose own header explains why — the table is generated
+from `smart-contracts/src/**`, and `OrderBook` lives in the dex submodule under `lib/`.
+`readsAbi.ts` already hand-declares `IncorrectOrder()` and `orderBookBatchWriteAbi`
+already hand-declares `EmptyBatch()` for exactly this reason, so the gap is known; this
+is a third one, and it is the one that costs capital.
+
+This is also, we think, the unnamed staticcall gate behind issue 13.
+
+**Suggestions**
+
+- Add the OrderBook base's errors to the generated table, or hand-declare them the way
+  `IncorrectOrder` and `EmptyBatch` already are. A keeper cannot tell "this order is
+  already gone" from "this book is closed" without them, and those two need opposite
+  responses.
+- Say it next to `cancelOrder`: the book is closed from expiry until the market is
+  terminal. One sentence would have saved this entirely.
+- Either make `cancelExpiredOrders` / `sweepExpiredAtLevel` work in that window — it is
+  precisely the window in which orders are expired and their escrow is doing nothing —
+  or correct their ABI comments, which currently promise the opposite.
+- Cross-reference `BinaryMarket.voidExpired()` from the module's keeper entries. Someone
+  holding escrow in an abandoned window looks at `finalizeMarket` and `pokeOracle`,
+  because that is where the permissionless keeper surface is documented.
+
+**How we found it:** `CancelFailed(orderId, 0x8afbce93)` in
+`docs/evidence/keeper-local.log`, then simulating all four cancel paths at the pool, then
+a fork test warping across the boundary. Full record in
+[`docs/evidence/dead-oracle-2026-08-30.md`](evidence/dead-oracle-2026-08-30.md).
+
+---
+
 ## What was genuinely good
 
 Not padding — these saved us real time:
@@ -487,3 +565,4 @@ Everything above is backed by recorded output in `docs/evidence/`:
 | `stale-deployment-2026-08-27.md` | issue 7 — the isolation that produced `InsufficientPermission` |
 | `one-sided-fill-2026-08-27.md` | issue 8 — all three exits reverting on a live slot |
 | `first-settle-2026-08-27.md` | `settle` and `flatten` succeeding once both were fixed |
+| `dead-oracle-2026-08-30.md` | issues 14 and 15 — the frozen book, the hatch, and 208.90 recovered |

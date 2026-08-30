@@ -347,17 +347,21 @@ contract LiquidityVault is ERC4626, AbadiReactive, ReentrancyGuard {
         if (!s.active) revert SlotIdle(slot);
 
         IBinaryPool pool = IBinaryPool(s.pool);
-        _cancelIfLive(pool, s.yesOrderId);
-        _cancelIfLive(pool, s.noOrderId);
-        s.yesOrderId = 0;
-        s.noOrderId = 0;
+        // Past the window nothing can fill, so a cancel the pool refuses is survivable --
+        // but only by leaving the id in place. Inside the window a refusal is a real
+        // failure and must revert.
+        bool mayFail = _statusOf(s.marketId) != MarketStatus.TRADING;
+        if (_cancelIfLive(pool, s.yesOrderId, mayFail)) s.yesOrderId = 0;
+        if (_cancelIfLive(pool, s.noOrderId, mayFail)) s.noOrderId = 0;
 
         bytes32 id = s.marketId;
         // Pulling the orders does not pull what they already bought. A slot still holding
         // outcome tokens has to stay open for `settle` to find: deleting it orphans them
         // on the ERC-6909 with no function left that can redeem them, and a losing side
         // today is a winning side on the market that goes the other way.
-        if (outcomeToken.balanceOf(address(this), s.yesId) == 0
+        // The same is true of a leg the pool would not let go of.
+        if (s.yesOrderId == 0 && s.noOrderId == 0
+            && outcomeToken.balanceOf(address(this), s.yesId) == 0
             && outcomeToken.balanceOf(address(this), s.noId) == 0) {
             delete _slots[slot];
         }
@@ -398,10 +402,9 @@ contract LiquidityVault is ERC4626, AbadiReactive, ReentrancyGuard {
         // Pull whatever is still resting first: its escrow is released by the pool, and
         // leaving it live after flattening would re-open exposure this call just closed.
         IBinaryPool pool = IBinaryPool(s.pool);
-        _cancelIfLive(pool, s.yesOrderId);
-        _cancelIfLive(pool, s.noOrderId);
-        s.yesOrderId = 0;
-        s.noOrderId = 0;
+        bool mayFail = status != MarketStatus.TRADING;
+        if (_cancelIfLive(pool, s.yesOrderId, mayFail)) s.yesOrderId = 0;
+        if (_cancelIfLive(pool, s.noOrderId, mayFail)) s.noOrderId = 0;
 
         uint256 before = IERC20(asset()).balanceOf(address(this));
         module.mergeCompleteSet(0, bytes32(0), s.marketId, pairs);
@@ -409,8 +412,9 @@ contract LiquidityVault is ERC4626, AbadiReactive, ReentrancyGuard {
 
         bytes32 id = s.marketId;
         // An uneven fill leaves a single-side leg that cannot be merged and still carries
-        // direction. That one has to wait for settlement, so the slot stays open for it.
-        if (yes == no) delete _slots[slot];
+        // direction. That one has to wait for settlement, so the slot stays open for it --
+        // as does a leg the frozen book would not give back.
+        if (yes == no && s.yesOrderId == 0 && s.noOrderId == 0) delete _slots[slot];
 
         emit Flattened(slot, id, pairs, returned);
     }
@@ -449,9 +453,12 @@ contract LiquidityVault is ERC4626, AbadiReactive, ReentrancyGuard {
 
         // A leg that never filled is still resting, and a resolved market will never fill
         // it. Leaving it there strands its escrow at the pool for as long as the pool
-        // lives, which is the whole point of settling.
-        _cancelIfLive(pool, yesOrderId);
-        _cancelIfLive(pool, noOrderId);
+        // lives, which is the whole point of settling. A refusal cannot brick settlement:
+        // the market is terminal, so the pool releases what it holds to the owner on
+        // finalization regardless -- measured at 98.40 of 98.40 on a window that came back
+        // this way -- and settlement is the last event, so there is no slot left to keep.
+        _cancelIfLive(pool, yesOrderId, true);
+        _cancelIfLive(pool, noOrderId, true);
 
         uint256 before = IERC20(asset()).balanceOf(address(this));
 
@@ -486,17 +493,32 @@ contract LiquidityVault is ERC4626, AbadiReactive, ReentrancyGuard {
     ///      also precisely the slot with one dead id. The sweep already knew this; the
     ///      three paths a human calls did not.
     ///
-    ///      Only that one answer is swallowed. A cancel that fails for any other reason
-    ///      leaves the order resting at the pool with its escrow still committed, and a
-    ///      vault that shrugged and deleted the slot anyway would be carrying orders it
-    ///      no longer knows about. That happened on Shannon: a slot was freed, its two
-    ///      legs stayed live, both filled later, and 200 outcome tokens turned up under
-    ///      a slot that had quoted 100.
-    function _cancelIfLive(IBinaryPool pool, uint128 orderId) internal {
-        if (orderId == 0) return;
-        try pool.cancelOrder(orderId) {}
-        catch (bytes memory reason) {
-            if (reason.length < 4 || bytes4(reason) != IncorrectSender.selector) revert CancelFailed(orderId, reason);
+    ///      The second answer that must not brick anything is the frozen book. From the
+    ///      instant a window expires until its market goes terminal, the pool refuses
+    ///      every write to its book -- cancelOrder, cancelOrders, cancelExpiredOrders and
+    ///      sweepExpiredAtLevel all return the same undecodable error -- and accepts them
+    ///      again once the market is resolved or voided. Reverting on that bricked all
+    ///      three exits in the gap: the sweep did nothing on the one shape it exists for,
+    ///      and `flatten`, whose whole point is that ANYONE may call it once the market
+    ///      can no longer trade, could not be called by anyone at all.
+    ///
+    ///      So the caller says whether a failure is survivable, and it is survivable
+    ///      exactly when no fill is possible -- when the market can no longer trade. What
+    ///      is NOT survivable is forgetting the order: a vault that shrugged and cleared
+    ///      the id anyway would be carrying escrow it no longer knows about. That happened
+    ///      on Shannon: a slot was freed, its two legs stayed live, both filled later, and
+    ///      200 outcome tokens turned up under a slot that had quoted 100. Hence the
+    ///      return value -- the caller clears an id only when this says the pool is done
+    ///      with it, and keeps the slot open for whatever is left.
+    /// @return cleared true when the pool holds nothing further under this order id.
+    function _cancelIfLive(IBinaryPool pool, uint128 orderId, bool mayFail) internal returns (bool cleared) {
+        if (orderId == 0) return true;
+        try pool.cancelOrder(orderId) {
+            return true;
+        } catch (bytes memory reason) {
+            if (reason.length >= 4 && bytes4(reason) == IncorrectSender.selector) return true; // already gone
+            if (mayFail) return false; // frozen book: cannot fill, cannot cancel, still owed
+            revert CancelFailed(orderId, reason);
         }
     }
 
@@ -520,11 +542,15 @@ contract LiquidityVault is ERC4626, AbadiReactive, ReentrancyGuard {
     ///      rather than letting the precompile fail with empty data.
     /// @dev Gas for the callback. The first live wake-up on Shannon was armed at 500,000
     ///      and ran OUT_OF_GAS with one idle slot to look at — `eth_estimateGas` from the
-    ///      precompile's address put that no-op sweep at 1,151,045. A full sweep can
-    ///      cancel two legs and redeem or merge on each of MAX_SLOTS slots, so the limit
-    ///      is sized for that worst case. The precompile accepts up to 200,000,000; only
-    ///      gas actually used is paid for.
-    uint64 public constant SWEEP_GAS = 8_000_000;
+    ///      precompile's address put that no-op sweep at 1,151,045. The limit is sized for
+    ///      the worst case: MAX_SLOTS slots all needing the dead-oracle path, measured on
+    ///      Shannon at voidExpired 694,993 + syncSettlement 2,322,671 + finalizeMarket
+    ///      1,617,295 + settle 679,349 = 5,314,308 for one slot. 8,000,000 covered barely
+    ///      one and a half of those. The precompile accepts up to 200,000,000; only gas
+    ///      actually used is paid for, and it is paid out of the handler's own balance —
+    ///      so the ceiling that matters is not this number but MIN_HANDLER_BALANCE, which
+    ///      a full 40M sweep at the 50 gwei cap would cost 2 STT of.
+    uint64 public constant SWEEP_GAS = 40_000_000;
 
     function armSweep(uint64 firesAtSec) external onlyOperator returns (uint256 subscriptionId) {
         return _arm(uint256(firesAtSec) * 1000, 10 gwei, 50 gwei, SWEEP_GAS);
@@ -553,30 +579,58 @@ contract LiquidityVault is ERC4626, AbadiReactive, ReentrancyGuard {
     }
 
     /// @notice One slot's share of a sweep. Callable only by the vault itself.
-    /// @dev Settles if the market has resolved — that is the whole lifecycle closing with
-    ///      no one calling it — otherwise pulls the resting legs and merges what it can.
+    /// @dev Settles if the market went terminal — that is the whole lifecycle closing with
+    ///      no one calling it. If it did not, the oracle is the reason, and this takes the
+    ///      market's own escape hatch rather than waiting for one: `voidExpired` opens at
+    ///      `expiry + settlementWindow` and pays both sides 0.5, which is exactly what a
+    ///      window nobody can price is worth. Two Shannon windows sat unresolved for two
+    ///      days with 196 of this vault's escrow frozen behind them while `pokeOracle`
+    ///      answered every fifteen minutes and resolved nothing; the hatch had been open
+    ///      the whole time.
+    ///
+    ///      The hatch writes the market directly, so the module never learns of it. The
+    ///      two permissionless nudges that follow are not optional: `syncSettlement`
+    ///      releases the hub earmark the adapter never released, `finalizeMarket` moves
+    ///      the pool's backing into settlement, and without them `_settle` redeems into
+    ///      an empty settlement and returns nothing. Each is wrapped: a market that is
+    ///      already terminal reaches here through the same path, and their no-op guards
+    ///      are the venue's business, not a reason to lose the sweep.
     function releaseSlot(uint256 slot) external nonReentrant returns (bool closed) {
         if (msg.sender != address(this)) revert NotSelf(msg.sender);
         Slot storage s = _slots[slot];
         if (!s.active) return true;
 
-        (,,,,,,,, address market,,,,,) = module.markets(s.marketId);
-        if (IBinaryMarket(market).isResolved() || IBinaryMarket(market).isVoided()) {
+        bytes32 id = s.marketId;
+        (,,,,,,,, address market,,,,,) = module.markets(id);
+        IBinaryMarket mkt = IBinaryMarket(market);
+
+        if (!mkt.isResolved() && !mkt.isVoided()) {
+            try mkt.voidExpired() {} catch {}
+        }
+        if (mkt.isResolved() || mkt.isVoided()) {
+            try module.syncSettlement(id) {} catch {}
+            try module.finalizeMarket(id) {} catch {}
             _settle(slot);
             return true;
         }
         return _release(slot);
     }
 
-    /// @dev Cancel both legs and merge any complete set back to collateral.
+    /// @dev Merge any complete set back to collateral. Reached only from the sweep, and
+    ///      only for a market that is neither trading nor terminal — the gap between a
+    ///      window's expiry and its settlement.
+    ///
+    ///      It does NOT cancel. Once a window expires the pool freezes its whole book:
+    ///      `cancelOrder`, `cancelOrders`, `cancelExpiredOrders` and `sweepExpiredAtLevel`
+    ///      all revert with the same error, one the SDK's generated table cannot even
+    ///      name. The cancels this used to open with therefore reverted every time, took
+    ///      `releaseSlot` down with them, and left the sweep a no-op on the one shape it
+    ///      exists for. Nothing was lost by them failing: a frozen order cannot fill, and
+    ///      the pool returns its escrow when the market settles — measured at 98.40 of
+    ///      98.40 on a window that closed this way.
     /// @return true when the slot was fully closed.
     function _release(uint256 slot) internal returns (bool) {
         Slot storage s = _slots[slot];
-
-        _cancelIfLive(IBinaryPool(s.pool), s.yesOrderId);
-        _cancelIfLive(IBinaryPool(s.pool), s.noOrderId);
-        s.yesOrderId = 0;
-        s.noOrderId = 0;
 
         uint256 yes = outcomeToken.balanceOf(address(this), s.yesId);
         uint256 no = outcomeToken.balanceOf(address(this), s.noId);
@@ -590,7 +644,9 @@ contract LiquidityVault is ERC4626, AbadiReactive, ReentrancyGuard {
 
         // An uneven fill leaves a naked leg that only settlement can redeem. Keep the
         // slot so `settle` can find it — a settled market vanishes from the live list.
-        if (yes != no) return false;
+        // The slot is kept whenever anything is still resting, too: the order ids are the
+        // only record of what the pool owes this vault when the window finally settles.
+        if (yes != no || s.yesOrderId != 0 || s.noOrderId != 0) return false;
 
         delete _slots[slot];
         return true;

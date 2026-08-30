@@ -55,6 +55,27 @@ contract MockPool {
     error Paused();
     bool public paused;
 
+    /// @dev The venue freezes a pool's whole book the moment its window expires, and keeps
+    ///      it frozen until the market goes terminal: on Shannon `cancelOrder`,
+    ///      `cancelOrders`, `cancelExpiredOrders` and `sweepExpiredAtLevel` all answer the
+    ///      same undecodable 0x8afbce93 in that gap, and all four start working again once
+    ///      the market is voided or resolved. A mock that let cancels through there is why
+    ///      the sweep shipped as a no-op on the one shape it exists for.
+    MockMarket public gate;
+    uint64 public frozenFrom;
+
+    function setFreeze(MockMarket gate_, uint64 from) external {
+        gate = gate_;
+        frozenFrom = from;
+    }
+
+    error BookFrozen();
+
+    function frozen() public view returns (bool) {
+        if (frozenFrom == 0 || block.timestamp < frozenFrom) return false;
+        return !gate.isResolved() && !gate.isVoided();
+    }
+
     function setPaused(bool v) external {
         paused = v;
     }
@@ -114,6 +135,7 @@ contract MockPool {
     ///      the one shape that needs it.
     function cancelOrder(uint128 orderId) external {
         if (paused) revert Paused();
+        if (frozen()) revert BookFrozen();
         if (filled[orderId]) revert IncorrectSender(msg.sender, address(this));
         cancelled.push(orderId);
         uint256 back = escrowOf[orderId];
@@ -153,6 +175,29 @@ contract MockMarket {
     bool public isResolved;
     bool public isVoided;
     uint256[] internal _payouts;
+
+    /// @dev Shannon's binary windows give the oracle 300s past expiry; after that
+    ///      `voidExpired` opens to anyone.
+    uint64 public expiry;
+    uint64 public settlementWindow = 300;
+
+    error SettlementWindowOpen();
+
+    function setExpiry(uint64 e) external {
+        expiry = e;
+    }
+
+    function setSettlementWindow(uint64 w) external {
+        settlementWindow = w;
+    }
+
+    /// @notice The dead-oracle hatch, gated on the clock exactly as the venue gates it.
+    function voidExpired() external {
+        if (isResolved || isVoided) return;
+        if (block.timestamp < uint256(expiry) + settlementWindow) revert SettlementWindowOpen();
+        isVoided = true;
+        _payouts = [5, 5];
+    }
 
     function resolve(uint256 yesPayout, uint256 noPayout) external {
         isResolved = true;
@@ -225,6 +270,23 @@ contract MockModule {
         usdc.mint(msg.sender, payout);
     }
 
+    /// @dev Both are permissionless no-op-guarded keeper entries on the real module. They
+    ///      are modelled as counters rather than no-ops so a test can assert the sweep
+    ///      actually drives them: a market voided through the hatch bypasses the module,
+    ///      and redemption finds an empty settlement until both have run.
+    mapping(bytes32 => uint256) public synced;
+    mapping(bytes32 => uint256) public finalizedCount;
+
+    function syncSettlement(bytes32 marketId) external {
+        Rec memory r = recs[marketId];
+        require(MockMarket(r.market).isResolved() || MockMarket(r.market).isVoided(), "MarketNotSettled");
+        synced[marketId]++;
+    }
+
+    function finalizeMarket(bytes32 marketId) external {
+        finalizedCount[marketId]++;
+    }
+
     function markets(bytes32 marketId)
         external
         view
@@ -292,11 +354,15 @@ contract LiquidityVaultTest is Test {
         pool = new MockPool(IERC20(address(usdc)));
         outcome = new MockOutcome6909();
         market = new MockMarket();
+        market.setExpiry(expiry);
         module.set(MARKET, address(pool), tradingStart, expiry);
         module.setSettlement(MARKET, address(market), YES_ID, NO_ID);
         market2 = new MockMarket();
+        market2.setExpiry(expiry);
         module.set(MARKET2, address(pool), tradingStart, expiry);
         module.setSettlement(MARKET2, address(market2), YES2_ID, NO2_ID);
+        // Both windows share the pool and expire together, so one gate covers the book.
+        pool.setFreeze(market, expiry);
         module.wire(outcome, usdc);
 
         vault = new LiquidityVault(
@@ -967,12 +1033,56 @@ contract LiquidityVaultTest is Test {
         assertEq(vault.totalEscrowed(), 0);
         assertEq(vault.totalAssets(), 503e6);
 
-        vm.warp(expiry + 1); // window locked
-        roller_onEvent(uint256(expiry + 1) * 1000);
+        // The wake-up is armed past the oracle's window, not 45s past the market's. Inside
+        // that window there is nothing the vault can do and nothing it should pretend to.
+        vm.warp(uint256(expiry) + market.settlementWindow() + 15);
+        roller_onEvent(block.timestamp * 1000);
 
         assertEq(vault.totalEscrowed(), 0, "escrow released");
         assertFalse(vault.slots(0).active, "slot freed");
-        assertEq(vault.idleAssets(), 500e6 - 97e6 + 100e6, "complete set merged back");
+        assertEq(vault.idleAssets(), 500e6 - 97e6 + 100e6, "complete set redeemed back");
+    }
+
+    /// The shape that froze 196 of this vault's capital for two days on Shannon: a window
+    /// expires, the oracle never answers, and every keeper entry the venue offers refuses.
+    /// The market's own hatch is the way out, and the sweep is what takes it.
+    function test_sweepVoidsAWindowTheOracleAbandoned() public {
+        _deposit(alice, 500e6);
+        vm.prank(operator);
+        vault.quote(0, MARKET, uint256(500_000), uint256(15_000), 100e6);
+        assertEq(vault.totalEscrowed(), 97e6, "both legs resting");
+
+        // Past expiry the pool freezes its book: nothing can fill, nothing can cancel.
+        vm.warp(expiry + 1);
+        assertTrue(pool.frozen(), "book frozen in the gap");
+        vm.expectRevert(MockMarket.SettlementWindowOpen.selector);
+        market.voidExpired();
+
+        vm.warp(uint256(expiry) + market.settlementWindow() + 15);
+        roller_onEvent(block.timestamp * 1000);
+
+        assertTrue(market.isVoided(), "the sweep took the hatch");
+        assertEq(module.synced(MARKET), 1, "hub earmark released");
+        assertEq(module.finalizedCount(MARKET), 1, "backing moved to settlement");
+        assertFalse(vault.slots(0).active, "slot freed");
+        assertEq(vault.totalEscrowed(), 0, "escrow no longer counted");
+        assertEq(vault.idleAssets(), 500e6, "every cent of the escrow came back");
+    }
+
+    /// Between expiry and settlement the honest answer is "not yet". What must never
+    /// happen is the vault clearing an order id the pool is still holding escrow under.
+    function test_sweepInTheGapKeepsTheSlotAndWhatIsOwedOnIt() public {
+        _deposit(alice, 500e6);
+        vm.prank(operator);
+        vault.quote(0, MARKET, uint256(500_000), uint256(15_000), 100e6);
+
+        vm.warp(expiry + 1); // expired, oracle still has its window
+        roller_onEvent(block.timestamp * 1000);
+
+        assertTrue(vault.slots(0).active, "slot kept");
+        assertTrue(vault.slots(0).yesOrderId != 0, "the pool is still holding this leg");
+        assertEq(vault.totalEscrowed(), 97e6, "and the vault still says so");
+        assertEq(vault.totalAssets(), 500e6, "nothing invented, nothing lost");
     }
 
     /// A slot still earning must not be touched. Cancelling a live quote throws away the
@@ -1021,10 +1131,15 @@ contract LiquidityVaultTest is Test {
         outcome.setBalance(address(vault), YES2_ID, 100e6);
         pool.fill(3);
 
-        vm.warp(expiry + 1);
-        roller_onEvent(uint256(expiry + 1) * 1000);
+        // Slot 0's window can be voided; slot 1's oracle still has a week to answer, so
+        // its hatch is shut and the sweep can do nothing with it. It must still finish.
+        market2.setSettlementWindow(7 days);
+
+        vm.warp(uint256(expiry) + market.settlementWindow() + 15);
+        roller_onEvent(block.timestamp * 1000);
 
         assertFalse(vault.slots(0).active, "clean slot closed");
+        assertTrue(vault.slots(1).active, "the awkward one is still there, untouched");
         // The sweep completed rather than reverting on the awkward one.
         assertEq(vault.totalEscrowed() < 194e6, true, "at least one slot released");
     }

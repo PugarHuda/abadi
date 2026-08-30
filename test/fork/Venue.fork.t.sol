@@ -5,7 +5,7 @@ import {Test} from "forge-std/Test.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {LiquidityVault} from "../../src/LiquidityVault.sol";
 import {IBinaryMarketsModule} from "../../src/interfaces/IBinaryMarketsModule.sol";
-import {IBinaryPool, IOutcomeToken6909, ORDER_KIND, ORDER_TYPE} from "../../src/interfaces/IBinaryPool.sol";
+import {IBinaryPool, IBinaryMarket, IOutcomeToken6909, ORDER_KIND, ORDER_TYPE} from "../../src/interfaces/IBinaryPool.sol";
 
 interface IFaucet {
     function faucet(uint256 amount) external;
@@ -147,6 +147,53 @@ contract VenueForkTest is Test {
         assertGt(vault.idleAssets(), before, "the resting BUY_NO leg's escrow came back");
         assertTrue(vault.slots(0).active, "the slot stays open: it holds YES tokens for settle()");
         assertEq(vault.totalEscrowed(), 0, "nothing resting");
+    }
+
+    /// The shape that froze 196 of the live vault's capital for two days: the window
+    /// expires and the oracle never answers. Against the real pool this pins three things
+    /// the mock could only assert: that the book really does refuse every cancel in the
+    /// gap, that `voidExpired` really does open at `expiry + settlementWindow`, and that
+    /// the escrow the frozen book would not hand back comes back anyway once the market
+    /// is terminal.
+    function test_fork_sweepFreesAWindowTheOracleAbandoned() public {
+        (uint256 mid, uint256 half) = _insideTheBook();
+        vm.prank(operator);
+        vault.quote(0, marketId, mid, half, SIZE);
+        uint256 escrowed = vault.totalEscrowed();
+        assertGt(escrowed, 0, "both legs resting on the real book");
+
+        (,,,,,,,, address market,,,,, uint64 expiry) = IBinaryMarketsModule(MODULE).markets(marketId);
+        uint64 window = IBinaryMarket(market).settlementWindow();
+
+        // In the gap: expired, not settled. Measured against this pool at expiry - 5,
+        // + 1, + window - 5 and + window + 15, the boundary is exact — the book takes a
+        // cancel right up to expiry, refuses every one after it, and takes them again the
+        // moment the market is voided. The refusal is 0x8afbce93 and nothing the SDK's
+        // generated error table can name.
+        uint128 leg = vault.slots(0).yesOrderId;
+        vm.warp(uint256(expiry) + 1);
+        vm.prank(address(vault));
+        vm.expectRevert();
+        IBinaryPool(pool).cancelOrder(leg);
+        // And the hatch is not open yet either.
+        vm.expectRevert();
+        IBinaryMarket(market).voidExpired();
+        // So the exit says so instead of pretending: the slot and its escrow both stay.
+        vm.prank(address(vault));
+        vault.releaseSlot(0);
+        assertTrue(vault.slots(0).active, "nothing to do yet, and it did nothing");
+        assertEq(vault.totalEscrowed(), escrowed, "still owed, still counted");
+
+        // Past the oracle's window the vault closes the whole thing by itself.
+        vm.warp(uint256(expiry) + window + 15);
+        uint256 before = vault.idleAssets();
+        vm.prank(address(vault));
+        vault.releaseSlot(0);
+
+        assertTrue(IBinaryMarket(market).isVoided(), "the vault took the hatch");
+        assertFalse(vault.slots(0).active, "slot freed");
+        assertEq(vault.totalEscrowed(), 0, "nothing left resting");
+        assertEq(vault.idleAssets() - before, escrowed, "every cent of the escrow came back");
     }
 
     // ---------------------------------------------------------------- helpers

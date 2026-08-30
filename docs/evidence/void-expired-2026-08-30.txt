@@ -1,0 +1,29 @@
+16:45:10 vault    0x2314436ed2BDC44321c74EF43adA14CAE723D352
+16:45:10 operator 0x39D2bae5EAedA9283535dDC98F1991c81eD5Cd7E
+16:45:10 interval 30s  active 3  size 100 (x0.5 on 900s)  dead 6 ticks  momentum 3 ticks/20s  gas floor 0.5 STT  1 cycles
+16:45:42 pull     slot 0 c08f  rejected: The contract function "cancelQuote" reverted with the following signature:
+16:45:44 drain    slot 0 c08f  rejected: The contract function "cancelExpiredOrders" reverted with the following signature:
+16:45:46 void     slot 0 c08f  success  0x4cf9b22222e0fe77948a198f69ba0174d6280f6c41a40f2885b68683e2db03c8  gas 694993
+16:45:48 sync     slot 0 c08f  success  0x9179fcc37604b174b31f9d26e989aa751c16d7446ec45927df53881fd4a46c12  gas 2322671
+16:45:50 final    slot 0 c08f  success  0x89de5f7853f89ff6af69d9b9e38e62287d5aa077155f75001f519669dd478787  gas 1617295
+16:45:53 settle   slot 0 c08f  success  0x3e08aa3e391424e1b44ee7abf2a4f54e61b5276eb3c145881b86b267a74f8796  gas 679349
+16:45:57 pull     slot 2 c090  rejected: The contract function "cancelQuote" reverted with the following signature:
+16:45:58 drain    slot 2 c090  rejected: The contract function "cancelExpiredOrders" reverted with the following signature:
+16:46:01 void     slot 2 c090  success  0x43bae7de19dd7d8f51bc33a8a38921647f1d6c01c64c1982c3660819d65d1dd2  gas 694993
+16:46:03 sync     slot 2 c090  success  0x9866768d0892590b6bc65a2ec22b99320af7acc9d77a12fb8b39801745692631  gas 2322671
+16:46:05 final    slot 2 c090  success  0x5c8d456467b7e2f101d79fc0ef24d4417ab9989e9cca3e338f86ee593f050b80  gas 1617295
+16:46:07 settle   slot 2 c090  success  0x6bf33028da2d7b058c2e8fdf016977420bc5d8925e1f4edc522ded7fa38ecf48  gas 258414
+16:46:14 sampled  4 books in 0.3s; second look in 20s
+16:46:34 quote    slot 0 BTC-0-30AUG26-2000/tUSDC  theirs 0.767/0.793  ours 0.769/0.791  size 100  escrow 97.80  (mid still, 0 ticks)
+16:46:36 quote    slot 0 e04e  success  0x442e75f624529007bfe6fe9095909411dadb3e0d315aaf31cfe643e252ee180e  gas 994274
+16:46:41 arm      20:00:45Z  success  0xc3557605cf6230dd29d39e0b3f71ab63b2f006284125f3d7629870dde75ccf03  gas 465755
+16:46:42 quote    slot 2 ETH-0-30AUG26-2000/tUSDC  theirs 0.903/0.928  ours 0.905/0.925  size 100  escrow 98.00  (mid still, 0 ticks)
+16:46:44 quote    slot 2 e04f  success  0x0eea5dae45f5a6d1c3038754d88551d514a3af6f8a65d2e582f7045811524b72  gas 2573855
+16:46:46 cycle 1  NAV 4474.77  idle 4215.52  resting 259.25  share 0.955255
+17:07:23 vault    0x2314436ed2BDC44321c74EF43adA14CAE723D352
+17:07:23 operator 0x39D2bae5EAedA9283535dDC98F1991c81eD5Cd7E
+17:07:23 interval 30s  active 3  size 100 (x0.5 on 900s)  dead 6 ticks  momentum 3 ticks/20s  gas floor 0.5 STT  1 cycles
+17:08:01 sampled  2 books in 0.4s; second look in 20s
+17:08:22 skip     ETH-0-30AUG26-1800/tUSDC  mid moved 19 ticks in 20s — trending, not quoting
+17:08:22 skip     BTC-0-30AUG26-1800/tUSDC  mid moved 45 ticks in 20s — trending, not quoting
+17:08:26 cycle 1  NAV 4446.37  idle 4278.97  resting 167.40  share 0.949193

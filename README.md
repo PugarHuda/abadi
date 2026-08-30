@@ -259,6 +259,19 @@ bot skips arming and says so until then. `sweepNative` brings the reserve back o
   the bot rather than by hand, closed a naked leg that lost — the shape the old `settle`
   refused forever — at block 473130786.
   [`docs/evidence/reactivity-live-2026-08-27.md`](docs/evidence/reactivity-live-2026-08-27.md)
+- **And where it did not.** The same sweep was a no-op on the shape it most needed to
+  handle. A pool freezes its entire order book from the instant a window expires until
+  that market is terminal — every cancel the venue offers, including the two documented
+  as permissionless drains, answers one undecodable error — so the two cancels `_release`
+  opened with always reverted and took the whole slot's callback down with them. Two
+  windows whose oracle never answered held 196.00 of escrow for two days behind that.
+  The way out was the market's own `voidExpired()`, permissionless and open 300 seconds
+  after expiry, which recovered **208.90 on 196.00 of basis** on the 30th. The vault now
+  takes that hatch itself — void, sync, finalize, settle — and `flatten`'s promise that
+  *anyone* may call it once a market cannot trade, which the same freeze had made empty,
+  holds again. Proven against the real pool on a fork; **not live until the vault is
+  redeployed**.
+  [`docs/evidence/dead-oracle-2026-08-30.md`](docs/evidence/dead-oracle-2026-08-30.md)
 - `scripts/bot.ts` — the requote loop, three markets at a time, with a **momentum filter**:
   every candidate's book is read twice, twenty seconds apart, and a window whose mid moved
   three ticks in between is not quoted — every adverse fill in the ledger came from a
@@ -267,10 +280,11 @@ bot skips arming and says so until then. `sweepNative` brings the reserve back o
   thing that can happen to the expensive leg there is the tail event — and the 24h tier
   is not quoted at all: `scripts/ledger.ts` now breaks the record down by window length,
   and 15m and 4h windows ran 0% adverse while 24h ran 25%. It settles what resolved,
-  finalizes what expired through the venue's permissionless keeper entry, pulls and
+  pokes the oracle on what expired and voids it through the market's own escape hatch once
+  the oracle is out of time, pulls and
   requotes an unfilled quote the book has walked away from, flattens a completed one,
-  quotes into idle slots, and arms a wake-up at each window's expiry so the chain closes
-  the position even if the bot is down. First wide run: three complete sets flattened in
+  quotes into idle slots, and arms a wake-up past each window's settlement deadline so the
+  chain closes the position even if the bot is down. First wide run: three complete sets flattened in
   one cycle, one of them from a requote
 - **Five stateful invariants**, fuzzed across thousands of random interleavings of
   deposit, quote, fill, cancel, flatten, resolve, settle and withdraw: NAV is exactly cash

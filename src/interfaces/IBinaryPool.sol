@@ -70,6 +70,19 @@ interface IBinaryMarket {
     function isVoided() external view returns (bool);
     function payoutNumerators() external view returns (uint256[] memory);
     function pool() external view returns (address);
+    /// @notice Seconds after `expiry` the oracle still has to answer.
+    /// @dev `expiry + settlementWindow` is the instant `voidExpired` opens. 300s on
+    ///      Shannon's binary windows.
+    function settlementWindow() external view returns (uint64);
+    /// @notice The dead-oracle escape hatch: flip the market Voided without the oracle.
+    /// @dev Permissionless, gated on-chain by `block.timestamp >= expiry +
+    ///      settlementWindow`. A voided market pays 0.5 on both sides, so every holder
+    ///      is made whole at what they put in. It writes the market directly and
+    ///      bypasses the module, so the oracle adapter's `onResolved` never fires and
+    ///      the hub's earmark is never released — `syncSettlement` is the nudge that
+    ///      does that, and `finalizeMarket` then moves the pool's backing into
+    ///      settlement. Redemption finds nothing without both.
+    function voidExpired() external;
 }
 
 /// @notice `kind` on `placeBinaryOrder`. Price is always quoted YES-side.

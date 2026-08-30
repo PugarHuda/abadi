@@ -78,6 +78,11 @@ interface IBinaryMarketsModule {
 
     /// @notice Manually pulls a posted oracle answer if the reactive callback was missed.
     function pokeOracle(uint256 oracleQuestionId) external;
+
+    /// @notice Releases the oracle hub's earmark for a market that went terminal without
+    ///         the adapter — which is every market closed by `voidExpired`.
+    /// @dev Reverts `MarketNotSettled` while the market is still live. Idempotent.
+    function syncSettlement(bytes32 marketId) external;
 }
 
 /// @notice Market lifecycle states. Only `Trading` accepts orders.
