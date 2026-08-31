@@ -1,0 +1,72 @@
+# Backtest — the model against resolved windows
+
+tiers 900, 3600, 14400, 86400s · up to 800 windows per tier · venue 0x679795a0…
+900s: 810 finalised with a trade, 800 replayed
+3600s: 327 finalised with a trade, 327 replayed
+14400s: 119 finalised with a trade, 117 replayed
+86400s: 32 finalised with a trade, 32 replayed
+
+outcome-0 orientation: book averaged 0.662 where it paid and 0.337 where it did not
+
+## Brier, lower is better
+
+| set | n | model | book | always 0.5 | base rate |
+|---|---|---|---|---|---|
+| all | 1276 | 0.1698 | 0.1703 | 0.2498 | 49.7% |
+| 900s | 800 | 0.1840 | 0.1849 | 0.2500 | 48.5% |
+| 3600s | 327 | 0.1497 | 0.1491 | 0.2492 | 48.2% |
+| 14400s | 117 | 0.1293 | 0.1241 | 0.2500 | 58.1% |
+| 86400s | 32 | 0.1695 | 0.1890 | 0.2500 | 65.6% |
+| BTC | 646 | 0.1769 | 0.1778 | 0.2500 | 51.2% |
+| ETH | 630 | 0.1627 | 0.1625 | 0.2496 | 48.2% |
+
+## Where they disagree, who is right
+
+| book − model | n | outcome | model said | off by | book said | off by | closer |
+|---|---|---|---|---|---|---|---|
+| book ≥ 0.10 above | 40 | 75.0% | 0.572 | 0.178 | 0.709 | 0.041 | book |
+| 0.05 to 0.10 above | 163 | 61.3% | 0.623 | 0.010 | 0.693 | 0.079 | model |
+| within ±0.05 | 879 | 49.8% | 0.497 | 0.001 | 0.497 | 0.001 | book |
+| 0.05 to 0.10 below | 147 | 33.7% | 0.374 | 0.037 | 0.304 | 0.032 | book |
+| book ≥ 0.10 below | 47 | 36.2% | 0.473 | 0.111 | 0.296 | 0.066 | book |
+
+## Calibration — of the windows each side priced in this band, how many paid
+
+| band | n model | model said | paid | n book | book said | paid |
+|---|---|---|---|---|---|---|
+| 0.0–0.1 | 132 | 0.038 | 2.3% | 158 | 0.045 | 2.5% |
+| 0.1–0.2 | 79 | 0.155 | 11.4% | 79 | 0.147 | 16.5% |
+| 0.2–0.3 | 84 | 0.253 | 26.2% | 103 | 0.251 | 26.2% |
+| 0.3–0.4 | 144 | 0.354 | 30.6% | 142 | 0.349 | 39.4% |
+| 0.4–0.5 | 201 | 0.453 | 46.8% | 155 | 0.451 | 44.5% |
+| 0.5–0.6 | 198 | 0.551 | 54.0% | 154 | 0.547 | 53.2% |
+| 0.6–0.7 | 145 | 0.645 | 69.0% | 148 | 0.646 | 63.5% |
+| 0.7–0.8 | 82 | 0.752 | 73.2% | 92 | 0.743 | 75.5% |
+| 0.8–0.9 | 83 | 0.855 | 84.9% | 87 | 0.851 | 81.6% |
+| 0.9–1.0 | 128 | 0.958 | 97.7% | 158 | 0.954 | 94.3% |
+
+## Is sigma biased? Rescale it and re-price the same windows
+
+| sigma x | Brier, train (n=638) | Brier, test (n=638) |
+|---|---|---|
+| 0.5 | 0.1554 | 0.2004 |
+| 0.6 | 0.1517 | 0.1960 |
+| 0.7 | 0.1495 | 0.1933 |
+| 0.8 | 0.1486 | 0.1917 |
+| 0.9 | 0.1484 | 0.1910  <- best on train |
+| 1.0 | 0.1489 | 0.1908 |
+| 1.1 | 0.1498 | 0.1911 |
+| 1.2 | 0.1510 | 0.1917 |
+| 1.3 | 0.1524 | 0.1924 |
+| 1.4 | 0.1540 | 0.1934 |
+| 1.5 | 0.1557 | 0.1944 |
+
+Best on the older half is x0.9, which scores 0.1910 on the newer half against 0.1908 unscaled and the book's 0.1923.
+
+## Verdict
+
+Over 1276 resolved windows the model scores 0.1698 and the book 0.1703. That gap is 0.0004, smaller than the 0.005 this sample can resolve — **the model does not forecast better than the book, and it does not forecast worse. It ties.** Its value is in the refusal and the calibration, not in an edge.
+Evaluated at each market's last trade, median 645s before expiry.
+
+Refused, and why:
+  2x  no feed tick in the 300s before the trade

@@ -178,6 +178,8 @@ scripts/                  the chain scripts that produced docs/evidence/
   history.ts              settled-market calibration
   operator.ts             reads the book and quotes inside it, in one pass
   verify.ts               reads our own orders back off the book
+  backtest.ts             replays the fair-value model over resolved windows and scores it
+  recover.ts              walks the deployer's CREATE nonces for anything left in a vault
 ```
 
 ### Lifecycle
@@ -219,6 +221,8 @@ node scripts/history.ts    # settled-market calibration
 node scripts/operator.ts   # read the book and quote inside it  (needs .env)
 node scripts/verify.ts     # read our orders back off the book
 node scripts/attest.ts     # is the live address running this source? (needs forge build)
+node scripts/backtest.ts   # score the fair-value model against resolved windows
+node scripts/recover.ts    # what every vault this deployer made still holds
 node scripts/ledger.ts     # every episode the vaults have run, marked from chain events
 node scripts/bot.ts        # the requote loop  (CYCLES=3 INTERVAL=30 SHORTEST=1 ACTIVE=3 SIZE=100)
 node scripts/fork-test.ts  # the vault against the real pool and module, on a fork of Shannon
@@ -308,6 +312,20 @@ bot skips arming and says so until then. `sweepNative` brings the reserve back o
   quotes into idle slots, and arms a wake-up past each window's settlement deadline so the
   chain closes the position even if the bot is down. First wide run: three complete sets flattened in
   one cycle, one of them from a requote
+- **The vault prices the windows itself, and a backtest says that buys less than it
+  sounds like.** `scripts/lib/fairvalue.ts` computes the digital's closed form, N(d₂),
+  from the venue's own price-feed plane — spot and strike off the tick tape, σ from M1
+  candles with a half-life matched to the window's own length. `scripts/backtest.ts` then
+  replays it against **1,276 finalised windows**, scoring it at each market's last trade
+  from data that existed at that instant. Brier **0.1698 for the model against 0.1703 for
+  the book**: a tie, and both well clear of a coin flip's 0.25. It is properly calibrated
+  — say 0.958, and 97.7% pay — but where the two disagree by 0.10 or more **the book wins
+  on both sides**, by 0.178 against 0.041 above and 0.111 against 0.066 below. The
+  suspected cause was an over-large σ; rescaling it from 0.5× to 1.5× moves Brier by 0.001
+  and the optimum is 1.0×, so that hypothesis is tested and rejected. What the model earns
+  is the **refusal**: the bot will not quote a window it disagrees with the book about by
+  more than 0.10, and the backtest is why that rule is kept and why its stated reason
+  changed. [`docs/evidence/backtest-2026-08-31.md`](docs/evidence/backtest-2026-08-31.md)
 - **Five stateful invariants**, fuzzed across thousands of random interleavings of
   deposit, quote, fill, cancel, flatten, resolve, settle and withdraw: NAV is exactly cash
   plus resting plus complete sets, the vault's derived escrow equals what the pool's own

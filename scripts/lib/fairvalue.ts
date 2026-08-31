@@ -96,15 +96,18 @@ const STRIKE_SCALE = 100;
  * every script shares it. Price-feed reads are auth-free and hit a different deployment
  * from the markets indexer, so this costs one object and no credentials.
  */
-const feed = new SomniaMarkets({
-  indexerUrl: INDEXER,
-  chain: shannon,
-  wsRpcUrl: WS,
-  addresses: addresses as never,
-  priceFeed: process.env.PRICE_FEED_URL
-    ? { url: process.env.PRICE_FEED_URL, quote: process.env.PRICE_FEED_QUOTE ?? "USDC" }
-    : SOMNIA_TESTNET_PRICE_FEED,
-} as never);
+export function priceFeedClient(): any {
+  return new SomniaMarkets({
+    indexerUrl: INDEXER,
+    chain: shannon,
+    wsRpcUrl: WS,
+    addresses: addresses as never,
+    priceFeed: process.env.PRICE_FEED_URL
+      ? { url: process.env.PRICE_FEED_URL, quote: process.env.PRICE_FEED_QUOTE ?? "USDC" }
+      : SOMNIA_TESTNET_PRICE_FEED,
+  } as never).client;
+}
+const feed = { client: priceFeedClient() };
 
 /** Standard normal CDF via Abramowitz & Stegun 7.1.26 (|error| < 1.5e-7). */
 export function normCdf(z: number): number {
@@ -117,6 +120,41 @@ export function normCdf(z: number): number {
       t *
       Math.exp(-x * x);
   return 0.5 * (1 + sign * erf);
+}
+
+/**
+ * Log returns from M1 candle closes, dropping any pair that spans a missing minute: the
+ * feed does skip, and a 3-minute move counted as a 1-minute return inflates sigma by √3.
+ */
+export function m1Returns(candles: { bucketStart: number; close: number }[]): number[] {
+  const r: number[] = [];
+  for (let i = 1; i < candles.length; i++) {
+    const a = candles[i - 1], b = candles[i];
+    if (b.bucketStart - a.bucketStart !== 60) continue;
+    if (!(a.close > 0) || !(b.close > 0)) continue;
+    r.push(Math.log(b.close / a.close));
+  }
+  return r;
+}
+
+/** EWMA of squared returns seeded on the sample second moment, annualised off M1 bars. */
+export function ewmaSigma(returns: number[], lambda: number): number {
+  let v = returns.reduce((s, x) => s + x * x, 0) / returns.length;
+  for (const x of returns) v = lambda * v + (1 - lambda) * x * x;
+  return Math.sqrt(v * MINUTES_PER_YEAR);
+}
+
+/**
+ * P(S_T >= K) under lognormal, zero drift — the closed form, isolated from where its
+ * inputs came from so a backtest can feed it historical ones and get exactly what the
+ * live path would have produced at that instant.
+ */
+export function digital(spot: number, strike: number, secsLeft: number, sigma: number) {
+  const T = secsLeft / YEAR_SEC;
+  const den = sigma * Math.sqrt(T);
+  if (!(den > 0)) throw new Error(`sigma*sqrt(T) is ${den}`);
+  const d2 = (Math.log(spot / strike) - 0.5 * sigma * sigma * T) / den;
+  return { T, d2, p: normCdf(d2) };
 }
 
 export type Vol = {
@@ -186,19 +224,11 @@ async function realisedVol(asset: string, secsLeft: number): Promise<Vol> {
   if (hit && Date.now() - hit.at < VOL_TTL_MS) return hit.v;
 
   const candles = await feed.client.fetchPriceCandles(asset, "M1", { limit: VOL_CANDLES });
-  const r: number[] = [];
-  for (let i = 1; i < candles.length; i++) {
-    const a = candles[i - 1], b = candles[i];
-    if (b.bucketStart - a.bucketStart !== 60) continue; // gap: not a 1-minute return
-    if (!(a.close > 0) || !(b.close > 0)) continue;
-    r.push(Math.log(b.close / a.close));
-  }
+  const r = m1Returns(candles);
   if (r.length < MIN_RETURNS)
     throw new Error(`only ${r.length} usable M1 returns for ${asset}, need ${MIN_RETURNS}`);
 
-  let v = r.reduce((s, x) => s + x * x, 0) / r.length;
-  for (const x of r) v = lambda * v + (1 - lambda) * x * x;
-  const sigma = Math.sqrt(v * MINUTES_PER_YEAR);
+  const sigma = ewmaSigma(r, lambda);
   if (!(sigma > 0)) throw new Error(`${asset} realised vol is zero over the last ${r.length} minutes`);
 
   const out: Vol = {
@@ -280,12 +310,8 @@ export async function fairProbability(c: Candidate, now = Date.now() / 1000): Pr
     throw new Error(`strike ${strike} vs spot ${spot} — off by more than 10x, refusing the scale`);
 
   const vol = await realisedVol(c.asset, secsLeft);
-  const T = secsLeft / YEAR_SEC;
-  const den = vol.sigma * Math.sqrt(T);
-  if (!(den > 0)) throw new Error(`sigma*sqrt(T) is ${den}`);
-
-  const d2 = (Math.log(spot / strike) - 0.5 * vol.sigma * vol.sigma * T) / den;
-  return { asset: c.asset, spot, strike, strikeSource: source, vol, secsLeft, T, d2, p: normCdf(d2), feedAgeMs };
+  const { T, d2, p } = digital(spot, strike, secsLeft, vol.sigma);
+  return { asset: c.asset, spot, strike, strikeSource: source, vol, secsLeft, T, d2, p, feedAgeMs };
 }
 
 /** One line of reasoning for the log. */

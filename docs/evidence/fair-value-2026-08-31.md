@@ -231,9 +231,14 @@ being early is worth.
 
 ## What is not claimed
 
-- **No backtest.** The model has never priced a window that has since resolved. Everything
-  above is a snapshot, and the ledger cannot yet say whether the refusal rule lowers the
-  20% one-sided rate.
+- ~~**No backtest.** The model has never priced a window that has since resolved.~~
+  **Done the same day, and it did not go the model's way:
+  [`backtest-2026-08-31.md`](backtest-2026-08-31.md) scores it against 1,276 resolved
+  windows. Brier 0.1698 for the model against 0.1703 for the book — a tie. Where they
+  disagree by 0.10 or more the book wins on both sides, badly. The model is well
+  calibrated and has no forecasting edge, and the refusal rule protects the vault from
+  Abadi's own model rather than from a stale incumbent.** The ledger still cannot say
+  whether that lowers the one-sided rate.
 - **The estimator is thin.** 239 minute bars from a testnet oracle, λ = 0.94, no
   jump/fat-tail term, no term structure. It is defensible; it is not good.
 - **The strike for the rolling series is reconstructed**, and only cross-checked against the

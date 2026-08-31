@@ -666,7 +666,11 @@ async function cycle(n: number, bySymbol: Map<string, any>) {
           const edge = Math.abs(midNow - fv.p);
           log(`fv       ${c.symbol}  ${fmtFair(fv)}  book mid ${midNow.toFixed(3)}  edge ${edge.toFixed(3)}`);
           if (edge > FV_MAX_EDGE) {
-            log(`skip     ${c.symbol}  book mid ${midNow.toFixed(3)} vs fair ${fv.p.toFixed(3)} — ${edge.toFixed(3)} apart, over FV_MAX_EDGE ${FV_MAX_EDGE}; one of us is wrong and the spread will not pay for finding out which`);
+            // The old wording here was "one of us is wrong and the spread will not pay
+            // for finding out which". 1,276 resolved windows have since said which: past
+            // 0.10 of disagreement it is us, on both sides (backtest-2026-08-31.md). The
+            // rule survives the finding, its reason does not.
+            log(`skip     ${c.symbol}  book mid ${midNow.toFixed(3)} vs fair ${fv.p.toFixed(3)} — ${edge.toFixed(3)} apart, over FV_MAX_EDGE ${FV_MAX_EDGE}; past this much disagreement the backtest says the book is right and we are not`);
             quotedMarkets.add(c.marketId.toLowerCase());
             continue;
           }

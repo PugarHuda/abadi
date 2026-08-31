@@ -13,7 +13,8 @@
     "verify": "node scripts/verify.ts",
     "bot": "node scripts/bot.ts",
     "ledger": "node scripts/ledger.ts",
-    "attest": "node scripts/attest.ts"
+    "attest": "node scripts/attest.ts",
+    "backtest": "node scripts/backtest.ts"
   },
   "dependencies": {
     "@somnia-chain/markets-sdk": "^0.28.1",
