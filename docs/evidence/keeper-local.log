@@ -2130,3 +2130,34 @@
 2026-08-31 04:41:58 skip     BTC-0-31AUG26-0800/tUSDC  mid moved 28 ticks in 20s — trending, not quoting
 2026-08-31 04:41:58 skip     ETH-0-31AUG26-0800/tUSDC  mid moved 25 ticks in 20s — trending, not quoting
 2026-08-31 04:42:03 cycle 1  NAV 4483.27  idle 4483.27  resting 0.00  share 0.957070
+2026-08-31 04:56:02 vault    0x2314436ed2BDC44321c74EF43adA14CAE723D352
+2026-08-31 04:56:02 operator 0x39D2bae5EAedA9283535dDC98F1991c81eD5Cd7E
+2026-08-31 04:56:02 interval 30s  active 3  size 100 (x0.5 on 900s)  dead 6 ticks  momentum 3 ticks/20s  gas floor 0.5 STT  1 cycles
+2026-08-31 04:56:02 fv       OFF  quoting off the incumbent's book alone (set FAIR_VALUE=1 for the model)
+2026-08-31 04:56:37 tiers    quoting 14400s, 900s only — 3600s and 86400s are left alone on the ledger's record
+2026-08-31 04:56:38 sampled  1 books in 0.4s; second look in 20s
+2026-08-31 04:56:59 skip     ETH-0-31AUG26-0800/tUSDC  mid moved 31 ticks in 20s — trending, not quoting
+2026-08-31 04:57:02 cycle 1  NAV 4451.57  idle 4388.27  resting 63.30  share 0.950303
+2026-08-31 05:11:02 vault    0x2314436ed2BDC44321c74EF43adA14CAE723D352
+2026-08-31 05:11:02 operator 0x39D2bae5EAedA9283535dDC98F1991c81eD5Cd7E
+2026-08-31 05:11:02 interval 30s  active 3  size 100 (x0.5 on 900s)  dead 6 ticks  momentum 3 ticks/20s  gas floor 0.5 STT  1 cycles
+2026-08-31 05:11:02 fv       OFF  quoting off the incumbent's book alone (set FAIR_VALUE=1 for the model)
+2026-08-31 05:11:34 slot 0: complete set held, book 62 ticks from our mid — flattening
+2026-08-31 05:11:37 flatten  slot 0 e8ae  worked  0x404ae14e8bd411e54e21a41570580f9a4760e3ef9e7af1f798c3dab89605ca6e  gas 808819
+2026-08-31 05:11:42 tiers    quoting 14400s, 900s only — 3600s and 86400s are left alone on the ledger's record
+2026-08-31 05:11:42 sampled  1 books in 0.4s; second look in 20s
+2026-08-31 05:12:03 skip     ETH-0-31AUG26-0800/tUSDC  mid moved 17 ticks in 20s — trending, not quoting
+2026-08-31 05:12:07 cycle 1  NAV 4488.27  idle 4488.27  resting 0.00  share 0.958137
+2026-08-31 05:26:02 vault    0x2314436ed2BDC44321c74EF43adA14CAE723D352
+2026-08-31 05:26:02 operator 0x39D2bae5EAedA9283535dDC98F1991c81eD5Cd7E
+2026-08-31 05:26:02 interval 30s  active 3  size 100 (x0.5 on 900s)  dead 6 ticks  momentum 3 ticks/20s  gas floor 0.5 STT  1 cycles
+2026-08-31 05:26:02 fv       OFF  quoting off the incumbent's book alone (set FAIR_VALUE=1 for the model)
+2026-08-31 05:26:39 tiers    quoting 14400s, 900s only — 3600s and 86400s are left alone on the ledger's record
+2026-08-31 05:26:39 sampled  2 books in 0.3s; second look in 20s
+2026-08-31 05:27:00 quote    slot 0 ETH-0-31AUG26-0800/tUSDC  theirs 0.760/0.786  ours 0.762/0.784  size 100  escrow 97.80  (mid still, 1 ticks)
+2026-08-31 05:27:04 quote    slot 0 e8af  worked  0xc075f6a358acdd85afd02a8821fb8164055af93eed7fe5c8d18661bd6d0c23bd  gas 592266
+2026-08-31 05:27:05 arm      08:05:15Z  already armed; one callback covers every slot
+2026-08-31 05:27:05 quote    slot 1 BTC-0-31AUG26-0800/tUSDC  theirs 0.754/0.781  ours 0.756/0.778  size 100  escrow 97.80  (mid still, 1 ticks)
+2026-08-31 05:27:09 quote    slot 1 e8ae  worked  0xbb20041efee588413ac133dacc6e25d0ffa2b5b65afa137ca7af01c2c43893dc  gas 592397
+2026-08-31 05:27:10 arm      08:05:15Z  already armed; one callback covers every slot
+2026-08-31 05:27:13 cycle 1  NAV 4412.07  idle 4292.67  resting 119.40  share 0.941871
