@@ -44,5 +44,13 @@
   {
     "address": "0x2314436ed2BDC44321c74EF43adA14CAE723D352",
     "note": "v9 \u2014 pre-audit build; retired 2026-08-31 with one slot still open, its escrow left to settle"
+  },
+  {
+    "address": "0x2c96022771e8368283F8909C9a1923a4De9781E7",
+    "note": "v10 \u2014 the recorder redesign's vault; retired 2026-08-31 when completeSet and reduceQuote landed"
+  },
+  {
+    "address": "0xda15A7137987170118417638a67bd45E864aB5Fe",
+    "note": "v11 \u2014 completeSet and reduceQuote landed here; retired the same hour when the coverage refactor changed the bytecode"
   }
 ]

@@ -89,8 +89,13 @@
 import { createPublicClient, createWalletClient, formatEther, http, parseAbi } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { readFileSync } from "node:fs";
-import { shannon, addresses, RPC, OUTCOME_TOKEN, env, exchange, retry } from "./lib/somnia.ts";
+import { shannon, addresses, RPC, OUTCOME_TOKEN, PRICE_ONE, TICK, LOT, env, exchange, retry } from "./lib/somnia.ts";
 import { candidates, hasHeadroom, priceInside, ticksAway, toWei, fmt } from "./lib/quoting.ts";
+
+/** Snap a price to the venue's grid; it rejects anything off it. */
+const toTick = (w: bigint) => (w / TICK) * TICK;
+/** Below this many contracts a trim is not worth a transaction. */
+const MIN_TRIM = 20_000_000n;
 import { fairProbability, fmtFair, type FairValue } from "./lib/fairvalue.ts";
 
 /** Every vault this project has deployed. Redeploys leave positions behind; see sweepOld. */
@@ -114,6 +119,8 @@ const VAULT_ABI = parseAbi([
   "function armed(uint256 firesAtMillis) view returns (uint256)",
   "function MIN_HANDLER_BALANCE() view returns (uint256)",
   "function SWEEP_GAS() view returns (uint64)",
+  "function completeSet(uint256 slot, uint256 priceYesSide, uint256 maxSpend) returns (uint256 filled, uint256 spent)",
+  "function reduceQuote(uint256 slot, uint256 newSize)",
   "function sweepNative(address to, uint256 amount)",
   "function governor() view returns (address)",
 ]);
@@ -144,6 +151,27 @@ const CYCLES = Number(process.env.CYCLES ?? 0);
 const ACTIVE = Number(process.env.ACTIVE ?? 3);
 const QTY = BigInt(Math.round(Number(process.env.SIZE ?? 100) * 1e6));
 const DEAD_TICKS = BigInt(process.env.DEAD_TICKS ?? 6);
+/** Off switch for the completion. The naked leg is left to settle, as it used to be. */
+const COMPLETE = process.env.COMPLETE !== "0";
+/** Ticks past the touch to aim the crossing order, so it actually crosses. */
+const CROSS_TICKS = BigInt(process.env.CROSS_TICKS ?? 2);
+/**
+ * The most the finished pair may cost above par, per contract, in price units.
+ *
+ * A pair redeems for exactly 1. Completing at a total cost above 1 books the difference
+ * as a loss, and there is a price at which carrying the naked leg is the better of two
+ * bad options. 0.06 is that line: six units per hundred contracts against a measured
+ * average of 22 for the legs that were carried to settlement.
+ */
+const COMPLETE_MAX_LOSS = BigInt(Math.round(Number(process.env.COMPLETE_MAX_LOSS ?? 0.06) * 1e6));
+/**
+ * Ticks of drift that trim a resting quote instead of pulling it.
+ *
+ * Between this and DEAD_TICKS the book has moved but not left: the quote can still fill,
+ * and cancelling it would surrender a queue position that was earned by being early.
+ * `reduceOrder` shrinks it where it stands. Set above DEAD_TICKS to disable.
+ */
+const TRIM_TICKS = BigInt(process.env.TRIM_TICKS ?? 3);
 const GAS_FLOOR = Number(process.env.GAS_FLOOR ?? 0.5);
 const SHORTEST = !!process.env.SHORTEST;
 const MOMENTUM_TICKS = BigInt(process.env.MOMENTUM_TICKS ?? 3);
@@ -560,7 +588,52 @@ async function cycle(n: number, bySymbol: Map<string, any>) {
 
     const ourMid = (s.bidPrice + s.askPrice) / 2n;
     const away = ticksAway(ourMid, bid, ask);
-    if (away < DEAD_TICKS) continue; // still where the market is; leave it to fill
+
+    // A leg filled and the other did not. This is the shape that costs the most: the
+    // ledger has eighteen of them, between 6.83 and 76.00 on a basis under 100, because
+    // the only move available was to wait for settlement and find out which side of a
+    // coin the vault was holding.
+    //
+    // A maker does not wait, it pays the spread to get flat. Two opposite-side BUYs mint
+    // a pair here, so a BUY_NO priced at or under the best resting bid crosses it, and
+    // the naked leg becomes half of something worth exactly 1.
+    if (COMPLETE && yes !== no) {
+      const needNo = yes > no;
+      const short = needNo ? yes - no : no - yes;
+      // Cross the touch rather than join it: a completion that rests is not a completion.
+      const px = needNo
+        ? toTick(toWei(bid) - CROSS_TICKS * TICK)
+        : toTick(toWei(ask) + CROSS_TICKS * TICK);
+      // BUY_NO at a YES-side q pays 1 - q; BUY_YES at p pays p.
+      const unit = needNo ? PRICE_ONE - px : px;
+      const filledUnit = needNo ? s.bidPrice : PRICE_ONE - s.askPrice; // what the taken leg cost
+      const pairCost = unit + filledUnit;
+      if (px <= 0n || px >= PRICE_ONE) {
+        log(`skip     ${tag}  completion price ${fmt(px)} is off the board — leaving the leg to settle`);
+      } else if (pairCost > PRICE_ONE + COMPLETE_MAX_LOSS) {
+        log(`skip     ${tag}  completing costs ${fmt(unit)} on top of ${fmt(filledUnit)} = ${fmt(pairCost)} the pair, over the ${fmt(PRICE_ONE + COMPLETE_MAX_LOSS)} line — carrying the leg instead`);
+      } else {
+        const spend = (short * unit) / PRICE_ONE + 1n;
+        log(`complete ${tag}  ${needNo ? "buying DOWN" : "buying UP"} ${Number(short) / 1e6} at ${fmt(px)} yes-side, ${fmt(unit)} each — pair lands at ${fmt(pairCost)}, naked leg was risking ${fmt(filledUnit)}`);
+        const flat = async () => { const h = await held(s.yesId, s.noId); return h.yes === h.no; };
+        await send(`complete ${tag}`, "completeSet", [BigInt(i), px, spend], vault, VAULT_ABI, flat);
+      }
+      continue;
+    }
+
+    if (away < DEAD_TICKS) {
+      // Drifting, not dead. Trimming keeps the queue position that being early bought;
+      // cancel-and-replace would hand it back for nothing.
+      if (away >= TRIM_TICKS && yes === 0n && no === 0n && s.size > MIN_TRIM) {
+        const half = (s.size / 2n / LOT) * LOT;
+        if (half >= MIN_TRIM) {
+          log(`trim     ${tag}  book ${away} ticks off our mid — halving to ${Number(half) / 1e6} in place, keeping the queue`);
+          const smaller = async () => (await read<any>("slots", [BigInt(i)])).size <= half;
+          await send(`trim     ${tag}`, "reduceQuote", [BigInt(i), half], vault, VAULT_ABI, smaller);
+        }
+      }
+      continue; // still where the market is; leave it to fill
+    }
 
     if (pairs > 0n) {
       log(`slot ${i}: complete set held, book ${away} ticks from our mid — flattening`);
@@ -579,8 +652,8 @@ async function cycle(n: number, bySymbol: Map<string, any>) {
         quotedMarkets.delete(String(s.marketId).toLowerCase());
       }
     }
-    // One leg filled and the other stranded: leave it. Cancelling the resting leg gives
-    // up the only way the pair can still complete; settlement resolves it either way.
+    // A one-sided fill no longer reaches here: it is completed above, or the completion
+    // was refused on price and the leg rides to settlement the way it always did.
   }
 
   // ---- then quote into whatever is idle

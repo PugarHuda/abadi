@@ -184,6 +184,17 @@ contract LiquidityVault is ERC4626, AbadiReactive, ReentrancyGuard {
         view
         returns (uint256)
     {
+        return MarketEngine.costOf(_legRemaining(pool, orderId, size), price, priceOne);
+    }
+
+    /// @dev The pool's own `quantityRemaining` for one leg, capped at what was quoted.
+    ///      Shared with `reduceQuote` and `completeSet`, which need the quantity rather
+    ///      than its cost and must not decode the same eight words a second time.
+    function _legRemaining(address pool, uint128 orderId, uint256 size)
+        internal
+        view
+        returns (uint256 remaining)
+    {
         if (orderId == 0) return 0;
         (bool ok, bytes memory ret) = pool.staticcall(abi.encodeCall(IBinaryPool.getOrder, (orderId)));
         if (!ok) {
@@ -193,10 +204,8 @@ contract LiquidityVault is ERC4626, AbadiReactive, ReentrancyGuard {
         }
         // Eight static fields, so a whole order is exactly eight words.
         if (ret.length < 256) revert PoolAnsweredStrangely(pool, orderId);
-        uint256 remaining;
         assembly { remaining := mload(add(ret, 224)) } // 32 (length) + 6 * 32
         if (remaining > size) remaining = size;
-        return MarketEngine.costOf(remaining, price, priceOne);
     }
 
     // ----------------------------------------------------------------- events
@@ -213,6 +222,9 @@ contract LiquidityVault is ERC4626, AbadiReactive, ReentrancyGuard {
     event Swept(uint256 indexed firesAtMillis, uint256 slotsReleased);
     event GovernanceOffered(address indexed from, address indexed to);
     event GovernanceTransferred(address indexed from, address indexed to);
+    event SetCompleted(uint256 indexed slot, bytes32 indexed marketId, uint256 quantity, uint256 spent);
+    event QuoteReduced(uint256 indexed slot, bytes32 indexed marketId, uint256 newSize);
+    event RedeemDelaySet(uint64 seconds_);
 
     // ----------------------------------------------------------------- errors
 
@@ -249,6 +261,14 @@ contract LiquidityVault is ERC4626, AbadiReactive, ReentrancyGuard {
     error CancelFailed(uint128 orderId, bytes reason);
     /// @dev The pool's own answer for an order id it no longer holds for the caller.
     error IncorrectSender(address caller, address owner);
+    /// @dev `completeSet` on a slot whose two sides already match. Nothing is naked.
+    error NothingToComplete(bytes32 marketId);
+    /// @dev The crossing buy would have cost more than the operator allowed.
+    error CompletionTooExpensive(uint256 spent, uint256 cap);
+    /// @dev The pool took `reduceOrder` but the id no longer rests at the new size.
+    error ReduceNotHonoured(uint128 orderId);
+    error SizeNotSmaller(uint256 newSize, uint256 size);
+    error DelayTooLong(uint64 requested, uint64 cap);
 
     // ------------------------------------------------------------ constructor
 
@@ -358,7 +378,7 @@ contract LiquidityVault is ERC4626, AbadiReactive, ReentrancyGuard {
         // is bounded by the risk of holding rather than by this guard. Removing that
         // entirely means not marking a naked leg at zero, which is a larger design
         // decision than a withdrawal guard.
-        if (_depositedAt[owner] == block.number) revert TooSoonAfterDeposit();
+        if (block.timestamp < _depositedAt[owner] + redeemDelay) revert TooSoonAfterDeposit();
         super._withdraw(caller, receiver, owner, assets, shares);
     }
 
@@ -397,15 +417,40 @@ contract LiquidityVault is ERC4626, AbadiReactive, ReentrancyGuard {
         nonReentrant
     {
         if (shares == 0) revert DepositMintsNothing(assets);
-        _depositedAt[receiver] = block.number;
+        _depositedAt[receiver] = block.timestamp;
         super._deposit(caller, receiver, assets, shares);
     }
 
-    /// @notice Block in which each holder's shares were last minted.
-    mapping(address holder => uint256 blockNumber) private _depositedAt;
+    /// @notice Timestamp at which each holder's shares were last minted.
+    mapping(address holder => uint256 timestamp) private _depositedAt;
 
     function depositedAt(address holder) external view returns (uint256) {
         return _depositedAt[holder];
+    }
+
+    /// @notice How long freshly minted shares must be held before they can be redeemed.
+    /// @dev This started as a one-BLOCK guard, and the comment on `_withdraw` said plainly
+    ///      what it did not close: "the patient version — deposit, wait, settle, redeem".
+    ///      On a chain with sub-second blocks, one block is not a holding period; it is a
+    ///      formality a bot clears without noticing. What made the sandwich riskless was
+    ///      never atomicity as such, it was that the attacker never carried the mark.
+    ///      A real delay makes them carry it.
+    ///
+    ///      Default 300s, which is the venue's own settlement window: long enough that a
+    ///      naked leg's mark can move against whoever is holding it, short enough that an
+    ///      honest depositor is not locked in.
+    uint64 public redeemDelay = 300;
+
+    /// @notice Ceiling on `redeemDelay`, in seconds.
+    /// @dev A governor who could set this without bound could freeze every withdrawal in
+    ///      the vault, which is exactly the custody power this contract exists not to
+    ///      have. One hour is the most any settlement can justify.
+    uint64 public constant MAX_REDEEM_DELAY = 1 hours;
+
+    function setRedeemDelay(uint64 seconds_) external onlyGovernor {
+        if (seconds_ > MAX_REDEEM_DELAY) revert DelayTooLong(seconds_, MAX_REDEEM_DELAY);
+        redeemDelay = seconds_;
+        emit RedeemDelaySet(seconds_);
     }
 
     /// @notice The most `owner` can actually take out right now.
@@ -423,7 +468,7 @@ contract LiquidityVault is ERC4626, AbadiReactive, ReentrancyGuard {
         // too. Adding that guard without teaching these two about it reintroduced exactly
         // the ERC-4626 violation the paragraph above says they exist to fix — reporting a
         // number that reverts — one commit after fixing it.
-        if (_depositedAt[owner] == block.number) return 0;
+        if (block.timestamp < _depositedAt[owner] + redeemDelay) return 0;
         uint256 assets = super.maxWithdraw(owner);
         uint256 idle = idleAssets();
         if (assets > idle) assets = idle;
@@ -436,7 +481,7 @@ contract LiquidityVault is ERC4626, AbadiReactive, ReentrancyGuard {
     }
 
     function maxRedeem(address owner) public view override returns (uint256) {
-        if (_depositedAt[owner] == block.number) return 0;
+        if (block.timestamp < _depositedAt[owner] + redeemDelay) return 0;
         uint256 shares = super.maxRedeem(owner);
         uint256 byIdle = convertToShares(idleAssets());
         if (shares > byIdle) shares = byIdle;
@@ -620,6 +665,169 @@ contract LiquidityVault is ERC4626, AbadiReactive, ReentrancyGuard {
         if (yes == no && s.yesOrderId == 0 && s.noOrderId == 0) delete _slots[slot];
 
         emit Flattened(slot, id, pairs, returned);
+    }
+
+    /// @notice Buy the missing side of a one-sided fill, at market, to close the direction.
+    ///
+    /// @dev This is the single largest hole in the strategy's economics, and it is not a
+    ///      contract bug — it is a missing move. When one leg fills and the book walks
+    ///      away from the other, the vault is left holding a direction it never wanted.
+    ///      Today it can only cancel the unfilled leg and wait for settlement, where the
+    ///      naked side is worth 1 or 0. The ledger has eighteen of these and they cost
+    ///      between 6.83 and 76.00 each on a basis under 100.
+    ///
+    ///      A maker does not wait. It pays the spread to get flat. Holding 100 UP bought
+    ///      at 0.218, buying 100 DOWN at 0.78 makes the pair cost 0.998 and the loss is
+    ///      two ticks instead of the whole leg. That is what this does: cancel the stale
+    ///      resting leg, then cross the book with an IOC for exactly the shortfall.
+    ///
+    ///      IOC, not LIMIT: what does not cross now must not become a second resting order
+    ///      the vault has to manage. A partial fill is a partial success — the naked
+    ///      quantity falls by whatever crossed — and the call can be made again.
+    ///
+    ///      `maxSpend` is the operator's judgement priced on chain. There is no price the
+    ///      contract can know is right, but there is a price the vault must never exceed,
+    ///      and the caller states it. Above it the whole call reverts and nothing moved.
+    ///
+    /// @param slot          the open slot holding an uneven position
+    /// @param priceYesSide  limit for the crossing order, ALWAYS quoted YES-side
+    /// @param maxSpend      hard ceiling on collateral spent, in asset units
+    function completeSet(uint256 slot, uint256 priceYesSide, uint256 maxSpend)
+        external
+        onlyOperator
+        nonReentrant
+        returns (uint256 filled, uint256 spent)
+    {
+        if (slot >= MAX_SLOTS) revert SlotOutOfRange(slot);
+        Slot storage s = _slots[slot];
+        if (!s.active) revert SlotIdle(slot);
+        {
+            // Past expiry the book is frozen: nothing crosses, and the cancel below would
+            // revert anyway. A naked leg there is settlement's problem, not this one's.
+            uint8 status = _statusOf(s.marketId);
+            if (status != MarketStatus.TRADING) revert MarketNotTrading(s.marketId, status);
+        }
+        MarketEngine.requireProbability(priceYesSide, priceOne);
+
+        bool needNo;
+        uint256 short_;
+        {
+            uint256 yes = outcomeToken.balanceOf(address(this), s.yesId);
+            uint256 no = outcomeToken.balanceOf(address(this), s.noId);
+            if (yes == no) revert NothingToComplete(s.marketId);
+            needNo = yes > no;
+            short_ = needNo ? yes - no : no - yes;
+        }
+
+        // The stale leg on the side we are about to buy is the one that failed to fill.
+        // Cancel it first: its escrow comes back and pays for the crossing order, and
+        // leaving it live would re-open the exposure this call exists to close.
+        IBinaryPool pool = IBinaryPool(s.pool);
+        if (needNo) {
+            if (_cancelIfLive(pool, s.noOrderId, false)) s.noOrderId = 0;
+        } else {
+            if (_cancelIfLive(pool, s.yesOrderId, false)) s.yesOrderId = 0;
+        }
+
+        (filled, spent) = _cross(pool, needNo ? s.noId : s.yesId, needNo, priceYesSide, short_);
+        if (spent > maxSpend) revert CompletionTooExpensive(spent, maxSpend);
+
+        // The completion is part of what this episode cost. A basis that stopped at quote
+        // time would price the pair against a number the vault did not actually pay.
+        s.basis += spent;
+
+        emit SetCompleted(slot, s.marketId, filled, spent);
+    }
+
+    /// @notice Shrink both resting legs in place, keeping their queue position.
+    ///
+    /// @dev Cancel-and-replace loses price-time priority; `reduceOrder` does not. On a
+    ///      book that moves under a resting quote, trimming size is the difference
+    ///      between staying at the front of the level and going to the back of it, and
+    ///      being early is most of what a maker's queue position is worth. The SDK has
+    ///      shipped this verb the whole time and no path from an operator key could reach
+    ///      it, because every order id this vault owns lives behind its own custody.
+    ///
+    ///      The pool's own `getOrder` documentation warns that an id can be "replaced by
+    ///      a reduce". If that happens the vault has silently lost the handle to its own
+    ///      order — escrow would read as zero and the cancel path would have nothing to
+    ///      cancel. So this does not trust the call: it reads the leg back, and unless the
+    ///      same id is still resting at the new size, the whole transaction reverts and
+    ///      the operator falls back to cancel-and-requote. An optimisation that cannot be
+    ///      verified is not taken.
+    function reduceQuote(uint256 slot, uint256 newSize) external onlyOperator nonReentrant {
+        if (slot >= MAX_SLOTS) revert SlotOutOfRange(slot);
+        Slot storage s = _slots[slot];
+        if (!s.active) revert SlotIdle(slot);
+        uint8 status = _statusOf(s.marketId);
+        if (status != MarketStatus.TRADING) revert MarketNotTrading(s.marketId, status);
+
+        uint256 qty = MarketEngine.quantize(newSize, lotSize);
+        if (qty == 0) revert SizeFlooredToZero();
+        if (qty >= s.size) revert SizeNotSmaller(qty, s.size);
+
+        IBinaryPool pool = IBinaryPool(s.pool);
+        _reduceLeg(pool, s.yesOrderId, s.size, qty);
+        _reduceLeg(pool, s.noOrderId, s.size, qty);
+
+        s.size = qty;
+        emit QuoteReduced(slot, s.marketId, qty);
+    }
+
+    /// @dev The crossing order, in its own frame.
+    ///
+    ///      `placeBinaryOrder` takes nine arguments, and inlining it into `completeSet`
+    ///      put that function over the EVM's stack limit the moment the optimizer was
+    ///      switched off — which is what `forge coverage` does. A function that only
+    ///      compiles with the optimizer on is a function nobody can measure.
+    ///
+    ///      IOC either crosses in this call or it is gone, so the deadline only has to be
+    ///      valid, not generous; the market's own expiry is the ceiling regardless.
+    function _cross(IBinaryPool pool, uint256 tokenId, bool needNo, uint256 price, uint256 qty)
+        internal
+        returns (uint256 filled, uint256 spent)
+    {
+        uint8 kind = needNo ? ORDER_KIND.BUY_NO : ORDER_KIND.BUY_YES;
+        {
+            // A BUY_NO quoted YES-side at q pays (1 - q) per contract; a BUY_YES pays q.
+            uint256 budget =
+                MarketEngine.costOf(qty, needNo ? MarketEngine.mirror(price, priceOne) : price, priceOne);
+            uint256 idle = idleAssets();
+            if (budget > idle) revert InsufficientIdle(budget, idle);
+            IERC20(asset()).forceApprove(address(pool), budget);
+        }
+
+        uint256 cashBefore = IERC20(asset()).balanceOf(address(this));
+        uint256 heldBefore = outcomeToken.balanceOf(address(this), tokenId);
+
+        (bool ok,) = pool.placeBinaryOrder(
+            kind,
+            price,
+            qty,
+            MarketEngine.expiryNs(uint64(block.timestamp), uint64(block.timestamp)),
+            ORDER_TYPE.IOC,
+            0,
+            address(0),
+            0,
+            0
+        );
+        if (!ok) revert OrderRejected(kind);
+
+        // Whatever did not cross is not resting anywhere, so the approval must not linger.
+        IERC20(asset()).forceApprove(address(pool), 0);
+
+        spent = cashBefore - IERC20(asset()).balanceOf(address(this));
+        filled = outcomeToken.balanceOf(address(this), tokenId) - heldBefore;
+    }
+
+    /// @dev One leg. A leg already at or below the new size is left alone — it has filled
+    ///      that far and there is nothing to give back.
+    function _reduceLeg(IBinaryPool pool, uint128 orderId, uint256 size, uint256 qty) internal {
+        if (orderId == 0) return;
+        uint256 remaining = _legRemaining(address(pool), orderId, size);
+        if (remaining <= qty) return;
+        pool.reduceOrder(orderId, qty);
+        if (_legRemaining(address(pool), orderId, size) != qty) revert ReduceNotHonoured(orderId);
     }
 
     /// @notice Redeem a settled slot and free it. Permissionless by design.

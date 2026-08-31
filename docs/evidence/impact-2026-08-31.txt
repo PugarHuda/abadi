@@ -1,0 +1,34 @@
+ok
+## Spread at the moment Abadi's quote landed
+
+| | windows | mean spread | in ticks |
+|---|---|---|---|
+| the book as it was | 70 | 0.0249 | 24.9 |
+| the book with Abadi in it | 70 | 0.0192 | 19.2 |
+| **difference** | | **-0.0058** | **-5.8** |
+
+Abadi tightened the book on **66 of 70** windows, left it unchanged on 4, and widened it on 0.
+
+Widening is not a failure mode here and it is left in rather than filtered out: a
+quote resting outside the incumbent's touch does not move the touch, and a maker
+that only ever quoted inside would be a maker that never quoted when the spread was
+already tight.
+
+## The widest ten, by how much they tightened
+
+| window | without Abadi | with Abadi | ticks tighter |
+|---|---|---|---|
+| …00c5b9 | 0.030 | 0.006 | 24.0 |
+| …00f114 | 0.030 | 0.006 | 24.0 |
+| …00c36b | 0.029 | 0.011 | 18.0 |
+| …00ca4d | 0.029 | 0.012 | 17.0 |
+| …00ee63 | 0.029 | 0.016 | 13.0 |
+| …00bfe2 | 0.029 | 0.018 | 11.0 |
+| …00ab64 | 0.029 | 0.019 | 10.0 |
+| …00eb78 | 0.025 | 0.015 | 10.0 |
+| …00e8af | 0.029 | 0.019 | 10.0 |
+| …00b2a1 | 0.029 | 0.020 | 9.0 |
+
+Not scored, and why:
+  2x  indexer: upstream request timeout
+

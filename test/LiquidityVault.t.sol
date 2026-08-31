@@ -144,6 +144,47 @@ contract MockPool {
         rejectNext = v;
     }
 
+    /// @dev How many contracts the far side of the book will cross right now. An IOC
+    ///      order takes up to this and the rest is cancelled, which is the whole point
+    ///      of the type: nothing is left resting for the vault to manage.
+    uint256 public crossable;
+    MockOutcome6909 public outcome;
+    uint256 public yesTokenId;
+    uint256 public noTokenId;
+
+    function setCrossable(uint256 q) external {
+        crossable = q;
+    }
+
+    function setOutcome(MockOutcome6909 o, uint256 yesId_, uint256 noId_) external {
+        outcome = o;
+        yesTokenId = yesId_;
+        noTokenId = noId_;
+    }
+
+    /// @dev The venue's `getOrder` warns an id can be "replaced by a reduce". If that
+    ///      happens the vault has lost the handle to its own order, so it must notice.
+    ///      This makes the pool behave that way on demand.
+    bool public reduceReplacesId;
+
+    function setReduceReplacesId(bool v) external {
+        reduceReplacesId = v;
+    }
+
+    function reduceOrder(uint128 orderId, uint256 newQuantityRemaining) external {
+        if (paused) revert Paused();
+        if (frozen()) revert BookFrozen();
+        if (filled[orderId]) revert IncorrectSender(msg.sender, address(this));
+        uint256 rem = remainingOf[orderId];
+        require(newQuantityRemaining <= rem, "reduce only shrinks");
+        uint256 before = escrowOf(orderId);
+        // The hazard shape: the old id stops resting entirely and a new one takes its
+        // place, so a caller that trusted the call now points at nothing.
+        remainingOf[orderId] = reduceReplacesId ? 0 : newQuantityRemaining;
+        uint256 after_ = escrowOf(orderId);
+        if (before > after_) collateral.transfer(msg.sender, before - after_);
+    }
+
     function placedCount() external view returns (uint256) {
         return placed.length;
     }
@@ -170,6 +211,22 @@ contract MockPool {
         if (rejectNext) return (false, 0);
         // BUY_YES escrows `price`; BUY_NO is quoted YES-side and escrows (1 - price).
         uint256 unit = kind == 0 ? price : 1e6 - price;
+
+        // IOC takes what crosses now and cancels the rest. It never rests, so it gets no
+        // id and no entry in `remainingOf` — it comes back as outcome tokens instead.
+        if (orderType == 2) {
+            uint256 take = quantity < crossable ? quantity : crossable;
+            if (take > 0) {
+                uint256 paid = (take * unit + 1e6 - 1) / 1e6;
+                collateral.transferFrom(msg.sender, address(this), paid);
+                crossable -= take;
+                uint256 id_ = kind == 0 ? yesTokenId : noTokenId;
+                outcome.setBalance(msg.sender, id_, outcome.balanceOf(msg.sender, id_) + take);
+            }
+            placed.push(Placed(kind, price, quantity, expireTimestampNs, orderType, userData));
+            return (true, 0);
+        }
+
         uint256 cost = (quantity * unit + 1e6 - 1) / 1e6;
         collateral.transferFrom(msg.sender, address(this), cost);
         placed.push(Placed(kind, price, quantity, expireTimestampNs, orderType, userData));
@@ -448,11 +505,11 @@ contract LiquidityVaultTest is Test {
         usdc.approve(address(vault), amount);
         vault.deposit(amount, who);
         vm.stopPrank();
-        // `_withdraw` refuses an owner whose shares were minted in THIS block, which closes
-        // the atomic deposit -> settle -> redeem sandwich. Foundry pins `block.number`, so
-        // without this every test that deposits and then withdraws would be testing the
-        // guard rather than what it came to test. One block is what a real depositor
-        // always has; the guard itself is pinned by its own test below.
+        // `_withdraw` refuses an owner inside `redeemDelay` of their mint, which closes
+        // the deposit -> settle -> redeem sandwich. Foundry pins the clock, so without
+        // this every test that deposits and then withdraws would be testing the guard
+        // rather than what it came to test. The guard is pinned by its own tests below.
+        vm.warp(block.timestamp + vault.redeemDelay() + 1);
         vm.roll(block.number + 1);
     }
 
@@ -1211,6 +1268,203 @@ contract LiquidityVaultTest is Test {
         assertLe(vault.convertToAssets(vault.balanceOf(alice)), cash, "cannot redeem more than exists");
     }
 
+    // ------------------------------------------- completing a one-sided fill
+
+    /// Stage the shape that costs this strategy the most: the BUY_YES leg fills, the book
+    /// walks away from the BUY_NO, and the vault is left holding a direction.
+    function _oneSided() internal {
+        _deposit(alice, 500e6);
+        vm.prank(operator);
+        // bid 0.485 / ask 0.515 on 100 contracts.
+        vault.quote(0, MARKET, uint256(500_000), uint256(15_000), 100e6);
+        pool.fill(1); // the YES leg is taken
+        outcome.setBalance(address(vault), YES_ID, 100e6);
+        pool.setOutcome(outcome, YES_ID, NO_ID);
+    }
+
+    /// The number this exists to change. Holding the naked leg to settlement risks the
+    /// whole leg; crossing the book for the missing side costs the spread instead.
+    function test_completeSetTurnsANakedLegIntoAPair() public {
+        _oneSided();
+        // 500.00 went in. Everything below is measured against that, because what the
+        // depositor cares about is what comes back, not what NAV said on the way.
+        uint256 navNaked = vault.totalAssets();
+        assertEq(navNaked, 451.5e6, "a naked leg marks at zero, so NAV already shows the hole");
+
+        // The far side is there to be taken, a little wide of where we were quoting.
+        pool.setCrossable(100e6);
+        vm.prank(operator);
+        (uint256 filled, uint256 spent) = vault.completeSet(0, uint256(470_000), 60e6);
+
+        assertEq(filled, 100e6, "the missing side was bought in full");
+        // BUY_NO at a YES-side 0.470 pays 1 - 0.470 = 0.530 per contract.
+        assertEq(spent, 53e6, "and it cost what the book asked");
+        assertEq(outcome.balanceOf(address(vault), NO_ID), 100e6, "the vault now holds both sides");
+        assertEq(vault.slots(0).basis, 97e6 + 53e6, "the completion is part of what the episode cost");
+
+        // A complete set merges for exactly 1 per contract, so the position is flat and
+        // the cost is what was paid over par rather than the whole leg.
+        vm.prank(operator);
+        uint256 returned = vault.flatten(0);
+        assertEq(returned, 100e6, "a pair is worth exactly one, whichever way it resolves");
+
+        // 48.50 for the YES leg + 53.00 for the NO leg = 101.50 for something worth 100.
+        assertEq(vault.totalAssets(), 498.5e6, "the episode cost 1.50 of the 500.00 that went in");
+        assertGt(vault.totalAssets(), navNaked, "and it is worth far more than carrying the leg");
+    }
+
+    /// Without it, the same episode rides to settlement on the wrong side and the naked
+    /// leg is worth nothing. This is the counterfactual the ledger already has 18 of.
+    function test_theNakedLegLosesTheWholeLegWhenItIsNotCompleted() public {
+        _oneSided();
+        vm.prank(operator);
+        vault.cancelQuote(0); // what the bot can do today: pull the leg that never filled
+
+        market.resolve(0, 10_000_000); // NO wins, so the held YES leg is worth nothing
+        vm.prank(operator);
+        vault.settle(0);
+
+        // 48.50 went out on the YES leg and nothing came back for it: 451.50 of the
+        // 500.00 remains. Completing the set above ended at 498.50 on the same fill.
+        assertEq(vault.totalAssets(), 451.5e6, "the naked leg cost the whole leg");
+    }
+
+    /// The operator names the worst price it will accept, and the contract holds it to it.
+    /// A book that has moved further than expected must not be paid for silently.
+    function test_completeSetRefusesToOverpay() public {
+        _oneSided();
+        pool.setCrossable(100e6);
+        vm.prank(operator);
+        vm.expectRevert(
+            abi.encodeWithSelector(LiquidityVault.CompletionTooExpensive.selector, uint256(53e6), uint256(40e6))
+        );
+        vault.completeSet(0, uint256(470_000), 40e6);
+    }
+
+    /// IOC: a book that only has part of the size crosses part of it, and the rest is not
+    /// left resting anywhere. A partial completion is a partial success, and the call can
+    /// be made again as more depth arrives.
+    function test_completeSetTakesWhatCrossesAndRestsNothing() public {
+        _oneSided();
+        pool.setCrossable(40e6);
+        uint256 restingBefore = pool.placedCount();
+
+        vm.prank(operator);
+        (uint256 filled,) = vault.completeSet(0, uint256(470_000), 60e6);
+        assertEq(filled, 40e6, "only what the book could cross");
+        assertEq(pool.placedCount(), restingBefore + 1, "one order was sent");
+        assertEq(pool.remainingOf(uint128(pool.nextId())), 0, "and nothing was left resting under a new id");
+
+        pool.setCrossable(60e6);
+        vm.prank(operator);
+        (uint256 more,) = vault.completeSet(0, uint256(470_000), 60e6);
+        assertEq(more, 60e6, "the rest goes when the depth is there");
+        assertEq(outcome.balanceOf(address(vault), NO_ID), 100e6, "flat");
+    }
+
+    /// Nothing naked, nothing to do. Silently sending an order here would open exposure
+    /// rather than close it.
+    function test_completeSetRefusesAMatchedSlot() public {
+        _deposit(alice, 500e6);
+        vm.prank(operator);
+        vault.quote(0, MARKET, uint256(500_000), uint256(15_000), 100e6);
+        outcome.setBalance(address(vault), YES_ID, 100e6);
+        outcome.setBalance(address(vault), NO_ID, 100e6);
+        pool.setOutcome(outcome, YES_ID, NO_ID);
+        pool.setCrossable(100e6);
+
+        vm.prank(operator);
+        vm.expectRevert(abi.encodeWithSelector(LiquidityVault.NothingToComplete.selector, MARKET));
+        vault.completeSet(0, uint256(470_000), 60e6);
+    }
+
+    /// Past expiry the book is frozen: nothing crosses and the cancel would revert. The
+    /// refusal is explicit rather than a confusing failure deeper in the venue.
+    function test_completeSetRefusesOnceTheWindowIsOver() public {
+        _oneSided();
+        pool.setCrossable(100e6);
+        vm.warp(expiry + 1); // past expiry the module reports LOCKED and the book freezes
+
+        vm.prank(operator);
+        vm.expectRevert(
+            abi.encodeWithSelector(LiquidityVault.MarketNotTrading.selector, MARKET, MarketStatus.LOCKED)
+        );
+        vault.completeSet(0, uint256(470_000), 60e6);
+    }
+
+    function test_completeSetIsOperatorOnly() public {
+        _oneSided();
+        pool.setCrossable(100e6);
+        vm.prank(alice);
+        vm.expectRevert(abi.encodeWithSelector(LiquidityVault.NotOperator.selector, alice));
+        vault.completeSet(0, uint256(470_000), 60e6);
+    }
+
+    // ------------------------------------------------- trimming in place
+
+    /// Cancel-and-replace loses the queue; reduceOrder keeps it. The escrow the pool no
+    /// longer needs comes back the same way it would on a cancel.
+    function test_reduceQuoteShrinksBothLegsInPlace() public {
+        _deposit(alice, 500e6);
+        vm.prank(operator);
+        vault.quote(0, MARKET, uint256(500_000), uint256(15_000), 100e6);
+        uint128 yesId_ = vault.slots(0).yesOrderId;
+        uint128 noId_ = vault.slots(0).noOrderId;
+        uint256 cancelsBefore = pool.cancelledCount();
+        uint256 escrowBefore = vault.totalEscrowed();
+
+        vm.prank(operator);
+        vault.reduceQuote(0, 40e6);
+
+        assertEq(vault.slots(0).yesOrderId, yesId_, "the same order, not a new one");
+        assertEq(vault.slots(0).noOrderId, noId_, "on both sides");
+        assertEq(pool.cancelledCount(), cancelsBefore, "nothing was cancelled, so nothing lost its place");
+        assertEq(vault.slots(0).size, 40e6, "the slot knows its new size");
+        assertEq(pool.remainingOf(yesId_), 40e6, "and so does the pool");
+        assertLt(vault.totalEscrowed(), escrowBefore, "the escrow it no longer needs came back");
+        assertEq(vault.totalEscrowed(), _poolLedger(), "and the two agree to the wei");
+    }
+
+    /// The venue's own docs warn an id can be replaced by a reduce. If it is, the vault
+    /// has lost the handle to its own order — so it refuses the optimisation rather than
+    /// carrying on with a stale id and an escrow read of zero.
+    function test_reduceQuoteRevertsIfThePoolMovesTheOrder() public {
+        _deposit(alice, 500e6);
+        vm.prank(operator);
+        vault.quote(0, MARKET, uint256(500_000), uint256(15_000), 100e6);
+        uint128 yesId_ = vault.slots(0).yesOrderId;
+        pool.setReduceReplacesId(true);
+
+        vm.prank(operator);
+        vm.expectRevert(abi.encodeWithSelector(LiquidityVault.ReduceNotHonoured.selector, yesId_));
+        vault.reduceQuote(0, 40e6);
+
+        assertEq(vault.slots(0).size, 100e6, "and the slot is untouched");
+    }
+
+    /// Reduce means smaller. Growing a resting order is a new order at the back of the
+    /// queue however it is spelled, so this refuses rather than pretending otherwise.
+    function test_reduceQuoteOnlyShrinks() public {
+        _deposit(alice, 500e6);
+        vm.prank(operator);
+        vault.quote(0, MARKET, uint256(500_000), uint256(15_000), 100e6);
+
+        vm.prank(operator);
+        vm.expectRevert(
+            abi.encodeWithSelector(LiquidityVault.SizeNotSmaller.selector, uint256(100e6), uint256(100e6))
+        );
+        vault.reduceQuote(0, 100e6);
+    }
+
+    function test_reduceQuoteIsOperatorOnly() public {
+        _deposit(alice, 500e6);
+        vm.prank(operator);
+        vault.quote(0, MARKET, uint256(500_000), uint256(15_000), 100e6);
+        vm.prank(alice);
+        vm.expectRevert(abi.encodeWithSelector(LiquidityVault.NotOperator.selector, alice));
+        vault.reduceQuote(0, 40e6);
+    }
+
     /// The pool's own ledger, summed exactly as invariant_restingEscrowMatchesThePoolsOwnLedger does.
     function _poolLedger() internal view returns (uint256 total) {
         for (uint256 i = 0; i < vault.MAX_SLOTS(); i++) {
@@ -1666,20 +1920,25 @@ contract LiquidityVaultTest is Test {
 
     // ------------------------------------------------- the same-block sandwich
 
-    /// A depositor who can deposit, settle and redeem in one transaction takes the
-    /// settlement's mark-up without ever holding the position: measured at +50.00 to the
-    /// attacker and -50.00 to the LP who was already there. Atomicity is what made it
-    /// riskless, so one block is enough to close it.
-    function test_aDepositCannotBeUnwoundInTheSameBlock() public {
+    /// A depositor who can deposit, settle and redeem takes the settlement's mark-up
+    /// without ever holding the position: measured at +50.00 to the attacker and -50.00
+    /// to the LP who was already there.
+    ///
+    /// This was closed with a ONE-BLOCK guard, on the reasoning that atomicity was what
+    /// made it riskless. That reasoning was half right. Somnia's blocks are sub-second,
+    /// so a block is not a holding period — the patient version (deposit, wait one block,
+    /// settle, redeem) cleared the guard without noticing it. What the attacker must be
+    /// made to do is carry the mark, and that takes time, not a block.
+    function test_aDepositCannotBeUnwoundInsideTheRedeemDelay() public {
         _deposit(alice, 500e6);
         vm.prank(operator);
         vault.quote(0, MARKET, uint256(500_000), uint256(15_000), 100e6);
 
-        uint256 startBlock = block.number;
+        uint256 mintedAt = block.timestamp;
         vm.startPrank(bob);
         usdc.approve(address(vault), 500e6);
         uint256 shares = vault.deposit(200e6, bob);
-        assertEq(vault.depositedAt(bob), startBlock, "the mint block is recorded");
+        assertEq(vault.depositedAt(bob), mintedAt, "the mint time is recorded");
         // Enforced twice over: `maxWithdraw`/`maxRedeem` report 0 for a holder who deposited
         // this block, so ERC-4626 refuses at its own max check before `_withdraw` is
         // reached. Both are the same rule and either is a correct refusal.
@@ -1692,11 +1951,38 @@ contract LiquidityVaultTest is Test {
         vault.withdraw(1e6, bob, bob);
         vm.stopPrank();
 
-        // One block later the same sequence is ordinary vault business.
+        // One block later is NOT enough any more. This is the exact hole the block guard
+        // left open, and it is asserted rather than described.
         vm.roll(block.number + 1);
+        vm.warp(block.timestamp + 1);
+        vm.prank(bob);
+        vm.expectRevert();
+        vault.redeem(shares, bob, bob);
+
+        // Past the delay the same sequence is ordinary vault business.
+        vm.warp(mintedAt + vault.redeemDelay() + 1);
         vm.prank(bob);
         vault.redeem(shares, bob, bob);
         assertEq(vault.balanceOf(bob), 0, "and it goes through");
+    }
+
+    /// The delay is a withdrawal brake, so an unbounded one is a freeze. Governance can
+    /// tune it and cannot weaponise it.
+    function test_theRedeemDelayIsCapped() public {
+        assertEq(vault.redeemDelay(), 300, "default is the venue's settlement window");
+        vm.prank(governor);
+        vault.setRedeemDelay(600);
+        assertEq(vault.redeemDelay(), 600, "governance may tune it");
+
+        vm.prank(governor);
+        vm.expectRevert(
+            abi.encodeWithSelector(LiquidityVault.DelayTooLong.selector, uint64(2 hours), uint64(1 hours))
+        );
+        vault.setRedeemDelay(uint64(2 hours));
+
+        vm.prank(alice);
+        vm.expectRevert();
+        vault.setRedeemDelay(0);
     }
 
     /// The guard is keyed on the OWNER whose shares burn, not on the caller. Routing the

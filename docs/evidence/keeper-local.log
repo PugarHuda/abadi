@@ -2490,3 +2490,122 @@
 2026-08-31 14:12:20 fv       BTC-0-31AUG26-1600/tUSDC  fair 0.239  spot 77859.74 strike 78291.20 (feed tick at tradingStart+0s)  sigma 54.6% on 239 M1 returns (half-life 108m, lambda 0.9936)  6461s left  d2 -0.711  feed 1s old  book mid 0.231  edge 0.008
 2026-08-31 14:12:20 skip     BTC-0-31AUG26-1600/tUSDC  mid moved 18 ticks in 20s — trending, not quoting
 2026-08-31 14:12:23 cycle 1  NAV 9462.67  idle 9462.67  resting 0.00  share 1.000402
+2026-08-31 14:26:14 vault    0x2c96022771e8368283F8909C9a1923a4De9781E7
+2026-08-31 14:26:14 operator 0x39D2bae5EAedA9283535dDC98F1991c81eD5Cd7E
+2026-08-31 14:26:14 interval 30s  active 3  size 100 (x0.5 on 900s)  dead 6 ticks  momentum 3 ticks/20s  gas floor 0.5 STT  1 cycles
+2026-08-31 14:26:14 fv       ON  refuse over 0.1 of edge, skew up to 3 ticks toward fair; no model means book-only and a log line saying so
+2026-08-31 14:27:02 tiers    quoting 14400s, 900s only — 3600s and 86400s are left alone on the ledger's record
+2026-08-31 14:27:03 sampled  2 books in 0.3s; second look in 20s
+2026-08-31 14:27:26 fv       ETH-0-31AUG26-1600/tUSDC  fair 0.418  spot 2441.33 strike 2445.43 (feed tick at tradingStart+0s)  sigma 62.8% on 239 M1 returns (half-life 93m, lambda 0.9925)  5556s left  d2 -0.206  feed 0s old  book mid 0.410  edge 0.008
+2026-08-31 14:27:26 skip     ETH-0-31AUG26-1600/tUSDC  mid moved 32 ticks in 20s — trending, not quoting
+2026-08-31 14:27:26 fv       BTC-0-31AUG26-1600/tUSDC  fair 0.223  spot 77855.95 strike 78291.20 (feed tick at tradingStart+0s)  sigma 55.3% on 239 M1 returns (half-life 93m, lambda 0.9925)  5554s left  d2 -0.763  feed 1s old  book mid 0.192  edge 0.031
+2026-08-31 14:27:26 skip     BTC-0-31AUG26-1600/tUSDC  mid moved 8 ticks in 20s — trending, not quoting
+2026-08-31 14:27:29 cycle 1  NAV 9462.67  idle 9462.67  resting 0.00  share 1.000402
+2026-08-31 14:41:09 vault    0x2c96022771e8368283F8909C9a1923a4De9781E7
+2026-08-31 14:41:09 operator 0x39D2bae5EAedA9283535dDC98F1991c81eD5Cd7E
+2026-08-31 14:41:09 interval 30s  active 3  size 100 (x0.5 on 900s)  dead 6 ticks  momentum 3 ticks/20s  gas floor 0.5 STT  1 cycles
+2026-08-31 14:41:09 fv       ON  refuse over 0.1 of edge, skew up to 3 ticks toward fair; no model means book-only and a log line saying so
+2026-08-31 14:42:00 tiers    quoting 14400s, 900s only — 3600s and 86400s are left alone on the ledger's record
+2026-08-31 14:42:00 sampled  2 books in 0.4s; second look in 20s
+2026-08-31 14:42:22 fv       ETH-0-31AUG26-1600/tUSDC  fair 0.855  spot 2468.13 strike 2445.43 (feed tick at tradingStart+0s)  sigma 71.4% on 239 M1 returns (half-life 78m, lambda 0.9911)  4658s left  d2 1.059  feed 0s old  book mid 0.823  edge 0.032
+2026-08-31 14:42:22 skip     ETH-0-31AUG26-1600/tUSDC  mid moved 11 ticks in 20s — trending, not quoting
+2026-08-31 14:42:23 fv       BTC-0-31AUG26-1600/tUSDC  fair 0.634  spot 78493.63 strike 78291.20 (feed tick at tradingStart+0s)  sigma 61.4% on 239 M1 returns (half-life 78m, lambda 0.9911)  4657s left  d2 0.342  feed 1s old  book mid 0.648  edge 0.014
+2026-08-31 14:42:23 quote    slot 0 BTC-0-31AUG26-1600/tUSDC  theirs 0.634/0.662  ours 0.633/0.657  size 100  escrow 97.60  (mid still, 2 ticks)  skew -3 ticks toward fair
+2026-08-31 14:42:26 quote    slot 0 ee63  worked  0x26aaa24b29421e55d4e311f6c5e2dcae7bede116b46ba3dff7e46d7de9a76f11  gas 995737
+2026-08-31 14:42:31 arm      16:05:15Z  worked  0xdbb01307f462c89a2a6e15f50443c5de55f43ee543b236093ed69437b8f956bf  gas 467050
+2026-08-31 14:42:35 cycle 1  NAV 9428.37  idle 9365.07  resting 63.30  share 0.996776
+2026-08-31 14:56:02 vault    0x2c96022771e8368283F8909C9a1923a4De9781E7
+2026-08-31 14:56:02 operator 0x39D2bae5EAedA9283535dDC98F1991c81eD5Cd7E
+2026-08-31 14:56:02 interval 30s  active 3  size 100 (x0.5 on 900s)  dead 6 ticks  momentum 3 ticks/20s  gas floor 0.5 STT  1 cycles
+2026-08-31 14:56:02 fv       ON  refuse over 0.1 of edge, skew up to 3 ticks toward fair; no model means book-only and a log line saying so
+2026-08-31 14:56:47 slot 0: complete set held, book 66 ticks from our mid — flattening
+2026-08-31 14:56:50 flatten  slot 0 ee63  worked  0x71c03fda294007fbeb77afa632285bbc73ee8327d1e1b010b0626e57304859d4  gas 810582
+2026-08-31 14:56:55 tiers    quoting 14400s, 900s only — 3600s and 86400s are left alone on the ledger's record
+2026-08-31 14:56:55 sampled  1 books in 0.4s; second look in 20s
+2026-08-31 14:57:17 fv       ETH-0-31AUG26-1600/tUSDC  fair 0.877  spot 2469.33 strike 2445.43 (feed tick at tradingStart+0s)  sigma 76.3% on 239 M1 returns (half-life 63m, lambda 0.9890)  3763s left  d2 1.162  feed -1s old  book mid 0.883  edge 0.005
+2026-08-31 14:57:17 skip     ETH-0-31AUG26-1600/tUSDC  mid moved 10 ticks in 20s — trending, not quoting
+2026-08-31 14:57:21 cycle 1  NAV 9465.07  idle 9465.07  resting 0.00  share 1.000655
+2026-08-31 15:00:56 vault    0xda15A7137987170118417638a67bd45E864aB5Fe
+2026-08-31 15:00:56 operator 0x39D2bae5EAedA9283535dDC98F1991c81eD5Cd7E
+2026-08-31 15:00:56 interval 30s  active 3  size 100 (x0.5 on 900s)  dead 6 ticks  momentum 3 ticks/20s  gas floor 0.5 STT  1 cycles
+2026-08-31 15:00:56 fv       ON  refuse over 0.1 of edge, skew up to 3 ticks toward fair; no model means book-only and a log line saying so
+2026-08-31 15:01:49 tiers    quoting 14400s, 900s only — 3600s and 86400s are left alone on the ledger's record
+2026-08-31 15:01:50 sampled  3 books in 0.6s; second look in 20s
+2026-08-31 15:02:12 fv       ETH-0-31AUG26-1515-F0DF/tUSDC  fair 0.518  spot 2467.01 strike 2466.55 (feed tick at tradingStart+0s)  sigma 81.7% on 239 M1 returns (half-life 15m, lambda 0.9548)  769s left  d2 0.044  feed 0s old  book mid 0.527  edge 0.009
+2026-08-31 15:02:12 skip     ETH-0-31AUG26-1515-F0DF/tUSDC  mid moved 34 ticks in 20s — trending, not quoting
+2026-08-31 15:02:13 fv       BTC-0-31AUG26-1515/tUSDC  fair 0.434  spot 78516.76 strike 78560.46 (feed tick at tradingStart+0s)  sigma 68.2% on 239 M1 returns (half-life 15m, lambda 0.9548)  768s left  d2 -0.167  feed 1s old  book mid 0.424  edge 0.009
+2026-08-31 15:02:13 skip     BTC-0-31AUG26-1515/tUSDC  mid moved 49 ticks in 20s — trending, not quoting
+2026-08-31 15:02:13 fv       ETH-0-31AUG26-1515-F0D9/tUSDC  fair 0.518  spot 2467.01 strike 2466.55 (feed tick at tradingStart+0s)  sigma 81.7% on 239 M1 returns (half-life 15m, lambda 0.9548)  767s left  d2 0.044  feed 2s old  book mid 0.583  edge 0.066
+2026-08-31 15:02:13 skip     ETH-0-31AUG26-1515-F0D9/tUSDC  mid moved 22 ticks in 20s — trending, not quoting
+2026-08-31 15:02:16 cycle 1  NAV 9465.07  idle 9465.07  resting 0.00  share 1.000000
+2026-08-31 15:13:45 vault    0xda15A7137987170118417638a67bd45E864aB5Fe
+2026-08-31 15:13:45 operator 0x39D2bae5EAedA9283535dDC98F1991c81eD5Cd7E
+2026-08-31 15:13:45 interval 30s  active 3  size 100 (x0.5 on 900s)  dead 6 ticks  momentum 3 ticks/20s  gas floor 0.5 STT  1 cycles
+2026-08-31 15:13:45 fv       ON  refuse over 0.1 of edge, skew up to 3 ticks toward fair; no model means book-only and a log line saying so
+2026-08-31 15:15:21 tiers    quoting 14400s, 900s only — 3600s and 86400s are left alone on the ledger's record
+2026-08-31 15:15:22 sampled  2 books in 0.4s; second look in 20s
+2026-08-31 15:15:45 fv       ETH-0-31AUG26-1530/tUSDC  fair 0.479  spot 2458.66 strike 2459.13 (feed tick at tradingStart+0s)  sigma 72.4% on 239 M1 returns (half-life 15m, lambda 0.9548)  857s left  d2 -0.052  feed 1s old  book mid 0.474  edge 0.006
+2026-08-31 15:15:45 skip     ETH-0-31AUG26-1530/tUSDC  mid moved 109 ticks in 20s — trending, not quoting
+2026-08-31 15:15:46 fv       BTC-0-31AUG26-1530/tUSDC  fair 0.438  spot 78264.67 strike 78302.81 (feed tick at tradingStart+0s)  sigma 60.4% on 239 M1 returns (half-life 15m, lambda 0.9548)  854s left  d2 -0.156  feed 2s old  book mid 0.406  edge 0.032
+2026-08-31 15:15:46 skip     BTC-0-31AUG26-1530/tUSDC  mid moved 161 ticks in 20s — trending, not quoting
+2026-08-31 15:15:49 cycle 1  NAV 9465.07  idle 9465.07  resting 0.00  share 1.000000
+2026-08-31 15:15:54 vault    0xda15A7137987170118417638a67bd45E864aB5Fe
+2026-08-31 15:15:54 operator 0x39D2bae5EAedA9283535dDC98F1991c81eD5Cd7E
+2026-08-31 15:15:54 interval 30s  active 1  size 100 (x0.5 on 900s)  dead 6 ticks  momentum 999 ticks/20s  gas floor 0.5 STT  1 cycles
+2026-08-31 15:15:54 fv       ON  refuse over 0.1 of edge, skew up to 3 ticks toward fair; no model means book-only and a log line saying so
+2026-08-31 15:16:46 tiers    quoting 14400s, 900s only — 3600s and 86400s are left alone on the ledger's record
+2026-08-31 15:16:46 sampled  2 books in 0.3s; second look in 20s
+2026-08-31 15:17:09 fv       ETH-0-31AUG26-1530/tUSDC  fair 0.561  spot 2460.47 strike 2459.13 (feed tick at tradingStart+0s)  sigma 71.0% on 239 M1 returns (half-life 15m, lambda 0.9548)  772s left  d2 0.153  feed 0s old  book mid 0.576  edge 0.015
+2026-08-31 15:17:09 quote    slot 0 ETH-0-31AUG26-1530/tUSDC  theirs 0.561/0.590  ours 0.560/0.584  size 50  escrow 48.80  (mid still, 82 ticks)  skew -3 ticks toward fair
+2026-08-31 15:17:11 quote    slot 0 f115  rejected: The contract function "quote" reverted with the following signature:
+2026-08-31 15:17:12 fv       BTC-0-31AUG26-1530/tUSDC  fair 0.550  spot 78331.63 strike 78302.81 (feed tick at tradingStart+0s)  sigma 58.4% on 239 M1 returns (half-life 15m, lambda 0.9548)  768s left  d2 0.126  feed 3s old  book mid 0.553  edge 0.003
+2026-08-31 15:17:12 quote    slot 0 BTC-0-31AUG26-1530/tUSDC  theirs 0.538/0.568  ours 0.537/0.563  size 50  escrow 48.70  (mid still, 80 ticks)  skew -3 ticks toward fair
+2026-08-31 15:17:14 quote    slot 0 f114  rejected: The contract function "quote" reverted with the following signature:
+2026-08-31 15:17:14 fv       ETH-0-31AUG26-1530/tUSDC  fair 0.561  spot 2460.47 strike 2459.13 (feed tick at tradingStart+0s)  sigma 71.0% on 239 M1 returns (half-life 15m, lambda 0.9548)  765s left  d2 0.154  feed 6s old  book mid 0.576  edge 0.014
+2026-08-31 15:17:14 quote    slot 1 ETH-0-31AUG26-1530/tUSDC  theirs 0.561/0.590  ours 0.560/0.584  size 50  escrow 48.80  (mid still, 82 ticks)  skew -3 ticks toward fair
+2026-08-31 15:17:15 quote    slot 1 f115  rejected: The contract function "quote" reverted with the following signature:
+2026-08-31 15:17:15 fv       BTC-0-31AUG26-1530/tUSDC  fair 0.550  spot 78331.63 strike 78302.81 (feed tick at tradingStart+0s)  sigma 58.4% on 239 M1 returns (half-life 15m, lambda 0.9548)  764s left  d2 0.127  feed 7s old  book mid 0.553  edge 0.003
+2026-08-31 15:17:15 quote    slot 1 BTC-0-31AUG26-1530/tUSDC  theirs 0.538/0.568  ours 0.537/0.563  size 50  escrow 48.70  (mid still, 80 ticks)  skew -3 ticks toward fair
+2026-08-31 15:17:19 quote    slot 1 f114  worked  0xfd3c1f136efe6730fe6a1b9a1e79e995c7dbc601042aaf45163c39a3ba8aa968  gas 2999949
+2026-08-31 15:17:24 arm      15:35:15Z  worked  0x06b608a715454f97884a516e907103b1f86a6139aa1d31aab36b874104f05ff2  gas 467072
+2026-08-31 15:17:25 cycle 1  NAV 9465.07  idle 9416.37  resting 48.70  share 1.000000
+2026-08-31 15:18:43 vault    0xda15A7137987170118417638a67bd45E864aB5Fe
+2026-08-31 15:18:43 operator 0x39D2bae5EAedA9283535dDC98F1991c81eD5Cd7E
+2026-08-31 15:18:43 interval 30s  active 1  size 100 (x0.5 on 900s)  dead 6 ticks  momentum 3 ticks/20s  gas floor 0.5 STT  1 cycles
+2026-08-31 15:18:43 fv       ON  refuse over 0.1 of edge, skew up to 3 ticks toward fair; no model means book-only and a log line saying so
+2026-08-31 15:19:36 skip     slot 1 f114  completing costs 0.702 on top of 0.537 = 1.239 the pair, over the 1.060 line — carrying the leg instead
+2026-08-31 15:19:40 cycle 1  NAV 9438.22  idle 9416.37  resting 21.85  share 0.997163
+2026-08-31 15:26:30 vault    0xda15A7137987170118417638a67bd45E864aB5Fe
+2026-08-31 15:26:30 operator 0x39D2bae5EAedA9283535dDC98F1991c81eD5Cd7E
+2026-08-31 15:26:30 interval 30s  active 3  size 100 (x0.5 on 900s)  dead 6 ticks  momentum 3 ticks/20s  gas floor 0.5 STT  1 cycles
+2026-08-31 15:26:30 fv       ON  refuse over 0.1 of edge, skew up to 3 ticks toward fair; no model means book-only and a log line saying so
+2026-08-31 15:27:22 slot 1: complete set held, book 102 ticks from our mid — flattening
+2026-08-31 15:27:25 flatten  slot 1 f114  worked  0xa956276c87e9bf3bb4d563d32cd20e7a85a9abcd824b40c6c02c2d3cfdddb4f3  gas 810604
+2026-08-31 15:27:33 tiers    quoting 14400s, 900s only — 3600s and 86400s are left alone on the ledger's record
+2026-08-31 15:27:33 sampled  0 books in 0.0s; second look in 20s
+2026-08-31 15:27:38 cycle 1  NAV 9466.37  idle 9466.37  resting 0.00  share 1.000137
+2026-08-31 15:41:02 vault    0xda15A7137987170118417638a67bd45E864aB5Fe
+2026-08-31 15:41:02 operator 0x39D2bae5EAedA9283535dDC98F1991c81eD5Cd7E
+2026-08-31 15:41:02 interval 30s  active 3  size 100 (x0.5 on 900s)  dead 6 ticks  momentum 3 ticks/20s  gas floor 0.5 STT  1 cycles
+2026-08-31 15:41:02 fv       ON  refuse over 0.1 of edge, skew up to 3 ticks toward fair; no model means book-only and a log line saying so
+2026-08-31 15:41:54 tiers    quoting 14400s, 900s only — 3600s and 86400s are left alone on the ledger's record
+2026-08-31 15:41:54 sampled  0 books in 0.0s; second look in 20s
+2026-08-31 15:41:58 cycle 1  NAV 9466.37  idle 9466.37  resting 0.00  share 1.000137
+2026-08-31 15:56:02 vault    0xda15A7137987170118417638a67bd45E864aB5Fe
+2026-08-31 15:56:02 operator 0x39D2bae5EAedA9283535dDC98F1991c81eD5Cd7E
+2026-08-31 15:56:02 interval 30s  active 3  size 100 (x0.5 on 900s)  dead 6 ticks  momentum 3 ticks/20s  gas floor 0.5 STT  1 cycles
+2026-08-31 15:56:02 fv       ON  refuse over 0.1 of edge, skew up to 3 ticks toward fair; no model means book-only and a log line saying so
+2026-08-31 15:56:57 tiers    quoting 14400s, 900s only — 3600s and 86400s are left alone on the ledger's record
+2026-08-31 15:56:57 sampled  0 books in 0.0s; second look in 20s
+2026-08-31 15:57:01 cycle 1  NAV 9466.37  idle 9466.37  resting 0.00  share 1.000137
+2026-08-31 16:06:06 vault    0xFd9c93581ADD42B9B13ba5550542Fc7315775cD9
+2026-08-31 16:06:06 operator 0x39D2bae5EAedA9283535dDC98F1991c81eD5Cd7E
+2026-08-31 16:06:06 interval 30s  active 2  size 100 (x0.5 on 900s)  dead 6 ticks  momentum 3 ticks/20s  gas floor 0.5 STT  1 cycles
+2026-08-31 16:06:06 fv       ON  refuse over 0.1 of edge, skew up to 3 ticks toward fair; no model means book-only and a log line saying so
+2026-08-31 16:07:02 tiers    quoting 14400s, 900s only — 3600s and 86400s are left alone on the ledger's record
+2026-08-31 16:07:03 sampled  2 books in 0.4s; second look in 20s
+2026-08-31 16:07:25 fv       ETH-0-31AUG26-2000/tUSDC  fair 0.523  spot 2469.43 strike 2467.21 (feed tick at tradingStart+0s)  sigma 66.7% on 239 M1 returns (half-life 120m, lambda 0.9942)  13956s left  d2 0.057  feed 1s old  book mid 0.553  edge 0.030
+2026-08-31 16:07:25 skip     ETH-0-31AUG26-2000/tUSDC  mid moved 29 ticks in 20s — trending, not quoting
+2026-08-31 16:07:26 fv       BTC-0-31AUG26-2000/tUSDC  fair 0.505  spot 78583.79 strike 78565.49 (feed tick at tradingStart+0s)  sigma 57.6% on 239 M1 returns (half-life 120m, lambda 0.9942)  13955s left  d2 0.013  feed 1s old  book mid 0.522  edge 0.017
+2026-08-31 16:07:26 skip     BTC-0-31AUG26-2000/tUSDC  mid moved 33 ticks in 20s — trending, not quoting
+2026-08-31 16:07:28 cycle 1  NAV 9566.37  idle 9566.37  resting 0.00  share 1.000000

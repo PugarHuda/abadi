@@ -66,6 +66,8 @@
   .lvl.mine { font-weight: 500; }
   .lvl.mine .depth { background: rgba(22, 38, 43, .18); }
   .tag { font-family: var(--sans); font-size: 11px; font-stretch: 80%; font-weight: 500; color: var(--stock); background: var(--ink); padding: 1px 5px; margin-left: 8px; }
+  .book-note { font-size: 13px; color: var(--pencil); margin: 0 0 var(--chart); max-width: 74ch; }
+  #book[data-state="error"] + .book-note { color: var(--alarm); }
 
   /* -------------------------------------------------------------------- the verdicts */
   .verdict { margin: 0 0 calc(var(--chart) * 1.5); padding: 14px 0 0 22px; border-top: 1px solid var(--ctl-line); }
@@ -225,32 +227,13 @@
   </p>
 
   <!-- ============ ladder ============ -->
-  <h2 class="band">The book, as read back <span>after quoting</span></h2>
+  <h2 class="band">The book, live <span>ours marked by owner address</span></h2>
 
-  <div class="ladder">
-    <div class="bids">
-      <div class="col-head bid">bids · buying up</div>
-      <div class="lvl mine"><div class="depth" style="width:22%"></div>
-        <span class="px">0.744<span class="tag">ABADI</span></span><span class="sz">100</span></div>
-      <div class="lvl"><div class="depth" style="width:43%"></div>
-        <span class="px">0.742</span><span class="sz">200</span></div>
-      <div class="lvl"><div class="depth" style="width:72%"></div>
-        <span class="px">0.733</span><span class="sz">330</span></div>
-      <div class="lvl"><div class="depth" style="width:100%"></div>
-        <span class="px">0.723</span><span class="sz">460</span></div>
-    </div>
-    <div class="asks">
-      <div class="col-head ask">asks · buying down</div>
-      <div class="lvl"><div class="depth" style="width:43%"></div>
-        <span class="px">0.769</span><span class="sz">200</span></div>
-      <div class="lvl mine"><div class="depth" style="width:22%"></div>
-        <span class="px">0.770<span class="tag">ABADI</span></span><span class="sz">100</span></div>
-      <div class="lvl"><div class="depth" style="width:72%"></div>
-        <span class="px">0.779</span><span class="sz">330</span></div>
-      <div class="lvl"><div class="depth" style="width:100%"></div>
-        <span class="px">0.788</span><span class="sz">460</span></div>
-    </div>
+  <div class="ladder" id="book" data-state="loading">
+    <div class="bids" data-book="bids"></div>
+    <div class="asks" data-book="asks"></div>
   </div>
+  <p class="book-note" data-book="note">Reading the book…</p>
 
   <div class="verdict">
     <p>
@@ -383,10 +366,11 @@
   </main>
 
   <footer class="foot">
-    <span>vault 0x2c960227…81E7 · quote → fill → merge → redeem, all run · not a track record yet</span>
+    <span>vault 0xFd9c9358…5cD9 · quote → fill → merge → redeem, all run · not a track record yet</span>
     <span>abadi · everlasting</span>
   </footer>
 
 </div>
 <script src="/live.js" defer></script>
 <script src="/ledger.js" defer></script>
+<script src="/book.js" defer></script>

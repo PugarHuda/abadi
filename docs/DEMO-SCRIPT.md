@@ -15,7 +15,7 @@ you are not recording the night before the deadline.
 
 1. `https://abadi-wheat.vercel.app/dashboard`, full screen, scrolled to top
 2. A terminal in the repo, cleared, ready for `forge test`
-3. The Shannon explorer on the vault, `0x2c96022771e8368283F8909C9a1923a4De9781E7`
+3. The Shannon explorer on the vault, `0xFd9c93581ADD42B9B13ba5550542Fc7315775cD9`
 4. `docs/SDK-FEEDBACK.md` in an editor
 5. `docs/evidence/ledger-2026-08-31.md` in a second tab, scrolled to the Summary
 

@@ -11,7 +11,7 @@ Built for the Somnia × DreamDEX Event Contracts Hackathon.
 **[App](https://abadi-wheat.vercel.app/app)** ·
 [The working](https://abadi-wheat.vercel.app/dashboard) ·
 [Deck](https://abadi-wheat.vercel.app/deck) ·
-[Vault on the explorer](https://shannon-explorer.somnia.network/address/0x2c96022771e8368283F8909C9a1923a4De9781E7)
+[Vault on the explorer](https://shannon-explorer.somnia.network/address/0xFd9c93581ADD42B9B13ba5550542Fc7315775cD9)
 
 ---
 
@@ -24,8 +24,8 @@ Depositors put in collateral and receive ERC-4626 shares. An operator key steers
 and can never touch the money. Every filled pair is worth exactly 1 at settlement no
 matter which way the market resolves.
 
-**Live on Shannon testnet:** `0x2c96022771e8368283F8909C9a1923a4De9781E7`
-([source on the explorer](https://shannon-explorer.somnia.network/address/0x2c96022771e8368283F8909C9a1923a4De9781E7?tab=contract) ·
+**Live on Shannon testnet:** `0xFd9c93581ADD42B9B13ba5550542Fc7315775cD9`
+([source on the explorer](https://shannon-explorer.somnia.network/address/0xFd9c93581ADD42B9B13ba5550542Fc7315775cD9?tab=contract) ·
 `node scripts/attest.ts` checks that address is running this source — see below for
 why that is a thing we check now)
 
@@ -179,6 +179,7 @@ scripts/                  the chain scripts that produced docs/evidence/
   operator.ts             reads the book and quotes inside it, in one pass
   verify.ts               reads our own orders back off the book
   backtest.ts             replays the fair-value model over resolved windows and scores it
+  impact.ts               rebuilds every window's book with and without Abadi's orders
   recover.ts              walks the deployer's CREATE nonces for anything left in a vault
 ```
 
@@ -222,6 +223,7 @@ node scripts/operator.ts   # read the book and quote inside it  (needs .env)
 node scripts/verify.ts     # read our orders back off the book
 node scripts/attest.ts     # is the live address running this source? (needs forge build)
 node scripts/backtest.ts   # score the fair-value model against resolved windows
+node scripts/impact.ts     # the venue's spread with Abadi in the book, and without
 node scripts/recover.ts    # what every vault this deployer made still holds
 node scripts/ledger.ts     # every episode the vaults have run, marked from chain events
 node scripts/bot.ts        # the requote loop  (CYCLES=3 INTERVAL=30 SHORTEST=1 ACTIVE=3 SIZE=100)
@@ -312,6 +314,35 @@ bot skips arming and says so until then. `sweepNative` brings the reserve back o
   quotes into idle slots, and arms a wake-up past each window's settlement deadline so the
   chain closes the position even if the bot is down. First wide run: three complete sets flattened in
   one cycle, one of them from a requote
+- **The book is measurably tighter because Abadi is in it.** Every window this project
+  has quoted was rebuilt twice from the venue's own order rows — once with Abadi's orders
+  and once with them removed — at the instant our quote landed. Across **70 windows** the
+  spread was **0.0249 without us and 0.0192 with us: 5.8 ticks tighter, 23% narrower.**
+  It tightened on **66 of 70**, was unchanged on 4, and widened on none. Nothing here is
+  modelled or self-reported; which orders are ours is decided by the `owner` field the
+  venue itself writes. `node scripts/impact.ts` ·
+  [`docs/evidence/impact-2026-08-31.txt`](docs/evidence/impact-2026-08-31.txt)
+- **A one-sided fill is now closed, not carried.** Eighteen episodes in the ledger are the
+  same shape: one leg filled, the book left, and the vault held a direction it never
+  wanted, worth 1 or 0 at settlement. They cost between 6.83 and 76.00 on a basis under
+  100. `completeSet` crosses the book for the missing side with an IOC order, so the pair
+  becomes worth exactly 1 and the loss is the spread instead of the leg — measured at
+  **498.50 against 451.50 on the same staged fill**, and proven against the real pool in
+  `test_fork_completeSetClosesANakedLegOnTheRealPool`. It refuses above a price the
+  operator sets: its first live chance cost 0.179 over par and it declined, in the log,
+  with the arithmetic.
+- **`reduceQuote` trims a resting quote in place.** Cancel-and-replace surrenders
+  price-time priority; `reduceOrder` does not, and the SDK has shipped it the whole time
+  with no path from an operator key to reach it. The venue's own docs warn an id can be
+  "replaced by a reduce", so the contract reads the leg back and reverts unless the same
+  id is still resting at the new size. **On the real pool the id survives** —
+  `test_fork_reduceQuoteKeepsTheOrderIdOnTheRealPool`.
+- **The settle sandwich is closed with time, not a block.** A naked leg marks at zero, so
+  a winning one on a resolved market is value NAV does not show, and `settle` is
+  permissionless. The old one-block guard could not close the patient version, and said so
+  in its own comment — on sub-second blocks a block is a formality. `redeemDelay` is 300s,
+  the venue's settlement window, capped at one hour so governance can tune it and cannot
+  freeze the vault with it.
 - **The vault prices the windows itself, and a backtest says that buys less than it
   sounds like.** `scripts/lib/fairvalue.ts` computes the digital's closed form, N(d₂),
   from the venue's own price-feed plane — spot and strike off the tick tape, σ from M1
@@ -351,11 +382,13 @@ bot skips arming and says so until then. `sweepNative` brings the reserve back o
   crosshair readout, and as a heartbeat ("last activity 12 min ago") that would be the
   first thing to change if a keeper died — so the numbers above can be checked without
   trusting this file
-- 103 unit tests including two fuzzed properties and five stateful invariants, 7 fork tests against the venue, 77
+- 115 unit tests including two fuzzed properties and five stateful invariants, 9 fork tests against the venue, 77
   browser tests (axe-core WCAG 2.1 AA, Core Web Vitals, touch, the transactions cited on
   the landing page checked against the explorer); `scripts/attest.ts` compares the live
-  address against this source and reports **MATCH** — the audit fixes of 2026-08-31 were
-  deployed the same day, and the address they are running at is verified on the explorer
+  address against this source and reports **MATCH**, and the address it names is verified
+  on the explorer. Coverage on the contracts, measured with
+  `forge coverage --ir-minimum`: **`LiquidityVault.sol` 97.25% of lines and 100% of its 43
+  functions**, `MarketEngine.sol` 100% of lines
 - The site passes [Impeccable](https://impeccable.style)'s 59-rule design detector on
   every rendered page, desktop and mobile, as a CI gate. Its first run found the
   defaults AI-built interfaces reach for — 10px tracked-caps labels, eyebrows above

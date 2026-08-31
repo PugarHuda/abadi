@@ -130,6 +130,90 @@ contract VenueForkTest is Test {
         assertEq(vault.idleAssets(), 1_000e6 + (SIZE * 2 * half) / 1e6, "the spread is cash now");
     }
 
+    /// The move the ledger's eighteen one-sided episodes never had.
+    ///
+    /// One leg fills, the book walks away from the other, and the vault is holding a
+    /// direction. Against the real pool this pins the thing the mock can only assume:
+    /// that an IOC BUY_NO priced at the vault's own filled bid actually crosses a resting
+    /// BUY_YES and mints the pair, so the naked leg becomes half of something worth
+    /// exactly one.
+    function test_fork_completeSetClosesANakedLegOnTheRealPool() public {
+        (uint256 mid, uint256 half) = _insideTheBook();
+        vm.prank(operator);
+        vault.quote(0, marketId, mid, half, SIZE);
+
+        // Only the vault's BUY_YES is taken. This is the shape that costs the most.
+        vm.prank(taker);
+        _take(ORDER_KIND.BUY_NO, mid - half);
+
+        uint256 yes = IOutcomeToken6909(OUTCOME).balanceOf(address(vault), yesId);
+        uint256 no = IOutcomeToken6909(OUTCOME).balanceOf(address(vault), noId);
+        assertEq(yes, SIZE, "the YES leg filled");
+        assertEq(no, 0, "and the NO leg did not: the vault is naked");
+        uint256 navNaked = vault.totalAssets();
+
+        // Somebody is bidding for YES on the other side. A BUY_NO at or under that price
+        // crosses it, which is the whole mechanism: two opposite-side buys, no seller.
+        //
+        // It has to rest BELOW the vault's own still-resting BUY_NO at `mid + half`, or
+        // it crosses that instead and completes the pair for free — which is what the
+        // first version of this test did, and why it asserted on a slot that was never
+        // naked by the time it looked.
+        vm.startPrank(taker);
+        _rest(ORDER_KIND.BUY_YES, mid);
+        vm.stopPrank();
+
+        vm.prank(operator);
+        (uint256 filled, uint256 spent) = vault.completeSet(0, mid, SIZE);
+
+        assertEq(filled, SIZE, "the real pool crossed the whole shortfall");
+        assertGt(spent, 0, "and it was paid for");
+        assertEq(
+            IOutcomeToken6909(OUTCOME).balanceOf(address(vault), noId), SIZE, "the vault holds both sides now"
+        );
+        assertGt(vault.totalAssets(), navNaked, "a pair marks at one; a naked leg marks at zero");
+
+        // And the pair is real: the module merges it for exactly its size.
+        vm.prank(operator);
+        assertEq(vault.flatten(0), SIZE, "the real module merged what completeSet bought");
+    }
+
+    /// `reduceOrder` has shipped in the SDK the whole time and no operator key could reach
+    /// it, because every order id this vault owns lives behind its own custody.
+    ///
+    /// The pool's own `getOrder` documentation warns an id can be "replaced by a reduce".
+    /// If that were true here the vault would lose the handle to its own resting order, so
+    /// the contract refuses the optimisation unless the same id is still there at the new
+    /// size. This is the test that says which way the real pool behaves — and the answer
+    /// is worth having either way.
+    function test_fork_reduceQuoteKeepsTheOrderIdOnTheRealPool() public {
+        (uint256 mid, uint256 half) = _insideTheBook();
+        vm.prank(operator);
+        vault.quote(0, marketId, mid, half, SIZE);
+
+        uint128 yesOrder = vault.slots(0).yesOrderId;
+        uint128 noOrder = vault.slots(0).noOrderId;
+        uint256 escrowBefore = vault.totalEscrowed();
+
+        vm.prank(operator);
+        vault.reduceQuote(0, SIZE / 2);
+
+        assertEq(vault.slots(0).yesOrderId, yesOrder, "the same YES order, not a replacement");
+        assertEq(vault.slots(0).noOrderId, noOrder, "the same NO order");
+        assertEq(vault.slots(0).size, SIZE / 2, "the slot records the new size");
+        assertLt(vault.totalEscrowed(), escrowBefore, "the pool gave back the escrow it no longer needs");
+
+        // Still a live, fillable quote at its new size — trimming must not have turned it
+        // into a corpse the book ignores.
+        vm.prank(taker);
+        _take(ORDER_KIND.BUY_NO, mid - half);
+        assertEq(
+            IOutcomeToken6909(OUTCOME).balanceOf(address(vault), yesId),
+            SIZE / 2,
+            "the trimmed leg still fills, for exactly what was left resting"
+        );
+    }
+
     /// The exit that bricked v2. A leg that filled is an id the pool no longer
     /// recognises; cancelling the quote must survive that and pull the other leg.
     function test_fork_cancelQuoteSurvivesAFilledLegOnTheRealPool() public {
@@ -283,6 +367,15 @@ contract VenueForkTest is Test {
     /// taker for exactly SIZE would fill them and leave the vault untouched — which is
     /// what happened on the first GitHub run. Sweeping the level guarantees the vault's
     /// leg is among what fills, and IOC drops the remainder.
+    /// A counterparty order that RESTS rather than crossing, so the vault has something
+    /// to cross into. `_take` is IOC and would find nothing on an empty far side.
+    function _rest(uint8 kind, uint256 price) internal {
+        (bool ok,) = IBinaryPool(pool).placeBinaryOrder(
+            kind, price, 20 * SIZE, uint64((block.timestamp + 3600) * 1e9), ORDER_TYPE.LIMIT, 0, address(0), 0, 0
+        );
+        assertTrue(ok, "resting counterparty order accepted by the real pool");
+    }
+
     function _take(uint8 kind, uint256 price) internal {
         (bool ok,) = IBinaryPool(pool).placeBinaryOrder(
             kind, price, 20 * SIZE, uint64((block.timestamp + 3600) * 1e9), ORDER_TYPE.IOC, 0, address(0), 0, 0
