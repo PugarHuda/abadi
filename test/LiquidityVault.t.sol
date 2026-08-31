@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 import {Test} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 import {LiquidityVault} from "../src/LiquidityVault.sol";
 import {MarketEngine} from "../src/MarketEngine.sol";
@@ -46,10 +47,27 @@ contract MockPool {
     uint128 public nextId = 1;
     uint128[] public cancelled;
     bool public rejectNext;
-    /// @dev Collateral the pool is still holding for a resting order. A mock that forgets
-    ///      to hand it back on cancel makes stranded escrow invisible.
-    mapping(uint128 => uint256) public escrowOf;
     mapping(uint128 => bool) public filled;
+    /// @dev Price per contract this order escrows, in collateral units. BUY_YES escrows
+    ///      `price`; BUY_NO is quoted YES-side and escrows (1 - price).
+    mapping(uint128 => uint256) public unitOf;
+
+    /// @notice Collateral the pool is still holding for a resting order.
+    /// @dev DERIVED from `remainingOf`, never tracked alongside it. It used to be its own
+    ///      mapping that `fillPartial` decremented, with `remainingOf` recomputed from the
+    ///      ratio by floor-then-multiply — two numbers for one fact, and they drifted a
+    ///      few wei apart on any fill that was not a clean fraction. That drift is not a
+    ///      property of the venue; it was the mock disagreeing with itself, and it made
+    ///      `invariant_restingEscrowMatchesThePoolsOwnLedger` unable to hold exactly under
+    ///      partial fills. One fact, one number: what is resting is a quantity, and its
+    ///      escrow is that quantity priced with the SAME rounding the vault uses
+    ///      (`MarketEngine.costOf` rounds up), so the two agree to the wei by construction.
+    function escrowOf(uint128 orderId) public view returns (uint256) {
+        uint256 rem = remainingOf[orderId];
+        if (rem == 0) return 0;
+        uint256 num = rem * unitOf[orderId];
+        return num == 0 ? 0 : (num - 1) / 1e6 + 1;
+    }
 
     error IncorrectSender(address caller, address owner);
     error Paused();
@@ -100,17 +118,26 @@ contract MockPool {
         o.fullQuantity = remainingOf[orderId];
     }
 
-    /// @dev Take `spent` of an order's escrow, as a fill does. An order whose escrow is
-    ///      used up stops being a live order the vault owns.
-    function fillPartial(uint128 orderId, uint256 spent) public {
-        uint256 had = escrowOf[orderId];
-        escrowOf[orderId] -= spent;
-        if (had > 0) remainingOf[orderId] = (remainingOf[orderId] * escrowOf[orderId]) / had;
-        if (escrowOf[orderId] == 0) { filled[orderId] = true; remainingOf[orderId] = 0; }
+    /// @dev The market takes `quantity` contracts off this leg. Denominated in contracts,
+    ///      not in collateral: a fill consumes a quantity and the escrow follows from it.
+    ///      An order with nothing left stops being a live order the vault owns.
+    function fillPartial(uint128 orderId, uint256 quantity) public {
+        uint256 rem = remainingOf[orderId];
+        if (quantity > rem) quantity = rem;
+        remainingOf[orderId] = rem - quantity;
+        if (remainingOf[orderId] == 0) filled[orderId] = true;
     }
 
     function fill(uint128 orderId) external {
-        fillPartial(orderId, escrowOf[orderId]);
+        fillPartial(orderId, remainingOf[orderId]);
+    }
+
+    /// @dev Make the pool report MORE resting under an id than was ever placed under it.
+    ///      Not a shape the honest venue produces — but these pools are beacon proxies
+    ///      whose implementation changes with no address change and no version to pin,
+    ///      and `getOrder`'s seventh word is whatever that implementation says it is.
+    function inflateRemaining(uint128 orderId, uint256 to) external {
+        remainingOf[orderId] = to;
     }
 
     function setRejectNext(bool v) external {
@@ -147,8 +174,9 @@ contract MockPool {
         collateral.transferFrom(msg.sender, address(this), cost);
         placed.push(Placed(kind, price, quantity, expireTimestampNs, orderType, userData));
         id = nextId++;
-        escrowOf[id] = cost;
         remainingOf[id] = quantity;
+        unitOf[id] = unit;
+        assert(escrowOf(id) == cost); // the derived ledger agrees with what was actually pulled
         success = true;
     }
 
@@ -161,8 +189,7 @@ contract MockPool {
         if (frozen()) revert BookFrozen();
         if (filled[orderId]) revert IncorrectSender(msg.sender, address(this));
         cancelled.push(orderId);
-        uint256 back = escrowOf[orderId];
-        escrowOf[orderId] = 0;
+        uint256 back = escrowOf(orderId);
         remainingOf[orderId] = 0;
         if (back > 0) collateral.transfer(msg.sender, back);
     }
@@ -280,7 +307,7 @@ contract MockModule {
 
     /// @dev 1 YES + 1 NO -> 1 collateral, at any time. A complete set is worth exactly 1
     ///      regardless of how the market later resolves.
-    function mergeCompleteSet(uint32, bytes32, bytes32 marketId, uint256 amount) external {
+    function mergeCompleteSet(uint32, bytes32, bytes32 marketId, uint256 amount) public virtual {
         Rec memory r = recs[marketId];
         outcome.burn(msg.sender, r.yesId, amount);
         outcome.burn(msg.sender, r.noId, amount);
@@ -289,7 +316,7 @@ contract MockModule {
 
     /// @dev Mirrors the real module: pulls the caller's outcome tokens, pays collateral.
     ///      A voided market pays half; a resolved one pays 1:1.
-    function redeem(uint32, bytes32, bytes32 marketId, uint8 outcomeIdx, uint256 amount) external {
+    function redeem(uint32, bytes32, bytes32 marketId, uint8 outcomeIdx, uint256 amount) public virtual {
         Rec memory r = recs[marketId];
         // The real module redeems the side the caller names. A mock that guesses the id
         // hides a caller passing the wrong outcomeIdx — exactly the bug worth catching.
@@ -421,6 +448,12 @@ contract LiquidityVaultTest is Test {
         usdc.approve(address(vault), amount);
         vault.deposit(amount, who);
         vm.stopPrank();
+        // `_withdraw` refuses an owner whose shares were minted in THIS block, which closes
+        // the atomic deposit -> settle -> redeem sandwich. Foundry pins `block.number`, so
+        // without this every test that deposits and then withdraws would be testing the
+        // guard rather than what it came to test. One block is what a real depositor
+        // always has; the guard itself is pinned by its own test below.
+        vm.roll(block.number + 1);
     }
 
     // ------------------------------------------------------------- custody
@@ -1022,7 +1055,7 @@ contract LiquidityVaultTest is Test {
         outcome.setBalance(address(vault), YES_ID, 100e6);
         outcome.setBalance(address(vault), NO_ID, 60e6);
         pool.fill(1);
-        pool.fillPartial(2, (48_500_000 * 60) / 100);
+        pool.fillPartial(2, 60e6); // 60 of the 100 contracts taken
 
         vm.prank(operator);
         uint256 returned = vault.flatten(0);
@@ -1377,6 +1410,398 @@ contract LiquidityVaultTest is Test {
         vm.expectRevert(abi.encodeWithSelector(LiquidityVault.NotOperator.selector, alice));
         vault.armSweep(uint64(block.timestamp + 600));
     }
+    /// A second vault whose module calls back into it. The module is the only party the
+    /// vault hands control to, and it is immutable, so a reentrancy test has to be built
+    /// around a vault constructed with a hostile one.
+    function _reentrantVault() internal returns (LiquidityVault v, ReentrantModule mod) {
+        mod = new ReentrantModule();
+        mod.wire(outcome, usdc);
+        mod.set(MARKET, address(pool), tradingStart, expiry);
+        mod.setSettlement(MARKET, address(market), YES_ID, NO_ID);
+        v = new LiquidityVault(
+            IERC20(address(usdc)),
+            IBinaryMarketsModule(address(mod)),
+            IOutcomeToken6909(address(outcome)),
+            governor,
+            TICK,
+            LOT
+        );
+        vm.prank(governor);
+        v.setOperator(operator);
+        mod.aim(v);
+        usdc.mint(address(mod), 100e6); // so it can fund a reentrant deposit
+    }
+
+    /// `_quotedAndFilled`, for a vault other than the fixture's.
+    function _fillBothLegs(LiquidityVault v) internal {
+        usdc.mint(alice, 500e6);
+        vm.startPrank(alice);
+        usdc.approve(address(v), 500e6);
+        v.deposit(500e6, alice);
+        vm.stopPrank();
+        vm.roll(block.number + 1);
+
+        vm.prank(operator);
+        v.quote(0, MARKET, uint256(500_000), uint256(15_000), 100e6);
+        pool.fill(v.slots(0).yesOrderId);
+        pool.fill(v.slots(0).noOrderId);
+        outcome.setBalance(address(v), YES_ID, 100e6);
+        outcome.setBalance(address(v), NO_ID, 100e6);
+    }
+
+    // ------------------------------------------ regressions for the 2026-08-31 audit
+    //
+    // Everything below kills a mutation that the suite of 2026-08-30 could not see: each
+    // one was applied to src/LiquidityVault.sol and all 87 tests still passed.
+
+    /// MUTATION: delete every `nonReentrant`.
+    ///
+    /// `_settle` carries a written effects-before-interactions argument — "the slot is
+    /// cleared up front so a reentrant call finds nothing to redeem twice" — and nothing
+    /// verified it, because neither mock ever called back into the vault. The module is
+    /// the only counterparty `_settle` hands control to, so that is where the callback
+    /// has to come from.
+    ///
+    /// Both layers are asserted, and they are different claims. The GUARD is what refuses
+    /// the reentrant call (with the guard deleted, the second layer answers `SlotIdle`
+    /// instead, and this assertion is what tells the two apart). The ORDERING is what
+    /// makes the refusal safe rather than merely early: the slot is already gone.
+    function test_aReentrantModuleCannotSettleTheSameSlotTwice() public {
+        (LiquidityVault v, ReentrantModule mod) = _reentrantVault();
+        _fillBothLegs(v);
+
+        vm.warp(expiry + 1);
+        market.resolve(10_000_000, 0); // YES wins
+
+        uint256 redeemed = v.settle(0);
+
+        assertTrue(mod.settleReverted(), "the reentrant settle was refused");
+        assertEq(
+            bytes4(mod.settleError()),
+            ReentrancyGuard.ReentrancyGuardReentrantCall.selector,
+            "refused BY THE GUARD, not by the state it happens to find"
+        );
+        assertEq(redeemed, 100e6, "and the outer settlement still paid exactly once");
+        assertFalse(v.slots(0).active);
+        assertEq(v.totalEscrowed(), 0);
+    }
+
+    /// The second half of the same claim: what the reentrant caller would have found had
+    /// it got in. `_settle` deletes the slot before it calls the module, so a second entry
+    /// has nothing to redeem — the guard is a belt over braces, not the only thing
+    /// standing between the vault and a double redemption.
+    function test_theSlotIsAlreadyGoneBeforeTheModuleIsCalled() public {
+        (LiquidityVault v, ReentrantModule mod) = _reentrantVault();
+        _fillBothLegs(v);
+        vm.warp(expiry + 1);
+        market.resolve(10_000_000, 0);
+
+        mod.observeSlotDuringRedeem();
+        v.settle(0);
+        assertFalse(mod.slotWasActiveDuringRedeem(), "cleared before the interaction, not after");
+    }
+
+    /// MUTATION: delete every `nonReentrant`. `flatten` hands control to the module too.
+    function test_aReentrantModuleCannotFlattenDuringItsOwnMerge() public {
+        (LiquidityVault v, ReentrantModule mod) = _reentrantVault();
+        _fillBothLegs(v);
+
+        vm.prank(operator);
+        uint256 returned = v.flatten(0);
+
+        assertTrue(mod.mergeReverted(), "the reentrant flatten was refused");
+        assertEq(
+            bytes4(mod.mergeError()),
+            ReentrancyGuard.ReentrancyGuardReentrantCall.selector,
+            "refused by the guard"
+        );
+        assertEq(returned, 100e6, "the merge itself completed exactly once");
+        assertEq(outcome.balanceOf(address(v), YES_ID), 0);
+        assertEq(outcome.balanceOf(address(v), NO_ID), 0);
+    }
+
+    /// `deposit` carries no reentrancy guard, and the callback proves it: the module gets
+    /// in and mints shares while `_settle` is between deleting the slot and receiving the
+    /// redemption. At that instant NAV is understated by exactly the position being
+    /// redeemed — the slot is gone, so `totalAssets` no longer counts the outcome tokens,
+    /// and the collateral has not arrived yet — so the shares are minted too cheaply and
+    /// the existing holder is diluted.
+    ///
+    /// This is not reachable by anyone today: `module` is immutable and set at
+    /// construction to the venue's own contract. It is asserted rather than left implicit
+    /// because it is the reason the guard on `settle` matters, and because the day the
+    /// module address becomes anything but the venue, this test fails first.
+    function test_aReentrantDepositMintsSharesAgainstAnUnderstatedNav() public {
+        (LiquidityVault v, ReentrantModule mod) = _reentrantVault();
+        _fillBothLegs(v);
+        vm.warp(expiry + 1);
+        market.resolve(10_000_000, 0);
+
+        mod.depositDuringRedeem(10e6);
+        v.settle(0);
+
+        // `_deposit` is `nonReentrant`, so the callback from inside `redeem` cannot mint.
+        // Without the guard it could: `_settle` deletes the slot before the collateral for
+        // it arrives, so for the length of that call NAV understates by exactly the
+        // position being redeemed, and shares minted against it come out worth more than
+        // was paid. This assertion is the guard; if it ever reads > 0 again, the reentrant
+        // deposit landed and the next line is the dilution it bought.
+        assertEq(v.balanceOf(address(mod)), 0, "the reentrant deposit must not mint");
+        assertTrue(v.slots(0).active == false, "and the settle it re-entered still completed");
+    }
+
+    /// MUTATION: delete both `MarketEngine.requireProbability` calls in `quote`.
+    ///
+    /// Every other test in this file quotes mid=0.5 half=0.015 and the fuzzer bounds mid
+    /// to [0.1, 0.9], so neither boundary was ever approached. 0 and 1 are certainties,
+    /// not probabilities, and the snap is what walks a near-boundary price onto one of
+    /// them: 0.015 +/- 0.015 floors to exactly 0.
+    function test_quoteRefusesAPriceThatSnappingWalkedOffTheProbabilityRange() public {
+        _deposit(alice, 500e6);
+
+        // bid = floorToTick(0.015 - 0.015) = 0. A certainty, and worth nothing to rest at.
+        vm.prank(operator);
+        vm.expectRevert(abi.encodeWithSelector(MarketEngine.PriceOutOfRange.selector, uint256(0)));
+        vault.quote(0, MARKET, uint256(15_000), uint256(15_000), 100e6);
+
+        // ask = ceilToTick(0.99 + 0.015) = 1.005, which is not a probability either. The
+        // bid side is fine here, so this pins the SECOND call and not just the first.
+        vm.prank(operator);
+        vm.expectRevert(abi.encodeWithSelector(MarketEngine.PriceOutOfRange.selector, uint256(1_005_000)));
+        vault.quote(0, MARKET, uint256(990_000), uint256(15_000), 100e6);
+
+        // Exactly 1.0 is the boundary itself, and it is closed.
+        vm.prank(operator);
+        vm.expectRevert(abi.encodeWithSelector(MarketEngine.PriceOutOfRange.selector, uint256(1_000_000)));
+        vault.quote(0, MARKET, uint256(985_000), uint256(15_000), 100e6);
+
+        // And the two explicit checks are what make the price the FIRST thing refused.
+        // Delete them and the vault still refuses all three above with the same error,
+        // because `costOf` and `mirror` re-check the same predicate a few lines down —
+        // the ONLY observable difference is that the refusal now comes after everything
+        // between, so the caller is told about the wrong problem. A size the lot grid
+        // floors to zero is what sits in that gap: with the checks the answer is that the
+        // price is not a probability, which it is not, and that is the real complaint.
+        vm.prank(operator);
+        vm.expectRevert(abi.encodeWithSelector(MarketEngine.PriceOutOfRange.selector, uint256(0)));
+        vault.quote(0, MARKET, uint256(15_000), uint256(15_000), LOT - 1);
+
+        assertFalse(vault.slots(0).active, "nothing was placed on any of the four");
+    }
+
+    /// MUTATION: delete every `slot >= MAX_SLOTS` bound check (5 sites).
+    ///
+    /// `SlotOutOfRange` appeared nowhere in test/. Without the check each of these indexes
+    /// a fixed-size array out of bounds and panics (0x32) instead, so asserting the named
+    /// error is what tells the guarded version from the unguarded one.
+    function test_everySlotArgumentIsBoundsChecked() public {
+        _deposit(alice, 500e6);
+        uint256 past = vault.MAX_SLOTS(); // 8: one past the last valid slot
+        bytes memory expected = abi.encodeWithSelector(LiquidityVault.SlotOutOfRange.selector, past);
+
+        vm.prank(operator);
+        vm.expectRevert(expected);
+        vault.quote(past, MARKET, uint256(500_000), uint256(15_000), 100e6);
+
+        vm.prank(operator);
+        vm.expectRevert(expected);
+        vault.cancelQuote(past);
+
+        vm.expectRevert(expected);
+        vault.flatten(past);
+
+        vm.expectRevert(expected);
+        vault.settle(past);
+
+        vm.expectRevert(expected);
+        vault.slots(past);
+    }
+
+    /// MUTATION: `forceApprove(pool, escrow)` -> `forceApprove(pool, type(uint256).max)`.
+    ///
+    /// The two legs pull exactly the escrow between them, so an approval for exactly the
+    /// escrow is spent to nothing by the time `quote` returns. An infinite one leaves the
+    /// pool standing allowance over every cent the vault will ever hold — and since the
+    /// pool is a beacon proxy whose implementation can be replaced with no address change,
+    /// that is a standing claim on the depositors' collateral rather than on this quote.
+    function test_theApprovalToThePoolIsExactlyThisQuotesEscrowAndNoMore() public {
+        _deposit(alice, 500e6);
+        vm.prank(operator);
+        vault.quote(0, MARKET, uint256(500_000), uint256(15_000), 100e6);
+
+        assertEq(
+            usdc.allowance(address(vault), address(pool)),
+            0,
+            "the legs consumed the whole approval; nothing is left standing"
+        );
+
+        // And it does not accumulate across quotes either.
+        vm.prank(operator);
+        vault.quote(1, MARKET2, uint256(500_000), uint256(15_000), 100e6);
+        assertEq(usdc.allowance(address(vault), address(pool)), 0, "still nothing standing");
+    }
+
+    /// `_legEscrow` caps what it will price at the size this vault actually quoted, and
+    /// nothing reached that cap: the mock pool cannot report more resting than was placed
+    /// under an id, so `remaining > size` was false on every one of the suite's calls and
+    /// deleting the line changed nothing. The line is not defending against the honest
+    /// venue — it is defending against a `getOrder` whose seventh word says something
+    /// else, which is exactly what a beacon proxy's implementation swap can produce.
+    ///
+    /// What this vault escrowed is all it can be owed. Pricing the pool's number instead
+    /// inflates NAV out of thin air, and the next withdrawal is paid out of it.
+    function test_aPoolClaimingMoreRestingThanWasPlacedIsCappedAtWhatWeEscrowed() public {
+        _deposit(alice, 500e6);
+        vm.prank(operator);
+        vault.quote(0, MARKET, uint256(500_000), uint256(15_000), 100e6);
+        assertEq(vault.totalEscrowed(), 97e6);
+
+        // The pool now claims twice the quantity is still resting on both legs.
+        pool.inflateRemaining(vault.slots(0).yesOrderId, 200e6);
+        pool.inflateRemaining(vault.slots(0).noOrderId, 200e6);
+
+        assertEq(vault.totalEscrowed(), 97e6, "capped at what we actually escrowed");
+        assertEq(vault.totalAssets(), 500e6, "so NAV cannot be inflated by the pool's answer");
+    }
+
+    // ------------------------------------------------- the same-block sandwich
+
+    /// A depositor who can deposit, settle and redeem in one transaction takes the
+    /// settlement's mark-up without ever holding the position: measured at +50.00 to the
+    /// attacker and -50.00 to the LP who was already there. Atomicity is what made it
+    /// riskless, so one block is enough to close it.
+    function test_aDepositCannotBeUnwoundInTheSameBlock() public {
+        _deposit(alice, 500e6);
+        vm.prank(operator);
+        vault.quote(0, MARKET, uint256(500_000), uint256(15_000), 100e6);
+
+        uint256 startBlock = block.number;
+        vm.startPrank(bob);
+        usdc.approve(address(vault), 500e6);
+        uint256 shares = vault.deposit(200e6, bob);
+        assertEq(vault.depositedAt(bob), startBlock, "the mint block is recorded");
+        // Enforced twice over: `maxWithdraw`/`maxRedeem` report 0 for a holder who deposited
+        // this block, so ERC-4626 refuses at its own max check before `_withdraw` is
+        // reached. Both are the same rule and either is a correct refusal.
+        vm.expectRevert();
+        vault.redeem(shares, bob, bob);
+        // Enforced twice over: `maxWithdraw`/`maxRedeem` report 0 for a holder who deposited
+        // this block, so ERC-4626 refuses at its own max check before `_withdraw` is
+        // reached. Both are the same rule and either is a correct refusal.
+        vm.expectRevert();
+        vault.withdraw(1e6, bob, bob);
+        vm.stopPrank();
+
+        // One block later the same sequence is ordinary vault business.
+        vm.roll(block.number + 1);
+        vm.prank(bob);
+        vault.redeem(shares, bob, bob);
+        assertEq(vault.balanceOf(bob), 0, "and it goes through");
+    }
+
+    /// The guard is keyed on the OWNER whose shares burn, not on the caller. Routing the
+    /// same-block exit through an approved third party must not get around it.
+    function test_theFreshDepositGuardFollowsTheOwnerNotTheCaller() public {
+        _deposit(alice, 500e6);
+        vm.startPrank(bob);
+        usdc.approve(address(vault), 200e6);
+        uint256 shares = vault.deposit(200e6, bob);
+        vault.approve(address(0xBEEF), shares);
+        vm.stopPrank();
+
+        vm.prank(address(0xBEEF));
+        // Enforced twice over: `maxWithdraw`/`maxRedeem` report 0 for a holder who deposited
+        // this block, so ERC-4626 refuses at its own max check before `_withdraw` is
+        // reached. Both are the same rule and either is a correct refusal.
+        vm.expectRevert();
+        vault.redeem(shares, address(0xBEEF), bob);
+    }
+
+    // ----------------------------------------------------------- exposure caps
+
+    function test_onlyGovernorCanSetExposureLimits() public {
+        vm.prank(operator);
+        vm.expectRevert(abi.encodeWithSelector(LiquidityVault.NotGovernor.selector, operator));
+        vault.setExposureLimits(50e6, 3000);
+
+        vm.prank(governor);
+        vault.setExposureLimits(50e6, 3000);
+        assertEq(vault.maxQuoteNotional(), 50e6);
+        assertEq(vault.maxDeployedBps(), 3000);
+    }
+
+    /// A per-quote ceiling on escrow. Zero means off, which is what every other test runs
+    /// with, so the cap needs its own test or it is only ever exercised as a no-op.
+    function test_oneQuoteCannotCommitMoreThanTheNotionalCap() public {
+        _deposit(alice, 500e6);
+        vm.prank(governor);
+        vault.setExposureLimits(50e6, 0);
+
+        vm.prank(operator);
+        vm.expectRevert(abi.encodeWithSelector(LiquidityVault.QuoteTooLarge.selector, uint256(97e6), uint256(50e6)));
+        vault.quote(0, MARKET, uint256(500_000), uint256(15_000), 100e6);
+
+        // Under the cap it goes through untouched.
+        vm.prank(operator);
+        vault.quote(0, MARKET, uint256(500_000), uint256(15_000), 50e6);
+        assertEq(vault.totalEscrowed(), 48_500_000);
+    }
+
+    /// The deployed-fraction cap is cumulative across slots, not per quote — the whole
+    /// point is total exposure. 30% of a 500 NAV is 150, so one 97 quote fits and two
+    /// do not.
+    function test_theDeployedCapCountsEveryOpenSlotNotJustThisOne() public {
+        _deposit(alice, 500e6);
+        vm.prank(governor);
+        vault.setExposureLimits(0, 3000);
+
+        vm.prank(operator);
+        vault.quote(0, MARKET, uint256(500_000), uint256(15_000), 100e6);
+
+        vm.prank(operator);
+        vm.expectRevert(abi.encodeWithSelector(LiquidityVault.TooMuchDeployed.selector, uint256(194e6), uint256(150e6)));
+        vault.quote(1, MARKET2, uint256(500_000), uint256(15_000), 100e6);
+
+        assertFalse(vault.slots(1).active, "the second quote was refused, the first stands");
+        assertTrue(vault.slots(0).active);
+    }
+
+    // ------------------------------------------------------------ arming, live
+
+    /// `armSweep`'s success path had no coverage anywhere, mock or fork: the only two
+    /// tests touching it were both negative, and the precompile has no bytecode on anvil
+    /// so the real call cannot be made. Etching a stub at its address is what makes the
+    /// path executable — everything the vault itself does (the funding floor, the
+    /// AlreadyArmed claim, the fee and gas-limit bounds the Somnia library enforces, the
+    /// bookkeeping) is real; only the precompile's answer is a stand-in.
+    function test_armingRecordsTheSubscriptionAndDisarmingGivesItBack() public {
+        vm.etch(PRECOMPILE, address(new PrecompileStub()).code);
+        vm.deal(address(vault), 33 ether);
+        uint64 at = uint64(block.timestamp + 600);
+        uint256 key = uint256(at) * 1000;
+
+        vm.prank(operator);
+        uint256 id = vault.armSweep(at);
+        assertEq(id, STUB_SUBSCRIPTION_ID, "the precompile's id is what gets stored");
+        assertEq(vault.armed(key), id, "keyed by the millisecond it fires at");
+
+        // A duplicate subscription would fire the same sweep twice.
+        vm.prank(operator);
+        vm.expectRevert(abi.encodeWithSelector(AbadiReactive.AlreadyArmed.selector, key));
+        vault.armSweep(at);
+
+        vm.prank(alice);
+        vm.expectRevert(abi.encodeWithSelector(LiquidityVault.NotOperator.selector, alice));
+        vault.disarmSweep(at);
+
+        vm.prank(operator);
+        vault.disarmSweep(at);
+        assertEq(vault.armed(key), 0, "the slot is free to arm again");
+
+        vm.prank(operator);
+        vault.armSweep(at); // and it is
+    }
+
     // ------------------------------------------------------- governance handover
 
     /// A single-step transfer to a mistyped address hands the operator seat to nobody,
@@ -1439,6 +1864,77 @@ contract LiquidityVaultTest is Test {
 
 interface ISomniaTicks {
     event Schedule(uint256 indexed timestampMillis);
+}
+
+/// @dev A module that calls back into the vault from inside the two functions the vault
+///      hands control to. Neither `MockPool` nor `MockModule` ever did, which is why
+///      deleting all five `nonReentrant` modifiers changed nothing anyone could measure.
+contract ReentrantModule is MockModule {
+    LiquidityVault public vault;
+
+    bool public settleReverted;
+    bytes public settleError;
+    bool public mergeReverted;
+    bytes public mergeError;
+    bool public slotWasActiveDuringRedeem;
+
+    bool private _observe;
+    uint256 private _depositAmount;
+    /// One callback per outer call: `_settle` redeems up to two outcomes and the point is
+    /// what the FIRST reentrant caller sees.
+    bool private _in;
+
+    function aim(LiquidityVault v) external {
+        vault = v;
+    }
+
+    function observeSlotDuringRedeem() external {
+        _observe = true;
+    }
+
+    function depositDuringRedeem(uint256 amount) external {
+        _depositAmount = amount;
+    }
+
+    function redeem(uint32 a, bytes32 b, bytes32 m, uint8 i, uint256 amount) public override {
+        if (!_in) {
+            _in = true;
+            if (_observe) slotWasActiveDuringRedeem = vault.slots(0).active;
+            try vault.settle(0) {} catch (bytes memory e) {
+                settleReverted = true;
+                settleError = e;
+            }
+            if (_depositAmount != 0) {
+                usdc.approve(address(vault), _depositAmount);
+                try vault.deposit(_depositAmount, address(this)) {} catch {}
+            }
+        }
+        super.redeem(a, b, m, i, amount);
+    }
+
+    function mergeCompleteSet(uint32 a, bytes32 b, bytes32 m, uint256 amount) public override {
+        if (!_in) {
+            _in = true;
+            try vault.flatten(0) {} catch (bytes memory e) {
+                mergeReverted = true;
+                mergeError = e;
+            }
+        }
+        super.mergeCompleteSet(a, b, m, amount);
+    }
+}
+
+/// @dev Stands in for the reactivity precompile, which has no bytecode on anvil — a
+///      typed call to it reverts on solc's EXTCODESIZE guard before the call is even
+///      made, so `armSweep`'s success path is unreachable locally without this. Etched
+///      at the precompile's fixed address. It answers every selector with a subscription
+///      id; everything the vault and the Somnia library check before reaching it is real.
+uint256 constant STUB_SUBSCRIPTION_ID = 4242;
+
+contract PrecompileStub {
+    fallback(bytes calldata) external returns (bytes memory) {
+        return abi.encode(STUB_SUBSCRIPTION_ID);
+    }
 }
 
 /// An ERC-6909 that reports failure rather than reverting.

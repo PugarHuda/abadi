@@ -4,18 +4,29 @@
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Martian+Mono:wght@300;400&display=swap" rel="stylesheet">
 
 <style>
-  :root { --ink: #14203A; --ink-line: #2A3B5E; --cotton: #EAE4D6; --cotton-dim: #8D97AE; --turmeric: #E0A045; }
+  /* --ink-line draws hairlines between things. --ctl-line draws the boundary of a
+     control, and has to clear 3:1 against the surface behind it (WCAG 1.4.11): the old
+     line colour measured 1.45:1 on ink and 1.28:1 on the raised panel. Same hue, lifted
+     until it is 3.6:1 on ink. */
+  :root { --ink: #14203A; --ink-line: #2A3B5E; --ctl-line: #64789F; --cotton: #EAE4D6; --cotton-dim: #8D97AE; --turmeric: #E0A045; }
   * { box-sizing: border-box; }
   body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: var(--ink); color: var(--cotton); font-family: "Bricolage Grotesque", system-ui, sans-serif; padding: 24px; }
   main { max-width: 34ch; }
   h1 { font-size: clamp(30px, 6vw, 48px); font-weight: 800; letter-spacing: -.04em; line-height: 1; margin: 0 0 16px; }
   h1 em { font-style: normal; color: var(--turmeric); }
   p { color: var(--cotton-dim); font-family: "Public Sans", system-ui, sans-serif; line-height: 1.6; margin: 0 0 26px; }
-  a { color: var(--cotton); font-family: "Public Sans", system-ui, sans-serif; font-size: 15px; font-weight: 500; text-decoration: none; border: 1px solid var(--ink-line); padding: 12px 16px; display: inline-block; margin: 0 8px 8px 0; }
-  a:hover, a:focus-visible { border-color: var(--turmeric); color: var(--turmeric); outline: none; }
+  a { color: var(--cotton); font-family: "Public Sans", system-ui, sans-serif; font-size: 15px; font-weight: 500; text-decoration: none; border: 1px solid var(--ctl-line); padding: 12px 16px; display: inline-block; margin: 0 8px 8px 0; }
+  a:hover { border-color: var(--turmeric); color: var(--turmeric); }
+  a:focus-visible { border-color: var(--turmeric); color: var(--turmeric); outline: 2px solid var(--turmeric); outline-offset: 3px; }
+
+  /* First stop on every page. Moved by transform, so it costs no layout at rest. */
+  .skip { position: absolute; left: 12px; top: 12px; z-index: 60; margin: 0; background: var(--ink); border-color: var(--turmeric); color: var(--turmeric); transform: translateY(-200%); }
+  .skip:focus { transform: none; }
 </style>
 
-<main>
+<a class="skip" href="#main">Skip to content</a>
+
+<main id="main" tabindex="-1">
   <h1>This market expired. <em>The others didn't.</em></h1>
   <p>404: nothing lives at this address. Everything that does is one of these.</p>
   <a href="/app">Open the app</a>

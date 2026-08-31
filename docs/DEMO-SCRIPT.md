@@ -1,205 +1,173 @@
 # Demo video — shot list and script
 
-Target **2:45**. The submission allows 2–3 minutes; leaving 15 seconds of headroom means
-you never have to rush the ending, which is where the judges' last impression forms.
+Target **2:45**. The submission allows 2–3 minutes; 15 seconds of headroom means you never
+have to rush the ending, which is where the last impression forms.
 
-**Record on the 27th, not on deadline day.** Testnet has been intermittent — the indexer
-returned `fetch failed` roughly one call in five during development. If a take fails, that
-is a retry, not a crisis, provided you are not recording the night before.
+**Rewritten 2026-08-31.** The previous version was written to the state of the 27th and
+led with the trading thesis — "we collect the venue's 2.9% spread". That claim did not
+survive being measured. This version leads with what did.
+
+**Record on the 8th at the latest.** Testnet is intermittent: the indexer returns
+`fetch failed` roughly one call in five. A failed take is a retry, not a crisis, provided
+you are not recording the night before the deadline.
 
 ## What to have open before you start
 
-1. The dashboard artifact, full screen, scrolled to top
+1. `https://abadi-wheat.vercel.app/dashboard`, full screen, scrolled to top
 2. A terminal in the repo, cleared, ready for `forge test`
-3. `docs/evidence/first-fill-2026-08-26.md` in an editor
-4. The Shannon explorer on the vault address, one tab over
-5. `docs/evidence/first-settle-2026-08-27.md` in a second editor tab — the settle beat
-   reads off it
+3. The Shannon explorer on the vault, `0x2314436ed2BDC44321c74EF43adA14CAE723D352`
+4. `docs/SDK-FEEDBACK.md` in an editor
+5. `docs/evidence/ledger-2026-08-31.md` in a second tab, scrolled to the Summary
 
-Turn off notifications. Record at 1080p minimum. Speak slower than feels natural — the
-whole script is about 380 words, which is a comfortable pace for 2:45 with pauses.
+Turn off notifications. 1080p minimum. Speak slower than feels natural — this is about 390
+words, which is a comfortable 2:45 with pauses.
 
 ---
 
-## 0:00 — 0:20 · The problem
+## 0:00 — 0:18 · The problem
 
 **Screen:** dashboard, top of page. The wordmark and the thesis line.
 
-> Prediction markets on DreamDEX expire every window. Sixty seconds, fifteen minutes, a
-> day — twelve series running at once, and every one of them dies and respawns.
+> Every prediction market on DreamDEX expires. Sixty seconds, fifteen minutes, a day —
+> twelve series running at once, and every one of them dies and respawns.
 >
-> The markets expire. What we built is the liquidity that doesn't.
+> Liquidity that has to be rebuilt every window isn't liquidity. So we built a vault that
+> outlives the markets it quotes.
 
-*Pause on the thesis line for a beat before scrolling.*
+*Hold on the thesis line for a beat before scrolling.*
 
 ---
 
-## 0:20 — 0:55 · Why quoting, not predicting
+## 0:18 — 0:50 · The part that is actually hard
 
-**Screen:** scroll to the calibration band. Let the six tier bars sit on screen.
+**Screen:** the custody table on the dashboard, then cut to `src/LiquidityVault.sol`,
+scrolled to `quote`.
 
-> We didn't pick a strategy and then justify it. We pulled every settled market off the
-> indexer — two thousand four hundred and twenty-two of them — and asked one question:
-> does up win more often than the market prices it to?
+> Here's the problem nobody warns you about. BinaryPool has no operator gate — if you give
+> a bot a key that can trade, that key can also withdraw. Every market-making vault on this
+> venue has to solve that before it can quote once.
 >
-> It doesn't. Pooled across every tier, up won 49.96 percent of the time. Four hundredths
-> of a standard error from a coin flip.
+> Ours solves it by owning its own orders. The vault holds the collateral and places the
+> orders itself. The operator key chooses a price and a size and can do nothing else — it
+> cannot move a token, and there is no function that would let it.
 
-**Screen:** the verdict paragraph under the bars.
+*Cut to the terminal.*
 
-> Meanwhile the venue quotes a flat three percent spread on every market. With a coin
-> flip and a three percent spread, crossing it costs you one and a half percent a
-> contract. Collecting it earns you the same.
->
-> So we stopped trying to predict, and started quoting. That decision came from the
-> measurement — our first design did the opposite, and the data killed it.
+> Eighty-seven tests. And the caps are on chain, not in a config file on my laptop.
 
-*This is the credibility beat. Do not rush it — a judge who believes this paragraph
-believes the rest of the video.*
+**Run:** `forge test` — let the green line land on screen.
 
 ---
 
-## 0:55 — 1:35 · The mechanism
+## 0:50 — 1:22 · The chain closes the position
 
-**Screen:** scroll to the rail, then the ladder.
+**Screen:** the explorer, on transaction
+`0x2f75001ea73bd66cf62649841542a2d8b74cad22afa1513e5e6463730a009f50`.
 
-> DreamDEX keeps one order book, and it has a fill path most venues don't. Two
-> opposite-side buyers can cross with no seller at all — the pool mints a fresh up-down
-> pair from their combined collateral.
+> This is the part I'd want you to remember. A window expired at seventeen hundred UTC. No
+> bot ran. Nobody called anything.
 >
-> That means you can quote both sides holding nothing.
+> Somnia's reactivity precompile woke the vault at the second it was armed for, and the
+> vault settled its own position — `CallbackFired`, `Settled`, `Swept`. From the chain,
+> for the chain, with the operator key sitting idle.
 
-**Screen:** the ladder, with the two ABADI rows visible.
+*Point at the three events in the log list.*
 
-> Buy up at seventy-four point four. Buy down at seventy-seven. Together that costs
-> ninety-seven point four for a hundred contracts a side — not a hundred. The difference
-> is the spread, and it's ours the moment both legs fill.
->
-> This is the live book, read back after we quoted. Our bid is the best bid on the
-> market.
-
-**Screen:** the verdict box under the ladder.
-
-> And the spread on this market went from three cents to two and a half. The incumbent
-> quoter tightened in response to us. That's the ecosystem impact — not a claim, a
-> screenshot.
+> That took nine deployments to get right. The first one ran out of gas at five hundred
+> thousand. It's in the evidence folder, including the ones that failed.
 
 ---
 
-## 1:35 — 2:15 · The fill
+## 1:22 — 1:58 · What happened when we measured it
 
-**Screen:** scroll to the position ledger. Then the big zero.
+**Screen:** `docs/evidence/ledger-2026-08-31.md`, on the Summary block.
 
-> Then both legs filled.
+> And here's where I'd rather show you the uncomfortable slide than have you find it.
 >
-> The vault paid ninety-seven point four. It now holds a hundred up contracts and a
-> hundred down contracts — a complete set. At settlement that redeems for exactly a
-> hundred, whichever side wins. There is no price at which this position loses.
+> Until yesterday this project published a two-point-three-seven percent return. That number
+> was wrong — not invented, worse. The ledger summed the episodes that closed into a
+> complete set and silently dropped the ones that went one-sided. It could not produce a
+> loss. Neither could the chart.
+>
+> The real number is per share, read off the chain: **nought point nine three**. Depositors
+> are down six point eight percent. The market-making edge is real in theory and smaller
+> than adverse selection in practice — twenty percent of our filled quotes went one-sided.
 
-**Screen:** hold on `0.00` — directional exposure.
+*Hold on the per-share figure.*
 
-> Two dollars sixty locked in, and the number that matters underneath it: zero
-> directional exposure. We never took a view. The profit isn't a bet that paid — it's
-> the spread, collected.
-
-**Screen:** the settle transaction on the explorer.
-
-> And then the window resolved, and we redeemed it. A hundred back against a basis of
-> ninety-seven point six. Net asset value did not move by a single unit across
-> settlement — which is the assertion that matters, because a complete set was already
-> marked at exactly what it redeems for. If that number had jumped either way, one of the
-> two states was mispriced, and share price is where a mispricing gets paid for by
-> whoever happens to be holding.
-
-*Twelve seconds. Do not read the transaction hash aloud — point at it and move on.*
-
-**Screen:** the explorer, the `onEvent` transaction whose sender is the vault itself.
-
-> And this one nobody sent. The window expired, the chain woke the vault at the second
-> we asked for, and the vault redeemed its own position. The transaction is from the
-> vault, to the vault. That is what "the liquidity doesn't expire" means mechanically.
-
-*Eight seconds. This is the single most unusual thing on screen; let it sit.*
-
-**Screen:** cut to the terminal, run `forge test`.
-
-> Sixty-seven tests, including the fuzzed invariant that the vault can never spend more
-> than the premium it budgeted.
-
-*Let the test output finish on screen. Green passing tests are worth three seconds of
-silence.*
+> We found that by auditing ourselves and publishing the result. Every competitor here who
+> hasn't measured looks better than us right now, and I'd rather be the one with the number.
 
 ---
 
-## 2:15 — 2:45 · What we'd tell the DreamDEX team
+## 1:58 — 2:28 · What we found in the venue
 
-**Screen:** `docs/SDK-FEEDBACK.md`, scrolled slowly.
+**Screen:** `docs/SDK-FEEDBACK.md`, scrolled through the issue headings.
 
-> Twelve findings, and every one of them only showed up when we ran something rather than
-> read about it. Prices are scaled to the collateral's decimals, not to 1e18 — and when
-> you get it wrong, the error says your order would cross the book, which sends you
-> looking in completely the wrong place. That one cost us hours.
+> Sixteen reproducible defects in DreamDEX and its SDK, each with a transaction hash.
 >
-> The two that cost us the most came from settling a real position: redemption pulls
-> through the module rather than the pool, and nothing says so until the one call that
-> turns tokens back into money. And cancelling an order that already filled reverts,
-> which breaks cleanup on exactly the position that needs cleaning up.
+> The one that cost us: a pool freezes its entire order book the moment a window expires,
+> including the two calls the SDK documents as the permissionless way to get your escrow
+> out. Two windows sat frozen for two days with a hundred and ninety-six dollars of ours
+> behind them.
 >
-> All of it is written up and reported back, with reproduction steps.
+> The way out was `voidExpired` — permissionless, open five minutes after expiry, and
+> documented nowhere near where you'd look. The vault takes that hatch by itself now.
 
-**Screen:** back to the dashboard top.
+*Beat.*
 
-> Abadi is one vault, a handful of fills, on testnet. It is not a track record yet — a
-> handful of fills proves the mechanism, not the edge. But the whole lifecycle has now
-> run against the venue: quote, fill, merge, redeem. The capital is non-custodial, and
-> the operator key that steers the quotes can't move a single token.
->
-> The markets expire. The liquidity doesn't.
+> And the pools are beacon proxies. Their implementation can change under a live position
+> with no address change and no version to pin. That's issue sixteen.
 
 ---
 
-## Things to say only if asked, not in the video
+## 2:28 — 2:45 · Close
 
-Keep these ready for judge questions. Putting them in the video costs time and invites
-doubt; having good answers ready when asked builds far more confidence.
+**Screen:** back to the dashboard, live numbers ticking.
 
-- **"Is 2.60 on one fill meaningful?"** No, and we say so on screen. It demonstrates the
-  mechanism. Adverse selection — being filled preferentially when you're wrong — is the
-  real risk and needs many quotes across many windows to measure.
-- **"What if only one leg fills?"** Then the vault holds a naked directional leg until the
-  other side fills, it's flattened, or the window settles. It happened to us twice on the
-  27th and it is worth being specific about: NAV marks that leg at **zero**, not at what
-  it cost, so the loss is recognised the moment it happens rather than passed to whoever
-  deposits next. NAV may understate. It may not overstate. That's the direction that takes
-  money from someone.
-- **"Did anything go wrong?"** Yes, and it is in the README rather than buried. Our live
-  address turned out to be an older build than our source — `settle` was not in the
-  deployed bytecode at all, which is *why* it had never been exercised. Finding that cost
-  us a stranded position. Fixing it and quoting again surfaced three more defects in the
-  exits, including one where NAV overstated by 2.21% on a one-sided fill. All four are
-  fixed, tested, and written up; `scripts/attest.ts` now checks the live bytecode against
-  the build so the first one cannot recur. *Offer this if asked, with the fix in the same
-  breath — the finding is only impressive alongside what was done about it.*
-- **"Did the reactive roll actually run?"** Yes — once out of gas at 500k, then
-  correctly at block 472752861 with a measured limit. Both are in
-  `docs/evidence/reactivity-live-2026-08-27.md`. Say the failure first; it makes the
-  success credible.
-- **"How do you know the contract works against the real venue and not just your
-  mocks?"** Because the mocks lied to us once and it cost capital. `test/fork/` forks
-  Shannon at the current block, deploys the vault, and plays the taker against the
-  vault's own legs through the real pool and module. Four passes, on GitHub every six
-  hours. And the dashboard's track record is decoded in the judge's own browser from the
-  explorer's logs — they can refetch the URL themselves.
-- **"What stops the operator running off with the money?"** Nothing in the vault gives it
-  a path. It can quote and cancel. `test_operatorCannotMoveAnyFunds` checks all three
-  exit routes.
+> Abadi is a market maker that survives its own markets expiring, a vault that settles
+> itself when nobody is watching, and sixteen bug reports for the venue it runs on.
+>
+> The strategy needs a fair-value model it doesn't have yet — which, conveniently, is what
+> Sigma in this same hackathon is building. That's the next commit.
+>
+> Everything here is on Shannon, and every number is read from the chain.
 
-## What not to do
+*End on the live dashboard, not on a slide.*
 
-- Don't narrate the architecture diagram. Judges read the repo for that; the video is for
-  the parts a diagram can't carry.
-- Don't show the contract source. Nobody has ever been convinced by scrolling Solidity in
-  a demo video.
-- Don't apologise for what isn't finished. State the status plainly once, at the end, and
-  move on. The honest one-line version reads as confidence; a paragraph of hedging reads
-  as doubt.
+---
+
+## Facts to keep straight on camera
+
+Get these wrong and a judge who checks will discount everything else.
+
+| Claim | The number |
+|---|---|
+| Unit tests | 87 at the time of writing — **run `forge test` and say what it prints** |
+| Fork tests against the real venue | 5 |
+| Browser tests | 64 |
+| Deployments | 9 vaults, 26–30 August |
+| Per share | 0.931581 as of 2026-08-31 — **re-read it before recording** |
+| Depositor P&L | −320.50 tUSDC, −6.84% |
+| Episodes | 95 across 9 vaults; 20% of filled quotes adverse |
+| Frozen escrow, recovered | 208.90 back on 196.00 of basis |
+| SDK issues filed | 16 |
+| Cited transactions verified against chain | 44 of 44, gas figures exact |
+
+**Do not say:** "profitable", "the vault earns 2.37%", or any figure from before the 31st.
+The old numbers are still in older evidence files by design — they are dated, and the
+correction is dated too.
+
+**Do not claim the fixes are live.** `scripts/attest.ts` reports MISMATCH: the audit
+repairs are in the source and the deployed vault is the previous build. If you show the
+explorer's verified source, say so.
+
+## The question you will get, and the answer
+
+> *"Your operator key trades. What stops it running off with the money?"*
+
+Cannot transfer, can trade. The vault holds custody and the key cannot reach it — that part
+is absolute. What the key can do is quote badly, so the bound on that is on chain too:
+`maxQuoteNotional` caps one quote and `maxDeployedBps` caps the whole book as a fraction of
+NAV, both governor-set. Before this week that bound was an environment variable on the
+machine running the bot, and saying otherwise would have been the wrong answer.

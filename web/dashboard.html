@@ -30,6 +30,18 @@
     -webkit-font-smoothing: antialiased;
   }
 
+  a:focus-visible, [tabindex]:focus-visible { outline: 2px solid var(--turmeric); outline-offset: 3px; }
+
+  /* First stop on every page. Moved by transform, so it costs no layout at rest. */
+  .skip {
+    position: absolute; left: 12px; top: 12px; z-index: 60;
+    background: var(--ink-raised); color: var(--turmeric);
+    border: 1px solid var(--turmeric); padding: 10px 14px;
+    font-size: 15px; font-weight: 500; text-decoration: none;
+    transform: translateY(-200%);
+  }
+  .skip:focus { transform: none; }
+
   .wrap { max-width: 1000px; margin: 0 auto; padding: 0 24px 96px; }
 
   /* ---------- masthead ---------- */
@@ -291,6 +303,8 @@
   }
 </style>
 
+<a class="skip" href="#main">Skip to content</a>
+
 <div class="wrap">
 
   <header class="masthead">
@@ -313,6 +327,8 @@
     <a href="/deck">Deck</a>
     <a class="go" href="/app">Open the app</a>
   </nav>
+
+  <main id="main" tabindex="-1">
 
   <p class="thesis">The markets expire every window. <em>The liquidity does not.</em></p>
   <p class="sub">
@@ -420,7 +436,9 @@
         <div class="tip" role="status" hidden></div>
       </div>
     </figure>
-    <div class="tablewrap">
+    <!-- Eight columns of mono do not fit a phone, so this scrolls sideways. A region
+         that scrolls has to be focusable, or the only way in is to tab every link in it. -->
+    <div class="tablewrap" role="region" aria-label="Every episode, scrollable" tabindex="0">
       <table class="episodes">
         <thead><tr><th>vault</th><th>market</th><th>quoted</th><th>bid / ask</th><th>basis</th><th>back</th><th>closed by</th><th>result</th></tr></thead>
         <tbody data-ledger="rows"></tbody>
@@ -513,6 +531,8 @@
       collects. The strategy was chosen by the measurement, not the other way round.
     </p>
   </div>
+
+  </main>
 
   <footer class="foot">
     <span>vault 0x2314436e…D352 · quote → fill → merge → redeem, all run · not a track record yet</span>

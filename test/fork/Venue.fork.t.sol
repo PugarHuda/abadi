@@ -196,6 +196,86 @@ contract VenueForkTest is Test {
         assertEq(vault.idleAssets() - before, escrowed, "every cent of the escrow came back");
     }
 
+    /// `module.redeem` had no fork coverage at all. Every settlement in this file went
+    /// through `voidExpired` with nothing filled, so `_redeemOutcome` returned early on a
+    /// zero balance and the real module was never asked to pay anything. This fills BOTH
+    /// legs first, so there is a real position to redeem, and lets the real settlement
+    /// pay it — which is also the measurement the vault's own comment rests on: after a
+    /// bare `voidExpired`, with no `syncSettlement` and no `finalizeMarket`, redemption
+    /// returns the full amount. That claim is what keeps 3.94M of gas out of the
+    /// reactivity callback, and until now nothing re-checked it.
+    function test_fork_aFilledPositionRedeemsThroughTheRealModule() public {
+        (uint256 mid, uint256 half) = _insideTheBook();
+        vm.prank(operator);
+        vault.quote(0, marketId, mid, half, SIZE);
+
+        vm.startPrank(taker);
+        _take(ORDER_KIND.BUY_NO, mid - half);
+        _take(ORDER_KIND.BUY_YES, mid + half);
+        vm.stopPrank();
+        assertEq(IOutcomeToken6909(OUTCOME).balanceOf(address(vault), yesId), SIZE, "YES side held");
+        assertEq(IOutcomeToken6909(OUTCOME).balanceOf(address(vault), noId), SIZE, "NO side held");
+
+        (,,,,,,,, address market,,,,, uint64 expiry) = IBinaryMarketsModule(MODULE).markets(marketId);
+        vm.warp(uint256(expiry) + IBinaryMarket(market).settlementWindow() + 15);
+        IBinaryMarket(market).voidExpired();
+
+        uint256 before = vault.idleAssets();
+        uint256 redeemed = vault.settle(0);
+
+        // A void pays half on each side, so a complete set is still worth exactly its
+        // size. Redeeming only the "winner" would have come back with half of it.
+        assertEq(redeemed, SIZE, "the real module paid the whole set");
+        assertEq(vault.idleAssets() - before, SIZE, "and it landed in the vault");
+        assertEq(IOutcomeToken6909(OUTCOME).balanceOf(address(vault), yesId), 0, "YES pulled by the module");
+        assertEq(IOutcomeToken6909(OUTCOME).balanceOf(address(vault), noId), 0, "NO pulled too");
+        assertFalse(vault.slots(0).active, "slot freed");
+        assertEq(vault.totalEscrowed(), 0);
+    }
+
+    /// `_settle`'s RESOLVED branch — `payoutNumerators()`, then a redeem for every side
+    /// that pays — has never run against the real venue, only against the mock. A fork of
+    /// a live window cannot make the oracle answer: nothing on chain posts the price, and
+    /// `pokeOracle` only pulls an answer that is already there.
+    ///
+    /// So the state is reached by the other door. The window is voided for real, which
+    /// means settlement really is funded and `payoutNumerators()` really does return the
+    /// venue's own vector; then the two lifecycle booleans are overridden so the vault
+    /// takes the resolved branch through it. Exactly two `view` calls are mocked, and
+    /// their mocked answers are the truthful shape of a resolved market. The payout
+    /// vector, both redemptions, the settlement singleton and the ERC-6909 are all real.
+    function test_fork_theResolvedBranchRedeemsEverySideThatPays() public {
+        (uint256 mid, uint256 half) = _insideTheBook();
+        vm.prank(operator);
+        vault.quote(0, marketId, mid, half, SIZE);
+
+        vm.startPrank(taker);
+        _take(ORDER_KIND.BUY_NO, mid - half);
+        _take(ORDER_KIND.BUY_YES, mid + half);
+        vm.stopPrank();
+
+        (,,,,,,,, address market,,,,, uint64 expiry) = IBinaryMarketsModule(MODULE).markets(marketId);
+        vm.warp(uint256(expiry) + IBinaryMarket(market).settlementWindow() + 15);
+        IBinaryMarket(market).voidExpired();
+
+        uint256[] memory payouts = IBinaryMarket(market).payoutNumerators();
+        assertEq(payouts.length, 2, "the venue stores a two-entry vector");
+        assertGt(payouts[0], 0, "UP pays");
+        assertGt(payouts[1], 0, "DOWN pays too, which is the case the argmax abandoned");
+
+        vm.mockCall(market, abi.encodeCall(IBinaryMarket.isVoided, ()), abi.encode(false));
+        vm.mockCall(market, abi.encodeCall(IBinaryMarket.isResolved, ()), abi.encode(true));
+
+        uint256 before = vault.idleAssets();
+        uint256 redeemed = vault.settle(0);
+
+        assertEq(redeemed, SIZE, "every paying side was redeemed, not just the larger one");
+        assertEq(vault.idleAssets() - before, SIZE);
+        assertEq(IOutcomeToken6909(OUTCOME).balanceOf(address(vault), yesId), 0);
+        assertEq(IOutcomeToken6909(OUTCOME).balanceOf(address(vault), noId), 0);
+        assertFalse(vault.slots(0).active);
+    }
+
     // ---------------------------------------------------------------- helpers
 
     /// An IOC at the vault's price, sized well past the vault's leg. The fork is the live

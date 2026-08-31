@@ -8,6 +8,7 @@ import {ISomniaEventHandler} from "@somnia-chain/reactivity-contracts/contracts/
 import {ISomniaReactivityPrecompile} from
     "@somnia-chain/reactivity-contracts/contracts/interfaces/ISomniaReactivityPrecompile.sol";
 import {IERC165} from "@somnia-chain/reactivity-contracts/contracts/interfaces/IERC165.sol";
+import {PrecompileStub, STUB_SUBSCRIPTION_ID} from "./LiquidityVault.t.sol";
 
 contract Roller is AbadiReactive {
     uint256 public lastFiredAt;
@@ -103,6 +104,53 @@ contract AbadiReactiveTest is Test {
         assertEq(roller.fireCount(), 1, "fired once");
         assertEq(roller.lastFiredAt(), AT, "carried the instant through");
         assertEq(roller.armed(AT), 0, "one-shot: cleared, and it does not re-arm itself");
+    }
+
+    // -------------------------------------------------------------- arming
+
+    /// `exposedArm` existed and was never called from anywhere: the arming path had no
+    /// coverage at all, here or on a fork. The reason is real — the precompile is node
+    /// code with no bytecode, so a typed call to it reverts on solc's EXTCODESIZE guard
+    /// before the call is even made — but "cannot be run" is not the same as "cannot be
+    /// tested". Etching a stub at its fixed address makes the path executable, and
+    /// everything on this side of it is the code that actually ships: the 32 STT floor,
+    /// the refusal to arm one instant twice, the bookkeeping, and the Somnia library's
+    /// own timestamp, fee-gap and gas-limit checks.
+    function test_armingClaimsTheInstantAndDisarmingGivesItBack() public {
+        vm.etch(PRECOMPILE, address(new PrecompileStub()).code);
+
+        // The floor is checked by `_arm` itself, not only by the public `requireFunded`.
+        vm.expectRevert(abi.encodeWithSelector(AbadiReactive.Underfunded.selector, uint256(0), 32 ether));
+        roller.exposedArm(AT);
+
+        vm.deal(address(roller), 33 ether);
+        vm.expectEmit(true, true, false, false);
+        emit AbadiReactive.Armed(AT, STUB_SUBSCRIPTION_ID);
+        uint256 id = roller.exposedArm(AT);
+
+        assertEq(id, STUB_SUBSCRIPTION_ID, "the precompile's id comes back to the caller");
+        assertEq(roller.armed(AT), id, "and is recorded against the instant it fires at");
+
+        // A duplicate subscription on one instant fires the same sweep twice.
+        vm.expectRevert(abi.encodeWithSelector(AbadiReactive.AlreadyArmed.selector, AT));
+        roller.exposedArm(AT);
+
+        vm.expectEmit(true, true, false, false);
+        emit AbadiReactive.Disarmed(AT, id);
+        roller.exposedDisarm(AT);
+        assertEq(roller.armed(AT), 0, "the instant is free again");
+        roller.exposedArm(AT); // and provably so
+    }
+
+    /// The library refuses an instant that has already passed, which is the shape a bot
+    /// arming "expiry + settlementWindow" produces the moment it runs a little late.
+    function test_armingAnInstantAlreadyGoneIsRefused() public {
+        vm.etch(PRECOMPILE, address(new PrecompileStub()).code);
+        vm.deal(address(roller), 33 ether);
+        vm.warp(2_000_000_000);
+        vm.expectRevert(SomniaExtensions.TimestampInPast.selector);
+        roller.exposedArm(AT); // AT is 1.8e12 ms = well behind `now`
+        assertEq(roller.armed(AT), 0, "and nothing was recorded for it");
     }
 
     function test_disarmingSomethingNeverArmedReverts() public {

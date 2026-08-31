@@ -9,8 +9,14 @@ import { test, expect } from "@playwright/test";
 
 const BASE = process.env.BASE ?? "https://abadi-wheat.vercel.app";
 
+/** The dashboard is not idle until the explorer's log API answers for every vault, and that
+ *  API stalls past 30 seconds often enough to fail a build on nothing. The thresholds below
+ *  are unchanged — this only stops the wait itself from being the thing that fails. */
+const slowIfDashboard = (path: string) => { if (path === "/dashboard") test.slow(); };
+
 for (const path of ["/", "/dashboard", "/deck", "/app"]) {
   test(`${path} paints its largest content within 2.5s`, async ({ page }) => {
+    slowIfDashboard(path);
     await page.goto(BASE + path, { waitUntil: "load" });
     const lcp = await page.evaluate(
       () =>
@@ -29,6 +35,7 @@ for (const path of ["/", "/dashboard", "/deck", "/app"]) {
   });
 
   test(`${path} ships no more than it needs`, async ({ page }) => {
+    slowIfDashboard(path);
     const sizes: Record<string, number> = {};
     page.on("response", async (r) => {
       const url = r.url();

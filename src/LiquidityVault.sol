@@ -85,6 +85,27 @@ contract LiquidityVault is ERC4626, AbadiReactive, ReentrancyGuard {
     ///      seconds threshold is wrong here: the venue runs 60s through 86400s tiers.
     uint16 public headroomBps = 1000; // 10%
 
+    /// @notice Most collateral one quote may commit, in asset units. 0 disables the cap.
+    /// @dev The custody claim — "the operator key can steer quotes and cannot move a
+    ///      token" — is true and was the wrong thing to be reassured by. The operator
+    ///      cannot TRANSFER the money; it could trade it away. It picks the market, the
+    ///      mid, the half-spread and the size, and before these two limits the only bound
+    ///      was `escrow <= idle`: one quote could commit the entire vault. A mispriced
+    ///      quote on a near-certain market gets one leg hit and buys something worth
+    ///      nothing, and the proceeds land with whoever took the other side.
+    ///
+    ///      So the bound is on chain now, where the operator cannot reach it, rather than
+    ///      in an environment variable on the machine that runs the bot. Governor-set,
+    ///      because it is a risk decision and not a trading one.
+    uint256 public maxQuoteNotional;
+
+    /// @notice Most of NAV that may be committed to open quotes at once, in bps.
+    /// @dev Bounds the whole book rather than one quote: eight slots each inside
+    ///      `maxQuoteNotional` can still be the whole vault. Measured utilisation has run
+    ///      0-6% of NAV, so this is not a constraint on how the vault actually trades — it
+    ///      is a constraint on how far it could be pushed in one direction.
+    uint16 public maxDeployedBps;
+
     /// @dev Floor on the half-spread we will quote, in 1e18 price units. Quoting inside
     ///      this is how a maker turns an edge into adverse selection for free.
     /// @dev In price units, so it scales with the collateral. Set at construction from
@@ -185,6 +206,7 @@ contract LiquidityVault is ERC4626, AbadiReactive, ReentrancyGuard {
     event OperatorSet(address indexed operator);
     event RiskParamsSet(uint16 headroomBps, uint256 minHalfSpread);
     event GridSet(uint256 tickSize, uint256 lotSize);
+    event ExposureLimitsSet(uint256 maxQuoteNotional, uint16 maxDeployedBps);
     event NativeSwept(address indexed to, uint256 amount);
     event Settled(uint256 indexed slot, bytes32 indexed marketId, uint256 redeemed, bool voided);
     event Flattened(uint256 indexed slot, bytes32 indexed marketId, uint256 pairs, uint256 returned);
@@ -204,6 +226,12 @@ contract LiquidityVault is ERC4626, AbadiReactive, ReentrancyGuard {
     error SpreadTooTight(uint256 halfSpread);
     error SizeFlooredToZero();
     error InsufficientIdle(uint256 needed, uint256 available);
+    /// @dev One quote tried to commit more than `maxQuoteNotional`.
+    error QuoteTooLarge(uint256 escrow, uint256 cap);
+    /// @dev This quote would push open escrow past `maxDeployedBps` of NAV.
+    error TooMuchDeployed(uint256 wouldBe, uint256 cap);
+    /// @dev A withdrawal in the same block as the deposit that funded it. See `_withdraw`.
+    error TooSoonAfterDeposit();
     error OrderRejected(uint8 kind);
     error MarketNotSettled(bytes32 marketId, uint8 status);
     error OnlyOperatorWhileTrading(bytes32 marketId);
@@ -313,6 +341,24 @@ contract LiquidityVault is ERC4626, AbadiReactive, ReentrancyGuard {
                 if (_slots[i].active) revert LastShareWhileOpen(i);
             }
         }
+        // Not in the same block as the deposit that funded it.
+        //
+        // A naked leg is marked at zero, so a WINNING naked leg on an already-resolved
+        // market is real, certain, public value that NAV does not show — and `settle` is
+        // permissionless, so anyone can pull it in. That made deposit -> settle -> redeem
+        // a riskless profit in ONE transaction, funded entirely by the holders already
+        // there: measured at +50.00 to the attacker and -50.00 to the existing LP.
+        //
+        // One block is all it takes to break it, because what made it riskless was
+        // atomicity. Across a block boundary the attacker is holding the position, and
+        // the mark can move against them like anyone else's. Somnia's blocks are
+        // sub-second, so an honest depositor pays effectively nothing for this.
+        //
+        // It does not close the patient version — deposit, wait, settle, redeem — which
+        // is bounded by the risk of holding rather than by this guard. Removing that
+        // entirely means not marking a naked leg at zero, which is a larger design
+        // decision than a withdrawal guard.
+        if (_depositedAt[owner] == block.number) revert TooSoonAfterDeposit();
         super._withdraw(caller, receiver, owner, assets, shares);
     }
 
@@ -338,9 +384,28 @@ contract LiquidityVault is ERC4626, AbadiReactive, ReentrancyGuard {
     ///      refuses, directly and where it happens. OpenZeppelin's virtual share already
     ///      makes the attack unprofitable for the attacker; this makes it harmless for
     ///      the victim.
-    function _deposit(address caller, address receiver, uint256 assets, uint256 shares) internal override {
+    /// @dev `nonReentrant` because this was the one value path without it. `_settle`
+    ///      deletes a slot before it receives the collateral for it, so for the length of
+    ///      that call NAV understates by exactly the position being redeemed — and a
+    ///      module that called back into `deposit` from inside `redeem` would mint shares
+    ///      against the understated number and come out worth more than was paid. Not
+    ///      reachable today, since `module` is immutable and is the venue's own contract.
+    ///      The guard is what keeps it unreachable if that ever stops being true.
+    function _deposit(address caller, address receiver, uint256 assets, uint256 shares)
+        internal
+        override
+        nonReentrant
+    {
         if (shares == 0) revert DepositMintsNothing(assets);
+        _depositedAt[receiver] = block.number;
         super._deposit(caller, receiver, assets, shares);
+    }
+
+    /// @notice Block in which each holder's shares were last minted.
+    mapping(address holder => uint256 blockNumber) private _depositedAt;
+
+    function depositedAt(address holder) external view returns (uint256) {
+        return _depositedAt[holder];
     }
 
     /// @notice The most `owner` can actually take out right now.
@@ -354,6 +419,11 @@ contract LiquidityVault is ERC4626, AbadiReactive, ReentrancyGuard {
     ///      caller is entitled to be told that number rather than to discover it by
     ///      reverting.
     function maxWithdraw(address owner) public view override returns (uint256) {
+        // The fresh-deposit guard is a reason a withdrawal reverts, so it belongs here
+        // too. Adding that guard without teaching these two about it reintroduced exactly
+        // the ERC-4626 violation the paragraph above says they exist to fix — reporting a
+        // number that reverts — one commit after fixing it.
+        if (_depositedAt[owner] == block.number) return 0;
         uint256 assets = super.maxWithdraw(owner);
         uint256 idle = idleAssets();
         if (assets > idle) assets = idle;
@@ -366,6 +436,7 @@ contract LiquidityVault is ERC4626, AbadiReactive, ReentrancyGuard {
     }
 
     function maxRedeem(address owner) public view override returns (uint256) {
+        if (_depositedAt[owner] == block.number) return 0;
         uint256 shares = super.maxRedeem(owner);
         uint256 byIdle = convertToShares(idleAssets());
         if (shares > byIdle) shares = byIdle;
@@ -437,6 +508,12 @@ contract LiquidityVault is ERC4626, AbadiReactive, ReentrancyGuard {
             + MarketEngine.costOf(qty, MarketEngine.mirror(ask, priceOne), priceOne);
         uint256 idle = idleAssets();
         if (escrow > idle) revert InsufficientIdle(escrow, idle);
+        if (maxQuoteNotional != 0 && escrow > maxQuoteNotional) revert QuoteTooLarge(escrow, maxQuoteNotional);
+        if (maxDeployedBps != 0) {
+            uint256 wouldBe = totalEscrowed() + escrow;
+            uint256 cap = (totalAssets() * maxDeployedBps) / 10_000;
+            if (wouldBe > cap) revert TooMuchDeployed(wouldBe, cap);
+        }
 
         uint64 deadlineNs = MarketEngine.expiryNs(expiry, expiry);
         IERC20(asset()).forceApprove(pool, escrow);
@@ -696,8 +773,18 @@ contract LiquidityVault is ERC4626, AbadiReactive, ReentrancyGuard {
     ///      measured 291,526 gas, or 0.0047 STT.
     uint64 public constant SWEEP_GAS = 16_000_000;
 
+    /// @dev The fee cap, not the gas limit, is what bounds the worst case — and it is the
+    ///      cheaper of the two to lower. `SWEEP_GAS` has to stay wide enough for eight
+    ///      slots on the dead-oracle path; the price paid per unit does not.
+    ///
+    ///      At 50 gwei a full 16M sweep costs 0.8 STT against a live headroom over
+    ///      MIN_HANDLER_BALANCE of 0.812 — one bad callback from never arming again, and
+    ///      close enough that the keeper's own balance alarm would have fired on nearly
+    ///      every run. At 25 gwei the same sweep costs 0.4 and the alarm means something
+    ///      when it does fire. Shannon's base fee has run 6-16 gwei throughout, so 25
+    ///      still leaves a comfortable multiple; the priority fee is unchanged.
     function armSweep(uint64 firesAtSec) external onlyOperator returns (uint256 subscriptionId) {
-        return _arm(uint256(firesAtSec) * 1000, 10 gwei, 50 gwei, SWEEP_GAS);
+        return _arm(uint256(firesAtSec) * 1000, 10 gwei, 25 gwei, SWEEP_GAS);
     }
 
     function disarmSweep(uint64 firesAtSec) external onlyOperator {
@@ -804,6 +891,13 @@ contract LiquidityVault is ERC4626, AbadiReactive, ReentrancyGuard {
     function setOperator(address operator_) external onlyGovernor {
         operator = operator_;
         emit OperatorSet(operator_);
+    }
+
+    /// @notice Set the exposure caps. Either may be 0, which disables that one.
+    function setExposureLimits(uint256 maxQuoteNotional_, uint16 maxDeployedBps_) external onlyGovernor {
+        maxQuoteNotional = maxQuoteNotional_;
+        maxDeployedBps = maxDeployedBps_;
+        emit ExposureLimitsSet(maxQuoteNotional_, maxDeployedBps_);
     }
 
     function setRiskParams(uint16 headroomBps_, uint256 minHalfSpread_) external onlyGovernor {

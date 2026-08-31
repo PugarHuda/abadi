@@ -43,6 +43,7 @@ contract Handler is Test {
         usdc.approve(address(vault), amount);
         try vault.deposit(amount, alice) {} catch {}
         vm.stopPrank();
+        _rollPastTheFreshDepositGuard();
     }
 
     /// A second depositor. With one LP, no invariant about value moving BETWEEN holders
@@ -54,6 +55,15 @@ contract Handler is Test {
         usdc.approve(address(vault), amount);
         try vault.deposit(amount, bob) {} catch {}
         vm.stopPrank();
+        _rollPastTheFreshDepositGuard();
+    }
+
+    /// `_withdraw` refuses an owner whose shares were minted in this block. Foundry pins
+    /// `block.number` across an invariant run, so without this every withdraw action the
+    /// fuzzer picked after a deposit would have been swallowed by that one revert and the
+    /// exit paths would have gone unexercised for the rest of the run.
+    function _rollPastTheFreshDepositGuard() internal {
+        vm.roll(block.number + 1);
     }
 
     function withdrawBob(uint256 shares) external {
@@ -77,14 +87,48 @@ contract Handler is Test {
     /// One whole leg is taken by the market. The mock pool then treats the id as dead,
     /// exactly as the real one does.
     function fill(uint256 slot, bool yesLeg) external {
-        slot = bound(slot, 0, vault.MAX_SLOTS() - 1);
-        LiquidityVault.Slot memory s = vault.slots(slot);
-        if (!s.active) return;
-        uint128 id = yesLeg ? s.yesOrderId : s.noOrderId;
-        if (id == 0 || pool.filled(id)) return;
-        pool.fill(id);
-        uint256 tokenId = yesLeg ? s.yesId : s.noId;
-        outcome.setBalance(address(vault), tokenId, outcome.balanceOf(address(vault), tokenId) + s.size);
+        (uint128 id, uint256 tokenId, uint256 remaining) = _leg(slot, yesLeg);
+        if (remaining == 0) return;
+        _take(id, tokenId, remaining);
+    }
+
+    /// PART of a leg is taken and the rest keeps resting. Nothing here could produce this
+    /// before, so `_legEscrow` — the function the whole escrow rewrite exists for — only
+    /// ever ran on a leg that was untouched or entirely gone. Its `remaining > size` cap
+    /// and its `costOf` rounding, the two things that can be wrong by a wei, were never
+    /// reached across 4,608 calls. A real book fills a resting order in pieces far more
+    /// often than in one go.
+    function fillPart(uint256 slot, bool yesLeg, uint256 quantity) external {
+        (uint128 id, uint256 tokenId, uint256 remaining) = _leg(slot, yesLeg);
+        if (remaining == 0) return;
+        _take(id, tokenId, bound(quantity, 1, remaining));
+    }
+
+    /// @dev Starts at the drawn slot and walks on to the next one with something resting,
+    ///      rather than giving up when the draw lands on an empty slot. A fill can only
+    ///      happen where an order is; with eight slots and rarely more than two open, a
+    ///      plain random index spent most of the fill budget deciding to do nothing.
+    function _leg(uint256 slot, bool yesLeg) internal returns (uint128 id, uint256 tokenId, uint256 remaining) {
+        uint256 n = vault.MAX_SLOTS();
+        uint256 start = bound(slot, 0, n - 1);
+        for (uint256 k = 0; k < n; k++) {
+            LiquidityVault.Slot memory s = vault.slots((start + k) % n);
+            if (!s.active) continue;
+            uint128 leg = yesLeg ? s.yesOrderId : s.noOrderId;
+            if (leg == 0) continue;
+            uint256 rest = pool.remainingOf(leg);
+            if (rest == 0) continue;
+            return (leg, yesLeg ? s.yesId : s.noId, rest);
+        }
+        return (0, 0, 0);
+    }
+
+    /// A fill hands over exactly the contracts it took. Adding the slot's whole `size`
+    /// here — which is what this used to do — would credit a partial fill with the entire
+    /// leg and make the outcome balances a fiction the invariants then measured against.
+    function _take(uint128 id, uint256 tokenId, uint256 quantity) internal {
+        pool.fillPartial(id, quantity);
+        outcome.setBalance(address(vault), tokenId, outcome.balanceOf(address(vault), tokenId) + quantity);
     }
 
     function cancel(uint256 slot) external {

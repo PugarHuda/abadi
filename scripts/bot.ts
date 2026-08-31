@@ -34,13 +34,43 @@
  *                       being wrong sometimes, not for standing in front of a move.
  *       MOMENTUM_WAIT=20  seconds between the two book samples
  *       SHORT_SIZE=0.5  size multiplier on the 900s tier, where a move is most of the window
- *       MAX_TIER=14400  longest window to quote, seconds. The ledger by tier: 15m and 4h
+ *       TIERS=14400,900 window lengths this bot will quote, seconds, in preference order.
+ *                       This replaces a ceiling with an allowlist, because the ceiling was
+ *                       excluding the wrong tier. Measured over 95 episodes:
+ *
+ *                         4h    7% adverse over 28 fills   EV +0.44 per filled quote
+ *                         15m   0% over 6                  no signal either way
+ *                         1h   36% over 36 fills           EV -6.70
+ *                         24h  25% over 8                  EV -3.96
+ *
+ *                       A complete set earns about 2.19 and an adverse fill costs about
+ *                       22, so the strategy breaks even near 9% adverse. Only 4h clears
+ *                       that, and only just — its own confidence interval reaches 22.6%.
+ *                       1h is the tier with the most fills AND the worst rate, and it was
+ *                       being quoted at three-quarter size because the ladder keyed on
+ *                       duration rather than on anything measured.
+ *
+ *                       Worse, SHORTEST=1 sorted ascending, aiming at 15m — which the
+ *                       headroom rule makes eligible only in the first 300s of its life,
+ *                       so it usually missed and landed on 1h. The bot was steering into
+ *                       its worst tier by accident.
+ *       MAX_TIER=14400  ceiling, kept so an operator can still cap by duration alone. The
+ *                       ledger by tier: 15m and 4h
  *                       windows 0% adverse, 1h 19%, 24h 25% — a quote resting for a day
  *                       is a quote standing in front of every move that day
  *       EDGE=0.08       do not quote a window priced under EDGE or over 1-EDGE: the spread
  *                       there is a few ticks wide, one leg is nearly free and the other
  *                       is nearly the whole dollar, and the only thing that can happen
  *                       to the expensive leg is the tail event
+ *       ALERT_WEBHOOK=  optional URL that gets a short JSON POST for the five conditions
+ *                       in alert(). Absent means log-only; a webhook that is down or
+ *                       wrong never stops a cycle
+ *       STUCK_MINS=30   how long the void hatch may stand open and refused before the
+ *                       stuck window is paged rather than merely logged
+ *
+ * Exit code is 1 if anything alerted, so the keeper that runs this is red when the vault
+ * needs a human and green when it genuinely had nothing to do. The two days this vault
+ * spent frozen were two days of exit-0 runs.
  */
 import { createPublicClient, createWalletClient, formatEther, http, parseAbi } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
@@ -104,6 +134,18 @@ const MOMENTUM_WAIT = Number(process.env.MOMENTUM_WAIT ?? 20);
 const SHORT_SIZE = Number(process.env.SHORT_SIZE ?? 0.5);
 const EDGE = Number(process.env.EDGE ?? 0.08);
 const MAX_TIER = Number(process.env.MAX_TIER ?? 14400);
+/** Window lengths worth quoting, best first. Empty disables the allowlist. */
+const TIERS = (process.env.TIERS ?? "14400,900").split(",").map(Number).filter((n) => n > 0);
+const ALERT_WEBHOOK = process.env.ALERT_WEBHOOK;
+const STUCK_MINS = Number(process.env.STUCK_MINS ?? 30);
+const STUCK_CYCLES = Number(process.env.STUCK_CYCLES ?? 2);
+/**
+ * Only used when the on-chain SWEEP_GAS read fails; see handlerHealth. The live vault
+ * answers 8,000,000 and src/LiquidityVault.sol now declares 16,000,000, so this takes
+ * the larger of the two on purpose: a fallback that under-states the worst case is a
+ * headroom check that says "fine" on the cycle it should have said "fund me".
+ */
+const SWEEP_GAS_FALLBACK = 16_000_000n;
 
 /** Contracts per side for a window: smaller where a move eats most of the window. */
 function sizeFor(intervalSec: number): bigint {
@@ -116,11 +158,15 @@ const usd = (v: bigint) => (Number(v) / 1e6).toFixed(2);
 
 /** How many cycles a market has refused the dead-oracle hatch. Escalates the log line. */
 const stuck = new Map<string, number>();
-const ts = () => new Date().toISOString().slice(11, 19);
+// Dated, because the local keeper appends every run to one file and 1,700 lines of
+// bare HH:MM:SS with no day boundary in them cannot be read as evidence of anything.
+const ts = () => new Date().toISOString().replace("T", " ").slice(0, 19);
 const log = (...a: unknown[]) => console.log(ts(), ...a);
 
 const vault = readFileSync(".vault-addr", "utf8").trim() as `0x${string}`;
-const account = privateKeyToAccount(env().PRIVATE_KEY as `0x${string}`);
+// process.env first so the GitHub keeper can pass the key through the step's env: and
+// never write it to a .env file in the workspace. env() is the local .env fallback.
+const account = privateKeyToAccount((process.env.PRIVATE_KEY ?? env().PRIVATE_KEY) as `0x${string}`);
 const pub = createPublicClient({ chain: shannon, transport: http(RPC) });
 const wallet = createWalletClient({ account, chain: shannon, transport: http(RPC) });
 const ex = exchange();
@@ -128,18 +174,102 @@ const ex = exchange();
 const read = <T>(fn: string, args: unknown[] = []) =>
   pub.readContract({ address: vault, abi: VAULT_ABI, functionName: fn as never, args: args as never }) as Promise<T>;
 
-async function send(label: string, fn: string, args: unknown[], to = vault, abi: any = VAULT_ABI) {
+/**
+ * Page a human. Only the conditions a human has to act on reach here: capital that
+ * cannot get out, arming about to die of a low balance, an operator that cannot pay for
+ * gas, and a cycle that threw. A skipped quote is not one of them — a vault declining to
+ * trade a trending or near-certain window is the vault working, and an alert that fires
+ * on ordinary work is an alert nobody reads by the second day.
+ *
+ * The webhook is optional and its failure is never fatal. The two days this vault spent
+ * frozen were lost to silence; a bot that died because a Slack URL went stale would be
+ * the same bug wearing a better hat. Log first, POST second, keep going either way.
+ *
+ * One page per subject per run. The keeper runs one cycle per process, so that is one
+ * page per subject per fifteen minutes — enough to notice, not enough to tune out.
+ */
+const alerted = new Set<string>();
+let paged = 0;
+async function alert(key: string, text: string) {
+  if (alerted.has(key)) return;
+  alerted.add(key);
+  paged++;
+  log(`ALERT    ${key}  ${text}`);
+  if (process.env.GITHUB_ACTIONS) console.log(`::error title=abadi ${key}::${text}`);
+  if (!ALERT_WEBHOOK) return;
+  try {
+    const r = await fetch(ALERT_WEBHOOK, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      // `text` so Slack/Discord render it as-is; the rest so a real sink can route on it.
+      body: JSON.stringify({ text: `abadi ${key}: ${text}`, key, detail: text, vault, operator: account.address, at: new Date().toISOString() }),
+      signal: AbortSignal.timeout(10_000), // a black-holed URL must not eat the cycle
+    });
+    if (!r.ok) log(`alert    webhook answered ${r.status}; the ALERT line above is the only record`);
+  } catch (e: any) {
+    log(`alert    webhook unreachable: ${(e?.message ?? String(e)).split("\n")[0]}; the ALERT line above is the only record`);
+  }
+}
+
+/** Sends that failed this run, by label. Cleared on the first one that works. */
+const fails = new Map<string, number>();
+
+/**
+ * One transaction. `verify` is what makes the return value mean anything: `r.status` is
+ * "the EVM did not revert" and nothing more, and 238 pokeOracle transactions have gone
+ * out under a `success` that resolved exactly nothing. Where a call has an observable
+ * effect, pass a read that looks for it — the log then separates `sent` from `worked`,
+ * and every caller's boolean is about the effect instead of the receipt.
+ */
+async function send(
+  label: string,
+  fn: string,
+  args: unknown[],
+  to = vault,
+  abi: any = VAULT_ABI,
+  verify?: () => Promise<boolean>,
+) {
+  let why: string;
   try {
     const hash = await wallet.writeContract({ address: to, abi, functionName: fn as never, args: args as never });
     const r = await pub.waitForTransactionReceipt({ hash });
-    log(`${label}  ${r.status}  ${hash}  gas ${r.gasUsed}`);
-    return r.status === "success";
+    const stamp = `${hash}  gas ${r.gasUsed}`;
+    if (r.status !== "success") {
+      why = "reverted on chain";
+      log(`${label}  REVERTED  ${stamp}`);
+    } else if (!verify) {
+      log(`${label}  sent  ${stamp}`);
+      fails.delete(label);
+      return true;
+    } else if (await verify().catch(() => false)) {
+      log(`${label}  worked  ${stamp}`);
+      fails.delete(label);
+      return true;
+    } else {
+      why = `sent, no effect (${hash})`;
+      log(`${label}  NO-OP  ${stamp}  — accepted by the EVM, and the state it exists to change did not change`);
+    }
   } catch (e: any) {
-    const msg = (e?.shortMessage ?? e?.message ?? String(e)).split("\n")[0];
-    log(`${label}  rejected: ${msg}`);
-    return false;
+    why = (e?.shortMessage ?? e?.message ?? String(e)).split("\n")[0];
+    log(`${label}  rejected: ${why}`);
   }
+  const n = (fails.get(label) ?? 0) + 1;
+  fails.set(label, n);
+  // settle and flatten are only ever attempted on a position that should already be
+  // exitable, so either one failing is money that did not come back — page on the first
+  // one. A threshold of two would never be reached anyway: the keeper runs one cycle per
+  // process, so the count belongs in the message, not in the trigger. `void` is louder
+  // at its call sites, which know how long the hatch has been open and how much is
+  // behind it, and pages from there instead.
+  if (/^(settle|flatten)/.test(label)) await alert(`exit:${label.trim()}`, `${label.trim()} failed ${n}x this run — ${why}`);
+  return false;
 }
+
+/** Whether a vault slot still holds a position. The observable effect of every exit. */
+const slotActive = (addr: `0x${string}`, i: number) =>
+  pub
+    .readContract({ address: addr, abi: VAULT_ABI, functionName: "slots", args: [BigInt(i)] })
+    .then((s: any) => !!s.active);
 
 /** Anything the venue has done to a market since we quoted it, in one read. */
 async function marketState(marketId: `0x${string}`) {
@@ -183,6 +313,40 @@ async function held(yesId: bigint, noId: bigint) {
 }
 
 /**
+ * The vault pays for its own wake-up call out of its own STT, and the precompile refuses
+ * to arm at all below MIN_HANDLER_BALANCE. A worst-case callback costs SWEEP_GAS at the
+ * arm's 25 gwei fee cap, so a vault holding less than floor + that much is one sweep away
+ * from never arming again — and the only thing that would have said so used to be a line
+ * printed after the balance had already gone under.
+ *
+ * Read once a cycle rather than only when a quote happens to be placed: a cycle with
+ * every slot busy never reaches armAt, and that is exactly the cycle where nothing warns.
+ */
+async function handlerHealth() {
+  const [bal, floor, gas] = await Promise.all([
+    pub.getBalance({ address: vault }),
+    read<bigint>("MIN_HANDLER_BALANCE"),
+    read<bigint>("SWEEP_GAS").catch(() => 0n),
+  ]);
+  // A failed SWEEP_GAS read used to switch the headroom check off for the cycle, which
+  // made one bad RPC answer look exactly like a healthy vault. Fall back to the deployed
+  // constant and say so; the check is never allowed to go quiet.
+  if (gas === 0n) log(`arm      note: SWEEP_GAS unreadable, using the deployed ${SWEEP_GAS_FALLBACK} for the headroom check`);
+  // Must track LiquidityVault.armSweep's maxFeePerGas. It was halved from 50 to 25 gwei
+  // so a worst-case sweep costs 0.4 STT rather than 0.8 against ~0.81 of live headroom —
+  // an alarm that fires on every single run is one nobody reads. NOTE: the DEPLOYED vault
+  // still arms at 50 gwei; this is deliberately the post-redeploy figure, because
+  // understating the worst case is the direction that goes quiet when it should not.
+  const worst = (gas === 0n ? SWEEP_GAS_FALLBACK : gas) * 25_000_000_000n;
+  if (bal < floor) {
+    await alert("handler-balance", `vault holds ${formatEther(bal)} STT, under the ${formatEther(floor)} STT floor: it can no longer arm, and the chain will not close these windows by itself`);
+  } else if (bal - floor < worst) {
+    await alert("handler-balance", `vault headroom is ${formatEther(bal - floor)} STT and one worst-case callback costs ${formatEther(worst)} STT: the next sweep can end arming for good`);
+  }
+  return { bal, floor };
+}
+
+/**
  * Ask the chain to wake the vault shortly after a window expires. Skipped, and said so,
  * when the vault is under the precompile's 32 STT floor — the bot's own settle step
  * still covers the slot, it just needs the bot to be alive for it.
@@ -198,26 +362,16 @@ async function armAt(firesAtSec: number) {
     log(`arm      ${at}Z  already armed; one callback covers every slot`);
     return true;
   }
-  const [bal, floor, gas] = await Promise.all([
-    pub.getBalance({ address: vault }),
-    read<bigint>("MIN_HANDLER_BALANCE"),
-    read<bigint>("SWEEP_GAS").catch(() => 0n),
-  ]);
+  const { bal, floor } = await handlerHealth();
   if (bal < floor) {
     log(`arm      SKIPPED, VAULT UNARMED: holds ${formatEther(bal)} STT, floor is ${formatEther(floor)}.`);
     log(`         Send it STT or the chain will not close these windows by itself.`);
     return false;
   }
-  // The callback is paid out of the vault's own balance. If a worst-case sweep would
-  // take it under the floor it can never arm again, and nothing else watches for that.
-  const worst = gas * 50_000_000_000n; // SWEEP_GAS at the arm's maxFeePerGas cap
-  if (gas === 0n) {
-    log(`arm      note: could not read SWEEP_GAS, so the handler-balance check is off this cycle`);
-  } else if (bal - floor < worst) {
-    log(`arm      WARNING: headroom ${formatEther(bal - floor)} STT is under the ${formatEther(worst)} STT`);
-    log(`         a worst-case callback could cost. One bad sweep ends arming for good.`);
-  }
-  return await send(`arm      ${at}Z`, "armSweep", [BigInt(firesAtSec)]);
+  // armed() is the effect: a receipt only says the precompile took the call.
+  return await send(`arm      ${at}Z`, "armSweep", [BigInt(firesAtSec)], vault, VAULT_ABI, async () =>
+    (await read<bigint>("armed", [ms])) !== 0n,
+  );
 }
 
 /**
@@ -253,11 +407,16 @@ async function sweepOld() {
         if (w === null) continue;
         const gate = m.expiry + Number(w);
         if (Date.now() / 1000 < gate) continue; // the oracle still has time
-        if (!(await send(`void     ${tag}`, "voidExpired", [], m.market, MARKET_ABI))) continue;
+        const voided = () => pub.readContract({ address: m.market, abi: MARKET_ABI, functionName: "isVoided" }) as Promise<boolean>;
+        if (!(await send(`void     ${tag}`, "voidExpired", [], m.market, MARKET_ABI, voided))) {
+          const mins = Math.round((Date.now() / 1000 - gate) / 60);
+          await alert(`stuck:${v.address}:${i}`, `${tag}: hatch open ${mins} min and voidExpired will not take, ${usd(s.basis)} still behind it on a retired vault`);
+          continue;
+        }
         await send(`sync     ${tag}`, "syncSettlement", [s.marketId], addresses.binaryModule as `0x${string}`, MODULE_ABI);
         await send(`final    ${tag}`, "finalizeMarket", [s.marketId], addresses.binaryModule as `0x${string}`, MODULE_ABI);
       }
-      await send(`settle   ${tag}`, "settle", [BigInt(i)], v.address);
+      await send(`settle   ${tag}`, "settle", [BigInt(i)], v.address, VAULT_ABI, async () => !(await slotActive(v.address, i)));
     }
   }
 }
@@ -275,9 +434,12 @@ async function cycle(n: number, bySymbol: Map<string, any>) {
     quotedMarkets.add(String(s.marketId).toLowerCase());
     const m = await marketState(s.marketId);
     const tag = `slot ${i} ${String(s.marketId).slice(-4)}`;
+    // Every exit below is judged by this, not by a receipt: the slot let go of the
+    // position, or it did not and the capital is still parked.
+    const closed = async () => !(await slotActive(vault, i));
 
     if (m.resolved || m.voided) {
-      if (await send(`settle   ${tag}`, "settle", [BigInt(i)])) active--;
+      if (await send(`settle   ${tag}`, "settle", [BigInt(i)], vault, VAULT_ABI, closed)) active--;
       continue;
     }
     if (m.status !== TRADING || m.expiry <= Date.now() / 1000) {
@@ -302,14 +464,20 @@ async function cycle(n: number, bySymbol: Map<string, any>) {
       }
       const gate = m.expiry + Number(win);
       if (Date.now() / 1000 < gate) {
-        await send(`poke     ${tag}`, "pokeOracle", [m.questionId], addresses.binaryModule as `0x${string}`, MODULE_ABI);
-      } else if (await send(`void     ${tag}`, "voidExpired", [], m.market, MARKET_ABI)) {
+        // The whole point of a poke is that the market becomes terminal, so that is what
+        // gets checked. Before the gate a poke that changes nothing is normal — the
+        // oracle still has time — so this logs NO-OP and does not page. What it does buy
+        // is a countable record: 238 of these went out reading `success` while two
+        // windows sat frozen, and nothing in the log could tell the two apart.
+        const terminal = async () => { const x = await marketState(s.marketId); return x.resolved || x.voided; };
+        await send(`poke     ${tag}`, "pokeOracle", [m.questionId], addresses.binaryModule as `0x${string}`, MODULE_ABI, terminal);
+      } else if (await send(`void     ${tag}`, "voidExpired", [], m.market, MARKET_ABI, () => pub.readContract({ address: m.market, abi: MARKET_ABI, functionName: "isVoided" }) as Promise<boolean>)) {
         // Kept from off-chain even though a fork measurement says redemption does not
         // need them: the gas is the operator's here, and belt-and-braces is free. The
         // on-chain sweep deliberately does not pay for these.
         await send(`sync     ${tag}`, "syncSettlement", [s.marketId], addresses.binaryModule as `0x${string}`, MODULE_ABI);
         await send(`final    ${tag}`, "finalizeMarket", [s.marketId], addresses.binaryModule as `0x${string}`, MODULE_ABI);
-        if (await send(`settle   ${tag}`, "settle", [BigInt(i)])) active--;
+        if (await send(`settle   ${tag}`, "settle", [BigInt(i)], vault, VAULT_ABI, closed)) active--;
         stuck.delete(String(s.marketId));
       } else {
         // The hatch is open and still refusing. That is the shape that cost two days the
@@ -321,6 +489,12 @@ async function cycle(n: number, bySymbol: Map<string, any>) {
         stuck.set(key, n);
         const mins = Math.round((Date.now() / 1000 - gate) / 60);
         log(`STUCK    ${tag}  voidExpired refused ${n}x; hatch open ${mins} min; ${usd(s.basis)} behind it`);
+        // The cycle count is the honest measure only when the bot is long-lived. Under
+        // the keeper it is one cycle per process, so the counter resets every fifteen
+        // minutes and would never reach a threshold — the clock on the hatch is what
+        // actually fires here, and it is the same clock that ran for two days.
+        if (n >= STUCK_CYCLES || mins >= STUCK_MINS)
+          await alert(`stuck:${key}`, `${tag}: hatch open ${mins} min, voidExpired refused ${n}x this run, ${usd(s.basis)} frozen behind it`);
       }
       continue;
     }
@@ -339,12 +513,17 @@ async function cycle(n: number, bySymbol: Map<string, any>) {
 
     if (pairs > 0n) {
       log(`slot ${i}: complete set held, book ${away} ticks from our mid — flattening`);
-      if (await send(`flatten  ${tag}`, "flatten", [BigInt(i)])) active--;
+      // Not `closed`: an uneven fill leaves a single-side leg, and the vault deliberately
+      // keeps that slot open for settlement. What flatten promises is that the complete
+      // set is gone — merged back to collateral — so that is what gets checked, and the
+      // slot only stops counting as active if it really did close.
+      const merged = async () => { const h = await held(s.yesId, s.noId); return (h.yes < h.no ? h.yes : h.no) === 0n; };
+      if ((await send(`flatten  ${tag}`, "flatten", [BigInt(i)], vault, VAULT_ABI, merged)) && (await closed())) active--;
     } else if (yes === 0n && no === 0n) {
       // Nothing filled and nothing will: the book is gone. Pull the escrow back so the
       // quote step can put it where the market actually is.
       log(`slot ${i}: no fills, book ${away} ticks away — pulling the quote`);
-      if (await send(`cancel   ${tag}`, "cancelQuote", [BigInt(i)])) {
+      if (await send(`cancel   ${tag}`, "cancelQuote", [BigInt(i)], vault, VAULT_ABI, closed)) {
         active--;
         quotedMarkets.delete(String(s.marketId).toLowerCase());
       }
@@ -364,9 +543,23 @@ async function cycle(n: number, bySymbol: Map<string, any>) {
   let idleLeft = await read<bigint>("idleAssets");
   const minHalf = await read<bigint>("minHalfSpread");
   const all = Object.values(await retry("loadMarkets", () => ex.loadMarkets(true)));
-  const cands = candidates(all, { shortest: SHORTEST }).filter(
-    (c) => !quotedMarkets.has(c.marketId.toLowerCase()) && hasHeadroom(c) && c.intervalSec <= MAX_TIER,
-  );
+  // The tier choice is a measured one, so say it out loud once a cycle rather than leaving
+  // it implied by which markets happen to get quoted.
+  if (TIERS.length) log(`tiers    quoting ${TIERS.join("s, ")}s only — 3600s and 86400s are left alone on the ledger's record`);
+  const cands = candidates(all, { shortest: SHORTEST })
+    .filter(
+      (c) =>
+        !quotedMarkets.has(c.marketId.toLowerCase()) &&
+        hasHeadroom(c) &&
+        c.intervalSec <= MAX_TIER &&
+        (TIERS.length === 0 || TIERS.includes(c.intervalSec)),
+    )
+    // Preference order is the allowlist's own order, so the tier with the measured record
+    // is tried first and the rest are fallbacks rather than accidents.
+    .sort((a, b) => {
+      const ia = TIERS.indexOf(a.intervalSec), ib = TIERS.indexOf(b.intervalSec);
+      return ia === ib ? 0 : (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib);
+    });
 
   // Two looks at every candidate's book, MOMENTUM_WAIT seconds apart. A mid that moved
   // between them is a window in motion, and the one thing this vault must not do is
@@ -422,7 +615,7 @@ async function cycle(n: number, bySymbol: Map<string, any>) {
       if (p.escrow > idleLeft) continue;
 
       log(`quote    slot ${i} ${c.symbol}  theirs ${fmt(p.theirBid)}/${fmt(p.theirAsk)}  ours ${fmt(p.bid)}/${fmt(p.ask)}  size ${Number(qty) / 1e6}  escrow ${usd(p.escrow)}  (mid still, ${moved} ticks)`);
-      if (await send(`quote    slot ${i} ${c.marketId.slice(-4)}`, "quote", [BigInt(i), c.marketId, p.mid, p.half, qty])) {
+      if (await send(`quote    slot ${i} ${c.marketId.slice(-4)}`, "quote", [BigInt(i), c.marketId, p.mid, p.half, qty], vault, VAULT_ABI, () => slotActive(vault, i))) {
         quotedMarkets.add(c.marketId.toLowerCase());
         idleLeft -= p.escrow;
         active++;
@@ -450,6 +643,15 @@ async function main() {
       const bySymbol = new Map<string, any>();
       for (const m of all) if (m?.info?.marketId) bySymbol.set(String(m.info.marketId).toLowerCase(), m);
 
+      // Before any trading, and unconditionally: the two balances that end this vault
+      // quietly. The operator check inside cycle() only runs on the way to a quote, so a
+      // cycle with every slot busy never reached it — and a dry operator cannot settle,
+      // void or arm either.
+      await handlerHealth();
+      const opStt = Number(formatEther(await pub.getBalance({ address: account.address })));
+      if (opStt < GAS_FLOOR)
+        await alert("gas-floor", `operator holds ${opStt.toFixed(3)} STT, under the ${GAS_FLOOR} STT floor: it cannot pay for settle, void or arm`);
+
       await sweepOld();
       await cycle(n, bySymbol);
 
@@ -459,15 +661,23 @@ async function main() {
       const share = supply > 0n ? (Number(nav) / Number(supply)).toFixed(6) : "-";
       log(`cycle ${n}  NAV ${usd(nav)}  idle ${usd(idle)}  resting ${usd(resting)}  share ${share}`);
     } catch (e: any) {
-      log("cycle failed:", (e?.shortMessage ?? e?.message ?? String(e)).split("\n")[0]);
+      const msg = (e?.shortMessage ?? e?.message ?? String(e)).split("\n")[0];
+      log("cycle failed:", msg);
+      // Caught so the next cycle still runs, paged so the run is not mistaken for a
+      // quiet one. A cycle that threw did none of the settling it exists to do.
+      await alert("cycle-failed", `cycle ${n} threw and did no further work this pass: ${msg}`);
     }
     if (CYCLES && n >= CYCLES) break;
     await new Promise((r) => setTimeout(r, INTERVAL * 1000));
   }
+  if (paged) log(`run ended with ${paged} alert(s) — exiting 1`);
 }
 
+// Exit 1 if anything paged. A cycle with nothing to do stays green; a cycle that hit a
+// real error or found frozen capital goes red, which is the difference the keeper could
+// not express while it was reporting success through the whole incident.
 main()
-  .then(() => process.exit(0))
+  .then(() => process.exit(paged ? 1 : 0))
   .catch((e: any) => {
     console.error("FAILED:", e?.shortMessage ?? e?.message ?? e);
     process.exit(1);

@@ -147,8 +147,10 @@ jobs:
         # tracked-caps eyebrows, undersized UI text, layout transitions, neon-on-dark —
         # run against the rendered pages so contrast is measured on the real background.
         # Waivers live in .impeccable/config.json with their reason. Any finding fails.
+        # /app is in the list because it is the page where money moves; being the one
+        # page exempt from the design gate is exactly backwards.
         run: |
-          npx --yes impeccable detect --no-advisory             http://localhost:4321/ http://localhost:4321/dashboard             http://localhost:4321/deck http://localhost:4321/404
+          npx --yes impeccable detect --no-advisory             http://localhost:4321/ http://localhost:4321/app http://localhost:4321/dashboard             http://localhost:4321/deck http://localhost:4321/404
 
       - uses: actions/upload-artifact@v4
         if: failure()

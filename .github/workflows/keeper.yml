@@ -6,7 +6,12 @@ name: keeper
 # minute cadence enough — the chain closes positions between runs.
 #
 # Needs one repository secret: OPERATOR_PRIVATE_KEY. That key can steer quotes and
-# nothing else; custody lives in the vault.
+# nothing else; custody lives in the vault. ALERT_WEBHOOK is optional — without it the
+# bot alerts to the log and the job's ::error:: annotations only.
+#
+# This job is green when a cycle had nothing to do and red when it hit a real error or
+# found capital it could not free. It used to be green either way, including for the two
+# days a slot sat frozen behind a dead oracle.
 on:
   schedule:
     # Off the :00/:15/:30/:45 marks, which GitHub's scheduler drops under load. Nine
@@ -18,6 +23,9 @@ on:
 concurrency:
   group: keeper
   cancel-in-progress: false
+
+permissions:
+  contents: read
 
 jobs:
   cycle:
@@ -33,11 +41,27 @@ jobs:
       - run: npm ci
       - name: One cycle
         env:
-          OPERATOR_PRIVATE_KEY: ${{ secrets.OPERATOR_PRIVATE_KEY }}
+          # Straight into the process. The previous version wrote this key to a .env file
+          # in the workspace, where anything else in the job could read it and any later
+          # step that archived the directory would have carried it out with it.
+          PRIVATE_KEY: ${{ secrets.OPERATOR_PRIVATE_KEY }}
+          ALERT_WEBHOOK: ${{ secrets.ALERT_WEBHOOK }}
         run: |
-          if [ -z "$OPERATOR_PRIVATE_KEY" ]; then
-            echo "::warning::OPERATOR_PRIVATE_KEY is not set; nothing to do"
-            exit 0
+          if [ -z "$PRIVATE_KEY" ]; then
+            # This used to exit 0 and print a warning, so a keeper that had never run a
+            # single cycle looked exactly like one that ran and found nothing to do.
+            echo "::error::OPERATOR_PRIVATE_KEY is not set; this keeper cannot run a cycle"
+            exit 1
           fi
-          printf 'PRIVATE_KEY=%s\n' "$OPERATOR_PRIVATE_KEY" > .env
-          CYCLES=1 SHORTEST=1 node scripts/bot.ts
+          set -o pipefail
+          CYCLES=1 SHORTEST=1 node scripts/bot.ts 2>&1 | tee keeper.log
+      - name: Keep the log
+        # Always, including on the failing runs, which are the ones worth reading. The
+        # GitHub half of the keeper wrote nothing durable at all before this: ten fired
+        # runs out of roughly 156 scheduled, and no record of what any of them did.
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: keeper-${{ github.run_id }}-${{ github.run_attempt }}
+          path: keeper.log
+          retention-days: 90

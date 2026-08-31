@@ -16,4 +16,8 @@ test-results/
 playwright-report/
 .impeccable/config.local.json
 .impeccable/live/
-docs/evidence/keeper-local.log
+# docs/evidence/keeper-local.log is deliberately NOT ignored. The keeper's only real
+# log lived on one machine and out of the repository, so the two days a slot sat frozen
+# left no evidence anyone else could read. Every line in it carries a date now; commit it
+# with the ledger. The GitHub half of the keeper uploads its own log as a run artifact.
+keeper.log

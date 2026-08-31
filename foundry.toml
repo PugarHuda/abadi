@@ -18,6 +18,17 @@ evm_version = "cancun"
 runs = 256
 
 [profile.default.invariant]
-runs = 48
-depth = 96
-fail_on_revert = false
+# 48 x 96 was 4,608 calls. The handler now also fills legs PARTIALLY, which is what makes
+# `_legEscrow`'s only non-trivial branch reachable at all, and that widens the reachable
+# state space rather than just reordering it: a leg can now sit at any fraction of its
+# size instead of at 0 or 1. 96 x 160 is 15,360 calls and finds a run with eight partial
+# fills in it; the suite still finishes in about twenty seconds.
+runs = 96
+depth = 160
+# Every handler action wraps its own call in try/catch, so nothing here reverts to the
+# fuzzer and `reverts: 0` was a number that could not have been anything else. Left ON
+# rather than off: with the handler total by construction, a revert reaching this level
+# means a handler action has stopped being total -- a `bound()` outside its range, a
+# helper that forgot its catch -- and that should fail the run rather than be silently
+# discarded from the sequence.
+fail_on_revert = true
