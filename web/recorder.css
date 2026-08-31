@@ -21,7 +21,10 @@
   --grid-fine:  #EAE3D2;
   --grid-major: #DCD0B6;
   --ink:        #16262B;
-  --pencil:     #5A6663;
+  /* 5.3:1 on stock but only 4.75:1 on stock-sunk — a quarter of a point of headroom,
+     which any antialiased sample tips under. CI caught it as 4.0:1 where a local run
+     saw it only intermittently. Darkened until the margin is real: 6.6:1 and 6.0:1. */
+  --pencil:     #4C5754;
   --pen-down:   #2A3A6B;
   --alarm:      #B4331C;
 

@@ -8,7 +8,7 @@ colors:
   rule-major: "#C3B392"
   ctl-line: "#93805E"
   ink: "#16262B"
-  pencil: "#5A6663"
+  pencil: "#4C5754"
   pen-down: "#2A3A6B"
   alarm: "#B4331C"
 typography:
@@ -169,8 +169,10 @@ in another tab — not a trading desk at night.
   the heavy rules and every hairline border — decorative only, 1.8:1, never a control edge.
 - **ctl-line `#93805E`** the boundary of anything interactive: 3.4:1 on stock, which is
   what WCAG 1.4.11 asks of a control and what `rule-major` cannot give.
-- **pencil `#5A6663`** the operator's annotation — secondary text, asides, units, captions.
-  5.3:1 on stock, so it may carry 13px and up, and nothing smaller.
+- **pencil `#4C5754`** the operator's annotation — secondary text, asides, units, captions.
+  6.6:1 on stock and 6.0:1 on `stock-sunk`, so it may carry 13px and up, and nothing
+  smaller. The margin is deliberate: at 4.75:1 on the sunk ground an antialiased sample
+  measured 4.0:1 and the gate failed on a page that looked fine.
 
 ### Named Rules
 
