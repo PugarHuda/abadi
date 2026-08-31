@@ -7,10 +7,67 @@
  *      mirror Up/Down mechanically so no spread can ever open? SteadyVault's
  *      entire premise is question 2.
  *
+ * And, since 2026-08-31, the question the audit said the vault had never asked:
+ *
+ *   3. What does the vault itself think these windows are worth, and does the book
+ *      agree? One row per live candidate: the book's mid, the model's probability from
+ *      the venue's own price feed, the gap between them, and whether the bot would quote.
+ *
  * Read-only. No signer, no writes. Run: node scripts/probe.ts
  */
 import { SomniaMarkets, isBinaryMarket } from "@somnia-chain/markets-sdk";
 import { shannon, addresses, INDEXER, WS, VENUE, exchange } from "./lib/somnia.ts";
+import { candidates, hasHeadroom } from "./lib/quoting.ts";
+import { fairProbability } from "./lib/fairvalue.ts";
+
+/** Same knobs the bot reads, so this table says what the bot would actually have done. */
+const FV_MAX_EDGE = Number(process.env.FV_MAX_EDGE ?? 0.1);
+const EDGE = Number(process.env.EDGE ?? 0.08);
+
+/**
+ * Question 3. Every live window with enough of itself left to quote, priced twice: once
+ * by the incumbent's book and once by N(d2) off the price feed. A row with no model says
+ * why — an unreachable or stale feed is a finding, not a blank.
+ */
+async function fairValueTable(ex: any, all: unknown[]) {
+  const cands = candidates(all).filter((c) => hasHeadroom(c));
+  console.log("");
+  console.log("--- fair value vs the book ---");
+  if (cands.length === 0) {
+    console.log("no live window has enough of itself left to quote");
+    return;
+  }
+  console.log(
+    "market                                tier   left   book mid   fair    edge   sigma  quote?",
+  );
+  for (const c of cands) {
+    const book: any = await ex.fetchOrderBook(c.upSymbol, 3).catch(() => null);
+    const bid = book?.bids?.[0]?.[0], ask = book?.asks?.[0]?.[0];
+    const head = `${String(c.symbol).padEnd(36)}  ${String(c.intervalSec).padStart(5)}s ${String(Math.round(c.expiry - Date.now() / 1000)).padStart(6)}s`;
+    let fv;
+    try {
+      fv = await fairProbability(c);
+    } catch (e: any) {
+      const shown = bid === undefined || ask === undefined ? " no book" : ((bid + ask) / 2).toFixed(3).padStart(8);
+      console.log(`${head}  ${shown}     NO MODEL: ${String(e?.message ?? e).split("\n")[0]}`);
+      continue;
+    }
+    if (bid === undefined || ask === undefined) {
+      console.log(`${head}    no book   ${fv.p.toFixed(3)}      -   ${(fv.vol.sigma * 100).toFixed(0).padStart(4)}%  no (no two-sided book)`);
+      continue;
+    }
+    const mid = (bid + ask) / 2;
+    const edge = Math.abs(mid - fv.p);
+    const why =
+      mid < EDGE || mid > 1 - EDGE ? "no (near-certain)" : edge > FV_MAX_EDGE ? `no (edge > ${FV_MAX_EDGE})` : "YES";
+    console.log(
+      `${head}  ${mid.toFixed(3).padStart(8)}  ${fv.p.toFixed(3)}  ${edge.toFixed(3)}  ${(fv.vol.sigma * 100).toFixed(0).padStart(4)}%  ${why}`,
+    );
+    console.log(
+      `   spot ${fv.spot.toFixed(2)}  strike ${fv.strike.toFixed(2)} (${fv.strikeSource})  d2 ${fv.d2.toFixed(3)}  sigma over ${fv.vol.returns} M1 returns, lambda ${fv.vol.lambda}, feed ${Math.round(fv.feedAgeMs / 1000)}s old`,
+    );
+  }
+}
 
 const STATUS = ["Listed", "Trading", "Locked", "3?", "Resolved", "Voided"];
 const fmt = (n: unknown) => (n === undefined || n === null ? "  --  " : Number(n).toFixed(4));
@@ -99,6 +156,8 @@ async function main() {
       console.log(`   ask(UP)+ask(DOWN) = ${askSum.toFixed(4)} ${askSum < 1 ? "  <== HARVESTABLE" : ""}`);
     }
   }
+
+  await fairValueTable(exchange, all);
 
   console.log("");
   console.log("--- verdict ---");

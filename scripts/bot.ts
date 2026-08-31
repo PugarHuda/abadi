@@ -58,6 +58,20 @@
  *                       ledger by tier: 15m and 4h
  *                       windows 0% adverse, 1h 19%, 24h 25% — a quote resting for a day
  *                       is a quote standing in front of every move that day
+ *       FAIR_VALUE=     set to opt in to the vault's own opinion of fair value. Off by
+ *                       default, and off is exactly today's behaviour. On, every candidate
+ *                       is priced from the venue's price feed as the digital option it is
+ *                       (scripts/lib/fairvalue.ts) before the book is allowed to decide
+ *                       anything. If the feed is unreachable, stale or short of candles the
+ *                       bot says so in the log and quotes on the book alone — it never
+ *                       quotes on a model built from stale inputs.
+ *       FV_MAX_EDGE=0.10  refuse the window when |book mid - fair probability| exceeds this.
+ *                       One of the two of us is wrong and a 2-tick spread does not pay for
+ *                       finding out which.
+ *       FV_SKEW_TICKS=3   how far the quote's mid may be moved off the incumbent's toward
+ *                       fair value. Bounded on purpose: a bad model must not be able to
+ *                       walk the quote somewhere silly. minHalfSpread and the venue's
+ *                       tick/lot grid are untouched.
  *       EDGE=0.08       do not quote a window priced under EDGE or over 1-EDGE: the spread
  *                       there is a few ticks wide, one leg is nearly free and the other
  *                       is nearly the whole dollar, and the only thing that can happen
@@ -77,6 +91,7 @@ import { privateKeyToAccount } from "viem/accounts";
 import { readFileSync } from "node:fs";
 import { shannon, addresses, RPC, OUTCOME_TOKEN, env, exchange, retry } from "./lib/somnia.ts";
 import { candidates, hasHeadroom, priceInside, ticksAway, toWei, fmt } from "./lib/quoting.ts";
+import { fairProbability, fmtFair, type FairValue } from "./lib/fairvalue.ts";
 
 /** Every vault this project has deployed. Redeploys leave positions behind; see sweepOld. */
 const OLD_VAULTS: { address: `0x${string}`; dead_slots?: number[] }[] = JSON.parse(
@@ -133,6 +148,9 @@ const MOMENTUM_TICKS = BigInt(process.env.MOMENTUM_TICKS ?? 3);
 const MOMENTUM_WAIT = Number(process.env.MOMENTUM_WAIT ?? 20);
 const SHORT_SIZE = Number(process.env.SHORT_SIZE ?? 0.5);
 const EDGE = Number(process.env.EDGE ?? 0.08);
+const FAIR_VALUE = !!process.env.FAIR_VALUE;
+const FV_MAX_EDGE = Number(process.env.FV_MAX_EDGE ?? 0.1);
+const FV_SKEW_TICKS = BigInt(process.env.FV_SKEW_TICKS ?? 3);
 const MAX_TIER = Number(process.env.MAX_TIER ?? 14400);
 /** Window lengths worth quoting, best first. Empty disables the allowlist. */
 const TIERS = (process.env.TIERS ?? "14400,900").split(",").map(Number).filter((n) => n > 0);
@@ -597,6 +615,31 @@ async function cycle(n: number, bySymbol: Map<string, any>) {
       if (bid === undefined || ask === undefined) continue;
 
       const midNow = (bid + ask) / 2;
+
+      // The vault's own opinion, computed for every candidate and logged whatever else
+      // happens to the window — a vault that declines to trade should still say what it
+      // thought. Two uses and no more: refuse a window the book and the model disagree
+      // about, and lean the quote a bounded few ticks toward the model. A failed read is
+      // not a reason to stop trading; it is a reason to say out loud that this quote is
+      // the old book-echo and nothing more.
+      let fv: FairValue | undefined;
+      if (FAIR_VALUE) {
+        try {
+          fv = await fairProbability(c);
+        } catch (e: any) {
+          log(`fv       ${c.symbol}  NO MODEL: ${String(e?.message ?? e).split("\n")[0]} — quoting on the book alone`);
+        }
+        if (fv) {
+          const edge = Math.abs(midNow - fv.p);
+          log(`fv       ${c.symbol}  ${fmtFair(fv)}  book mid ${midNow.toFixed(3)}  edge ${edge.toFixed(3)}`);
+          if (edge > FV_MAX_EDGE) {
+            log(`skip     ${c.symbol}  book mid ${midNow.toFixed(3)} vs fair ${fv.p.toFixed(3)} — ${edge.toFixed(3)} apart, over FV_MAX_EDGE ${FV_MAX_EDGE}; one of us is wrong and the spread will not pay for finding out which`);
+            quotedMarkets.add(c.marketId.toLowerCase());
+            continue;
+          }
+        }
+      }
+
       if (midNow < EDGE || midNow > 1 - EDGE) {
         log(`skip     ${c.symbol}  mid ${midNow.toFixed(3)} — priced as near-certain, no two-sided trade here`);
         quotedMarkets.add(c.marketId.toLowerCase());
@@ -610,11 +653,12 @@ async function cycle(n: number, bySymbol: Map<string, any>) {
       }
 
       const qty = sizeFor(c.intervalSec);
-      const p = priceInside(c, bid, ask, minHalf, qty);
+      const p = priceInside(c, bid, ask, minHalf, qty, fv?.p, FV_SKEW_TICKS);
       if (!p) continue;
       if (p.escrow > idleLeft) continue;
 
-      log(`quote    slot ${i} ${c.symbol}  theirs ${fmt(p.theirBid)}/${fmt(p.theirAsk)}  ours ${fmt(p.bid)}/${fmt(p.ask)}  size ${Number(qty) / 1e6}  escrow ${usd(p.escrow)}  (mid still, ${moved} ticks)`);
+      const lean = p.skew === 0n ? "" : `  skew ${p.skew > 0n ? "+" : ""}${p.skew} ticks toward fair`;
+      log(`quote    slot ${i} ${c.symbol}  theirs ${fmt(p.theirBid)}/${fmt(p.theirAsk)}  ours ${fmt(p.bid)}/${fmt(p.ask)}  size ${Number(qty) / 1e6}  escrow ${usd(p.escrow)}  (mid still, ${moved} ticks)${lean}`);
       if (await send(`quote    slot ${i} ${c.marketId.slice(-4)}`, "quote", [BigInt(i), c.marketId, p.mid, p.half, qty], vault, VAULT_ABI, () => slotActive(vault, i))) {
         quotedMarkets.add(c.marketId.toLowerCase());
         idleLeft -= p.escrow;
@@ -636,6 +680,11 @@ async function main() {
   log("vault   ", vault);
   log("operator", account.address);
   log(`interval ${INTERVAL}s  active ${ACTIVE}  size ${Number(QTY) / 1e6} (x${SHORT_SIZE} on 900s)  dead ${DEAD_TICKS} ticks  momentum ${MOMENTUM_TICKS} ticks/${MOMENTUM_WAIT}s  gas floor ${GAS_FLOOR} STT  ${CYCLES ? CYCLES + " cycles" : "until killed"}`);
+  log(
+    FAIR_VALUE
+      ? `fv       ON  refuse over ${FV_MAX_EDGE} of edge, skew up to ${FV_SKEW_TICKS} ticks toward fair; no model means book-only and a log line saying so`
+      : `fv       OFF  quoting off the incumbent's book alone (set FAIR_VALUE=1 for the model)`,
+  );
 
   for (let n = 1; !CYCLES || n <= CYCLES; n++) {
     try {

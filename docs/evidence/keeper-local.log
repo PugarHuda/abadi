@@ -2121,3 +2121,12 @@
 2026-08-31 04:27:01 skip     ETH-0-31AUG26-0800/tUSDC  mid moved 16 ticks in 20s — trending, not quoting
 2026-08-31 04:27:01 skip     BTC-0-31AUG26-0800/tUSDC  mid moved 11 ticks in 20s — trending, not quoting
 2026-08-31 04:27:05 cycle 1  NAV 4483.27  idle 4483.27  resting 0.00  share 0.957070
+2026-08-31 04:41:02 vault    0x2314436ed2BDC44321c74EF43adA14CAE723D352
+2026-08-31 04:41:02 operator 0x39D2bae5EAedA9283535dDC98F1991c81eD5Cd7E
+2026-08-31 04:41:02 interval 30s  active 3  size 100 (x0.5 on 900s)  dead 6 ticks  momentum 3 ticks/20s  gas floor 0.5 STT  1 cycles
+2026-08-31 04:41:02 fv       OFF  quoting off the incumbent's book alone (set FAIR_VALUE=1 for the model)
+2026-08-31 04:41:37 tiers    quoting 14400s, 900s only — 3600s and 86400s are left alone on the ledger's record
+2026-08-31 04:41:38 sampled  2 books in 0.3s; second look in 20s
+2026-08-31 04:41:58 skip     BTC-0-31AUG26-0800/tUSDC  mid moved 28 ticks in 20s — trending, not quoting
+2026-08-31 04:41:58 skip     ETH-0-31AUG26-0800/tUSDC  mid moved 25 ticks in 20s — trending, not quoting
+2026-08-31 04:42:03 cycle 1  NAV 4483.27  idle 4483.27  resting 0.00  share 0.957070
