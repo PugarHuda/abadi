@@ -248,3 +248,50 @@ being early is worth.
 `strike` / `tradingStart`; `priceInside` takes an optional bounded skew), `scripts/bot.ts`
 (the two uses + the knobs), `scripts/probe.ts` (question 3 — the table above).
 `npx tsc --noEmit` clean.
+
+## Switched on, and the first window it refused
+
+The model landed in `16cd74d` and then sat unused: every scheduled keeper run between that
+commit and 09:12Z logged `fv OFF`, because `scripts/keeper.cmd` never set the flag. It sets
+`FAIR_VALUE=1` now.
+
+The two runs either side of that line priced the same window, ninety seconds apart.
+Book-only, at 09:11:59Z:
+
+```
+09:11:59 quote  slot 0 BTC-0-31AUG26-1200/tUSDC  theirs 0.790/0.815  ours 0.792/0.812
+                size 100  escrow 98.00  (mid still, 2 ticks)
+09:12:03 quote  slot 0 eb78  worked  0x86a06617f42c8ffa9bcbf2e0f51b1f0f98904ad7a828abc3ae3cf56e6e08d7a4  gas 592266
+```
+
+With the model, at 09:13:31Z:
+
+```
+09:13:31 fv    BTC-0-31AUG26-1200/tUSDC  fair 0.674  spot 78610.55 strike 78196.52
+               sigma 64.8% on 239 M1 returns (lambda 0.94)  9989s left  d2 0.452  feed 1s old
+               book mid 0.805  edge 0.131
+09:13:31 skip  BTC-0-31AUG26-1200/tUSDC  book mid 0.805 vs fair 0.674 — 0.131 apart,
+               over FV_MAX_EDGE 0.1; one of us is wrong and the spread will not pay for
+               finding out which
+```
+
+The book-only quote had already gone one-sided by the time the model refused it. Read off
+the chain immediately after, with the quote pulled:
+
+```
+idleAssets     4397.072338
+totalAssets    4456.572338
+totalEscrowed    59.500000     (98.00 rested; 38.10 of it is no longer resting)
+totalSupply    4684.372338     share 0.951368, from 0.959504 one cycle earlier
+```
+
+**What this is not.** One window is not a backtest, and part of that 8.1-tick fall in share
+price is the live build's own marking: the deployed `_restingEscrow` infers fills from an
+ERC-6909 balance, so a leg that fills stops counting as escrow without the outcome tokens it
+bought counting as anything else. The audited replacement reads `quantityRemaining` from the
+pool, and is not deployed. The honest claim is narrower and still worth having: the model's
+first production decision was to refuse a window the previous rule had just taken, on a
+BTC disagreement of 0.13 that the probe shows on both BTC tiers at once — 0.786 vs 0.661 on
+the daily and 0.803 vs 0.667 on the four-hour. A gap that size and that one-directional is
+either a stale incumbent or a wrong sigma, and until a resolved window says which, refusing
+is the cheaper of the two errors.
