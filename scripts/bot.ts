@@ -114,6 +114,8 @@ const VAULT_ABI = parseAbi([
   "function armed(uint256 firesAtMillis) view returns (uint256)",
   "function MIN_HANDLER_BALANCE() view returns (uint256)",
   "function SWEEP_GAS() view returns (uint64)",
+  "function sweepNative(address to, uint256 amount)",
+  "function governor() view returns (address)",
 ]);
 const MODULE_ABI = parseAbi([
   "function markets(bytes32) view returns (uint256,uint8,uint8,address,uint32,bytes32,address,address,address,address,uint256,uint256,uint64,uint64)",
@@ -436,7 +438,38 @@ async function sweepOld() {
       }
       await send(`settle   ${tag}`, "settle", [BigInt(i)], v.address, VAULT_ABI, async () => !(await slotActive(v.address, i)));
     }
+    await reclaimNative(v.address, maxSlots);
   }
+}
+
+/**
+ * A retired vault's reactivity reserve does not follow the redeploy either, and unlike a
+ * position nothing ever comes looking for it. Each deployment holds 32 STT so its handler
+ * can be armed at all, and after the 2026-08-31 redeploy the operator was down to 10 STT
+ * of gas with 32.80 sitting in the vault it had just left. That is nine days of runway
+ * parked next to twenty-nine.
+ *
+ * So it comes back, but only once the vault has nothing left to wake up for: every slot
+ * closed, or the reserve is exactly what the last settle needs. `sweepNative` is
+ * governor-only and this key is the governor on every vault it deployed; a vault whose
+ * governor is someone else is skipped rather than attempted.
+ */
+async function reclaimNative(address: `0x${string}`, maxSlots: number) {
+  const held = await pub.getBalance({ address });
+  if (held === 0n) return;
+  for (let i = 0; i < maxSlots; i++) if (await slotActive(address, i)) return;
+  const gov = await pub
+    .readContract({ address, abi: VAULT_ABI, functionName: "governor" })
+    .catch(() => null);
+  if (!gov || (gov as string).toLowerCase() !== account.address.toLowerCase()) return;
+  await send(
+    `reclaim  old ${address.slice(0, 8)} ${formatEther(held)} STT, no slot left open`,
+    "sweepNative",
+    [account.address, held],
+    address,
+    VAULT_ABI,
+    async () => (await pub.getBalance({ address })) === 0n,
+  );
 }
 
 async function cycle(n: number, bySymbol: Map<string, any>) {
