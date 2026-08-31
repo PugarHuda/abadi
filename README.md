@@ -11,7 +11,7 @@ Built for the Somnia × DreamDEX Event Contracts Hackathon.
 **[App](https://abadi-wheat.vercel.app/app)** ·
 [The working](https://abadi-wheat.vercel.app/dashboard) ·
 [Deck](https://abadi-wheat.vercel.app/deck) ·
-[Vault on the explorer](https://shannon-explorer.somnia.network/address/0x2314436ed2BDC44321c74EF43adA14CAE723D352)
+[Vault on the explorer](https://shannon-explorer.somnia.network/address/0x2c96022771e8368283F8909C9a1923a4De9781E7)
 
 ---
 
@@ -24,8 +24,8 @@ Depositors put in collateral and receive ERC-4626 shares. An operator key steers
 and can never touch the money. Every filled pair is worth exactly 1 at settlement no
 matter which way the market resolves.
 
-**Live on Shannon testnet:** `0x2314436ed2BDC44321c74EF43adA14CAE723D352`
-([source on the explorer](https://shannon-explorer.somnia.network/address/0x2314436ed2BDC44321c74EF43adA14CAE723D352?tab=contract) ·
+**Live on Shannon testnet:** `0x2c96022771e8368283F8909C9a1923a4De9781E7`
+([source on the explorer](https://shannon-explorer.somnia.network/address/0x2c96022771e8368283F8909C9a1923a4De9781E7?tab=contract) ·
 `node scripts/attest.ts` checks that address is running this source — see below for
 why that is a thing we check now)
 
@@ -251,12 +251,16 @@ bot skips arming and says so until then. `sweepNative` brings the reserve back o
 **Run against the venue, on Shannon**
 
 - Quoting inside the incumbent's spread, top of book, both legs filling into complete sets
-- **The vault is down, and the number that says so is the one to read.** Per share
-  **0.931581** — 4,363.87 of assets against 4,684.37 of shares issued at par, so
-  **−320.50 tUSDC, −6.84%**, for anyone who deposited. Across 95 episodes on 9 vaults:
-  72 closed into a complete set, 18 one-sided, 1 with neither leg filled, 4 still open,
-  and **−217.90 realised on 8,280.95 of basis**. Every figure is read back off the chain
-  by `scripts/ledger.ts`, and it grows every fifteen minutes.
+- **The vault is down, and the number that says so is the one to read.** The vault
+  running today was deployed on 2026-08-31 and its share price is **1.000000**, because a
+  new ERC-4626 starts at par. **That is not a return; it is a new contract.** The record
+  the price forgot is the one to read: across 95 episodes on 10 vaults, 72 closed into a
+  complete set, 18 one-sided, 1 with neither leg filled, and **−217.90 realised on
+  8,280.95 of basis**. The vault it replaced ended at per share **0.951368** against
+  shares issued at par — **−6.84%** at its worst reading on the 31st, for anyone who had
+  deposited. `scripts/ledger.ts` reads every figure back off the chain across all ten
+  addresses, so the redeploy does not clear the history; it only resets the denominator
+  of one of them.
 
   This replaces "+133.85 on 5,641.15 of basis (2.37%)", which this file carried until
   2026-08-31. That figure was not invented: it was the realised spread on the winning
@@ -287,8 +291,8 @@ bot skips arming and says so until then. `sweepNative` brings the reserve back o
   after expiry, which recovered **208.90 on 196.00 of basis** on the 30th. The vault now
   takes that hatch itself — void, sync, finalize, settle — and `flatten`'s promise that
   *anyone* may call it once a market cannot trade, which the same freeze had made empty,
-  holds again. Proven against the real pool on a fork; **not live until the vault is
-  redeployed**.
+  holds again. Proven against the real pool on a fork, and **live since 2026-08-31**:
+  the vault at `0x2c960227…` is the first deployment that carries it.
   [`docs/evidence/dead-oracle-2026-08-30.md`](docs/evidence/dead-oracle-2026-08-30.md)
 - `scripts/bot.ts` — the requote loop, three markets at a time, with a **momentum filter**:
   up to eight candidates' books are read twice, twenty seconds apart, and a window whose
@@ -332,8 +336,8 @@ bot skips arming and says so until then. `sweepNative` brings the reserve back o
 - 103 unit tests including two fuzzed properties and five stateful invariants, 7 fork tests against the venue, 77
   browser tests (axe-core WCAG 2.1 AA, Core Web Vitals, touch, the transactions cited on
   the landing page checked against the explorer); `scripts/attest.ts` compares the live
-  address against this source and currently reports MISMATCH — the fixes of 2026-08-30
-  are in the source and not yet deployed
+  address against this source and reports **MATCH** — the audit fixes of 2026-08-31 were
+  deployed the same day, and the address they are running at is verified on the explorer
 - The site passes [Impeccable](https://impeccable.style)'s 59-rule design detector on
   every rendered page, desktop and mobile, as a CI gate. Its first run found the
   defaults AI-built interfaces reach for — 10px tracked-caps labels, eyebrows above
@@ -344,9 +348,11 @@ bot skips arming and says so until then. `sweepNative` brings the reserve back o
 **What it cost to get here**
 
 Nine vaults between 26 and 30 August, each one a fix the previous one lacked: eight
-retired, listed in `scripts/lib/vaults.json` with the reason, plus the live one. The same
-key also deployed `0x5e6b9242Db15959EdCEccBa5C369fca3576fd598` at nonce 8, which is
-recorded in no file here. Written off along the way, all testnet:
+retired, listed in `scripts/lib/vaults.json` with the reason, plus the live one deployed
+on the 31st. The same key also deployed `0x5e6b9242Db15959EdCEccBa5C369fca3576fd598` at
+nonce 8, which was recorded in no file here and held **5,000.00 tUSDC** unnoticed for five
+days; `scripts/recover.ts` walks the deployer's CREATE nonces instead of the list and
+found it, and it is back. Written off along the way, all testnet:
 
 | where | how much | why |
 |---|---|---|

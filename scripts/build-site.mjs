@@ -121,7 +121,12 @@ ${body.trim()}
 </html>
 `;
 
-  writeFileSync(join(OUT, file), doc);
+  // The footers name the vault in prose, and prose does not follow .vault-addr. A
+  // redeploy left two of them pointing at the retired address and only the browser suite
+  // noticed. Anything of the shape `vault 0x1234abcd…WXYZ` is rewritten from the address
+  // the page is actually configured to read, so the two can no longer disagree.
+  const short = `vault ${VAULT.slice(0, 10)}…${VAULT.slice(-4)}`;
+  writeFileSync(join(OUT, file), doc.replace(/vault 0x[0-9a-fA-F]{8}…[0-9a-fA-F]{4}/g, short));
   console.log(`${file} -> ${OUT}/${file}  (${doc.length} bytes)`);
 }
 

@@ -36,5 +36,13 @@
   {
     "address": "0xE0E59F39a5c04AD768f7e3fDae8e2FdAC68DebCB",
     "note": "v8 \u2014 first verified source; _cancelIfLive swallowed a real cancel failure, orders stayed live"
+  },
+  {
+    "address": "0x5e6b9242Db15959EdCEccBa5C369fca3576fd598",
+    "note": "nonce 8 \u2014 deployed and never written down; held 5,000.00 tUSDC unnoticed for five days, recovered 2026-08-31"
+  },
+  {
+    "address": "0x2314436ed2BDC44321c74EF43adA14CAE723D352",
+    "note": "v9 \u2014 pre-audit build; retired 2026-08-31 with one slot still open, its escrow left to settle"
   }
 ]

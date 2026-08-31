@@ -1,5 +1,5 @@
 deployer 0x39D2bae5EAedA9283535dDC98F1991c81eD5Cd7E
-nonce    573 — checking every CREATE address 0..572
+nonce    581 — checking every CREATE address 0..580
 
 nonce  address                                     symbol    assets      supply   our shares   redeemable
     1  0x481fE34ed995603abdB9998b7eCc8811e2707d87  not a vault            holds 5.0000 STT
@@ -14,10 +14,11 @@ nonce  address                                     symbol    assets      supply 
    61  0x1aeB3B3cAda938B4fB320884D96471b5D9dDa058  abLIQ           0.00        0.00        0.00        0.00
    81  0xEF66Fa6Ae6AE0022f1A7524B90D49B293f9D1C10  abLIQ           0.00        0.00        0.00        0.00
    94  0xE0E59F39a5c04AD768f7e3fDae8e2FdAC68DebCB  abLIQ           0.00        0.00        0.00        0.00
-  112  0x2314436ed2BDC44321c74EF43adA14CAE723D352  abLIQ        4456.57     4684.37     4684.37     4456.57   <- LIVE
+  112  0x2314436ed2BDC44321c74EF43adA14CAE723D352  abLIQ         100.00       62.54       62.54      100.00
+  573  0x2c96022771e8368283F8909C9a1923a4De9781E7  abLIQ        9372.77     9458.87     9458.87     9360.47   <- LIVE
        ^ the live vault; left alone (--include-live to drain it)
 
-recoverable: 194.80 tUSDC across 2 vault(s)
+recoverable: 294.80 tUSDC across 3 vault(s)
 stranded   : 20.0000 STT in non-vault contracts with no exit
 
 read-only. re-run with --send to redeem.
