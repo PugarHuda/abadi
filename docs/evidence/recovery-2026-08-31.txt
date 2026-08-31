@@ -1,0 +1,23 @@
+deployer 0x39D2bae5EAedA9283535dDC98F1991c81eD5Cd7E
+nonce    573 — checking every CREATE address 0..572
+
+nonce  address                                     symbol    assets      supply   our shares   redeemable
+    1  0x481fE34ed995603abdB9998b7eCc8811e2707d87  not a vault            holds 5.0000 STT
+    3  0x8A42c093320ee142284fEC03Ed19dE26a322b187  not a vault            holds 5.0000 STT
+    5  0xE9DC8a36e8f14c85E687eEe26978692dA98cbeab  not a vault            holds 10.0000 STT
+    8  0x5e6b9242Db15959EdCEccBa5C369fca3576fd598  abLIQ           0.00        0.00        0.00        0.00
+   16  0xbcc310b25961bFd241646505c4baE18a518c0A77  abLIQ          97.40       97.40       97.40       97.40
+   22  0xbCAe987E3387f74867E56C6DDeA1BC94Af7932b5  abLIQ          97.40       76.56       76.56       97.40
+   29  0x0f8fB8447e0C550458B5F4Fd41CBbBf2AcAE2387  abLIQ           0.00        0.00        0.00        0.00
+   35  0xDFb9C6fA99D8Fa2c8eeA2AE7C055C8cbA53971E9  abLIQ           0.00        0.00        0.00        0.00
+   49  0x9895457779a2b9702e3F0a800c597afc175bC88D  abLIQ         102.13        0.00        0.00        0.00
+   61  0x1aeB3B3cAda938B4fB320884D96471b5D9dDa058  abLIQ           0.00        0.00        0.00        0.00
+   81  0xEF66Fa6Ae6AE0022f1A7524B90D49B293f9D1C10  abLIQ           0.00        0.00        0.00        0.00
+   94  0xE0E59F39a5c04AD768f7e3fDae8e2FdAC68DebCB  abLIQ           0.00        0.00        0.00        0.00
+  112  0x2314436ed2BDC44321c74EF43adA14CAE723D352  abLIQ        4456.57     4684.37     4684.37     4456.57   <- LIVE
+       ^ the live vault; left alone (--include-live to drain it)
+
+recoverable: 194.80 tUSDC across 2 vault(s)
+stranded   : 20.0000 STT in non-vault contracts with no exit
+
+read-only. re-run with --send to redeem.

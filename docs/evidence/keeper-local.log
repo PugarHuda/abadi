@@ -2269,3 +2269,21 @@
 2026-08-31 09:13:31 fv       BTC-0-31AUG26-1200/tUSDC  fair 0.674  spot 78610.55 strike 78196.52 (feed tick at tradingStart+0s)  sigma 64.8% on 239 M1 returns (lambda 0.94)  9989s left  d2 0.452  feed 1s old  book mid 0.805  edge 0.131
 2026-08-31 09:13:31 skip     BTC-0-31AUG26-1200/tUSDC  book mid 0.805 vs fair 0.674 — 0.131 apart, over FV_MAX_EDGE 0.1; one of us is wrong and the spread will not pay for finding out which
 2026-08-31 09:13:34 cycle 1  NAV 4494.67  idle 4397.07  resting 97.60  share 0.959504
+2026-08-31 09:26:02 vault    0x2314436ed2BDC44321c74EF43adA14CAE723D352
+2026-08-31 09:26:02 operator 0x39D2bae5EAedA9283535dDC98F1991c81eD5Cd7E
+2026-08-31 09:26:02 interval 30s  active 3  size 100 (x0.5 on 900s)  dead 6 ticks  momentum 3 ticks/20s  gas floor 0.5 STT  1 cycles
+2026-08-31 09:26:02 fv       ON  refuse over 0.1 of edge, skew up to 3 ticks toward fair; no model means book-only and a log line saying so
+2026-08-31 09:26:43 tiers    quoting 14400s, 900s only — 3600s and 86400s are left alone on the ledger's record
+2026-08-31 09:26:44 sampled  1 books in 0.3s; second look in 20s
+2026-08-31 09:27:06 fv       BTC-0-31AUG26-1200/tUSDC  fair 0.772  spot 78697.03 strike 78196.52 (feed tick at tradingStart+0s)  sigma 49.8% on 239 M1 returns (lambda 0.94)  9175s left  d2 0.746  feed 0s old  book mid 0.850  edge 0.078
+2026-08-31 09:27:06 skip     BTC-0-31AUG26-1200/tUSDC  mid moved 11 ticks in 20s — trending, not quoting
+2026-08-31 09:27:09 cycle 1  NAV 4456.57  idle 4397.07  resting 59.50  share 0.951370
+2026-08-31 09:41:02 vault    0x2314436ed2BDC44321c74EF43adA14CAE723D352
+2026-08-31 09:41:02 operator 0x39D2bae5EAedA9283535dDC98F1991c81eD5Cd7E
+2026-08-31 09:41:02 interval 30s  active 3  size 100 (x0.5 on 900s)  dead 6 ticks  momentum 3 ticks/20s  gas floor 0.5 STT  1 cycles
+2026-08-31 09:41:02 fv       ON  refuse over 0.1 of edge, skew up to 3 ticks toward fair; no model means book-only and a log line saying so
+2026-08-31 09:41:44 tiers    quoting 14400s, 900s only — 3600s and 86400s are left alone on the ledger's record
+2026-08-31 09:41:44 sampled  1 books in 0.3s; second look in 20s
+2026-08-31 09:42:08 fv       BTC-0-31AUG26-1200/tUSDC  fair 0.835  spot 78634.31 strike 78196.52 (feed tick at tradingStart+0s)  sigma 35.3% on 239 M1 returns (lambda 0.94)  8274s left  d2 0.974  feed 0s old  book mid 0.890  edge 0.055
+2026-08-31 09:42:08 skip     BTC-0-31AUG26-1200/tUSDC  mid moved 11 ticks in 20s — trending, not quoting
+2026-08-31 09:42:10 cycle 1  NAV 4456.57  idle 4397.07  resting 59.50  share 0.951370
