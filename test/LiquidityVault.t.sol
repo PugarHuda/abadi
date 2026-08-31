@@ -216,11 +216,16 @@ contract MockMarket {
     }
 
     /// @notice The dead-oracle hatch, gated on the clock exactly as the venue gates it.
+    /// @dev PAYOUT_VECTOR_DENOMINATOR on this venue is 10,000,000, so a half is 5,000,000.
+    ///      The vector used to be written [5, 5], which is not a half of anything — it
+    ///      only looked right because nothing read it.
+    uint256 internal constant DENOM = 10_000_000;
+
     function voidExpired() external {
         if (isResolved || isVoided) return;
         if (block.timestamp < uint256(expiry) + settlementWindow) revert SettlementWindowOpen();
         isVoided = true;
-        _payouts = [5, 5];
+        _payouts = [DENOM / 2, DENOM / 2];
     }
 
     function resolve(uint256 yesPayout, uint256 noPayout) external {
@@ -230,7 +235,7 @@ contract MockMarket {
 
     function voidIt() external {
         isVoided = true;
-        _payouts = [5, 5];
+        _payouts = [DENOM / 2, DENOM / 2];
     }
 
     function payoutNumerators() external view returns (uint256[] memory) {
@@ -290,8 +295,13 @@ contract MockModule {
         // hides a caller passing the wrong outcomeIdx — exactly the bug worth catching.
         uint256 id = outcomeIdx == 0 ? r.yesId : r.noId;
         outcome.burn(msg.sender, id, amount);
-        uint256 payout = MockMarket(r.market).isVoided() ? amount / 2 : amount;
-        usdc.mint(msg.sender, payout);
+        // Pay what the payout VECTOR says, as settlement v3 does. Paying `amount` for any
+        // resolved market made a complete set of 100 redeem for 200 — a set is worth
+        // exactly its size however the market resolves — and two tests were written
+        // against that impossible number.
+        uint256[] memory p = MockMarket(r.market).payoutNumerators();
+        uint256 numerator = outcomeIdx < p.length ? p[outcomeIdx] : 0;
+        usdc.mint(msg.sender, (amount * numerator) / 10_000_000);
     }
 
     /// @dev Both are permissionless no-op-guarded keeper entries on the real module. They
@@ -1189,7 +1199,10 @@ contract LiquidityVaultTest is Test {
         uint256 before = vault.idleAssets();
         vault.settle(0);
 
-        assertEq(vault.idleAssets() - before, 200e6, "both sides redeemed, not just one");
+        // A complete set of 100 is worth exactly 100 at settlement, however it resolves.
+        // On a tie each side pays half, and the point is that BOTH were redeemed: the
+        // argmax path paid 50 and abandoned the other 50.
+        assertEq(vault.idleAssets() - before, 100e6, "both sides redeemed, not just one");
         assertFalse(vault.slots(0).active, "slot closed");
     }
 
@@ -1200,7 +1213,7 @@ contract LiquidityVaultTest is Test {
 
         uint256 before = vault.idleAssets();
         vault.settle(0);
-        assertEq(vault.idleAssets() - before, 200e6, "the 30% side was not abandoned");
+        assertEq(vault.idleAssets() - before, 100e6, "the 30% side was not abandoned");
     }
 
     /// One wei left behind defeated the last-share guard: the holder was no longer "the
@@ -1239,9 +1252,16 @@ contract LiquidityVaultTest is Test {
         usdc.transfer(address(vault), 1_000e6); // donate, to move the mark
         vm.stopPrank();
 
-        _deposit(alice, 500e6);
-        assertGt(vault.balanceOf(alice), 0, "the victim's deposit must mint something");
-        assertGt(vault.convertToAssets(vault.balanceOf(alice)), 499e6, "and be worth about what it cost");
+        // The victim's deposit would round to zero shares. It is refused, and they keep
+        // their money — rather than paying 500 for nothing, which is what used to happen.
+        uint256 held = usdc.balanceOf(alice);
+        vm.startPrank(alice);
+        usdc.approve(address(vault), 500e6);
+        vm.expectRevert(abi.encodeWithSelector(LiquidityVault.DepositMintsNothing.selector, uint256(500e6)));
+        vault.deposit(500e6, alice);
+        vm.stopPrank();
+        assertEq(usdc.balanceOf(alice), held, "the victim keeps every cent");
+        assertEq(vault.balanceOf(alice), 0, "and owns no worthless shares");
     }
 
     /// ERC-4626 requires these to report an amount that does not revert. A withdrawal is

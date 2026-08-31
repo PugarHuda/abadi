@@ -211,7 +211,9 @@ async function armAt(firesAtSec: number) {
   // The callback is paid out of the vault's own balance. If a worst-case sweep would
   // take it under the floor it can never arm again, and nothing else watches for that.
   const worst = gas * 50_000_000_000n; // SWEEP_GAS at the arm's maxFeePerGas cap
-  if (bal - floor < worst) {
+  if (gas === 0n) {
+    log(`arm      note: could not read SWEEP_GAS, so the handler-balance check is off this cycle`);
+  } else if (bal - floor < worst) {
     log(`arm      WARNING: headroom ${formatEther(bal - floor)} STT is under the ${formatEther(worst)} STT`);
     log(`         a worst-case callback could cost. One bad sweep ends arming for good.`);
   }
@@ -243,7 +245,13 @@ async function sweepOld() {
         // skipped here in complete silence — no settle, no log line, nothing. The hatch
         // is permissionless and works on any vault's position, not just the live one.
         if (m.expiry > Date.now() / 1000) continue; // still trading; leave it be
-        const gate = m.expiry + Number(await settlementWindow(m.market));
+        // Guarded: this is the only await in sweepOld that could throw, and main() wraps
+        // sweepOld and cycle in ONE try — so a retired vault holding a market that will
+        // not answer `settlementWindow` would skip the whole live cycle, every cycle.
+        // A retired vault must never be able to stop the current one from trading.
+        const w = await settlementWindow(m.market).catch(() => null);
+        if (w === null) continue;
+        const gate = m.expiry + Number(w);
         if (Date.now() / 1000 < gate) continue; // the oracle still has time
         if (!(await send(`void     ${tag}`, "voidExpired", [], m.market, MARKET_ABI))) continue;
         await send(`sync     ${tag}`, "syncSettlement", [s.marketId], addresses.binaryModule as `0x${string}`, MODULE_ABI);
@@ -287,7 +295,12 @@ async function cycle(n: number, bySymbol: Map<string, any>) {
       // `expiry + settlementWindow` has passed, voidExpired() flips it Voided without
       // the oracle and every holder is made whole at what they put in. Below that gate,
       // poke and wait; above it, stop poking and take the hatch.
-      const gate = m.expiry + Number(await settlementWindow(m.market));
+      const win = await settlementWindow(m.market).catch(() => null);
+      if (win === null) {
+        log(`poke     ${tag}  cannot read settlementWindow; leaving this slot for the next cycle`);
+        continue;
+      }
+      const gate = m.expiry + Number(win);
       if (Date.now() / 1000 < gate) {
         await send(`poke     ${tag}`, "pokeOracle", [m.questionId], addresses.binaryModule as `0x${string}`, MODULE_ABI);
       } else if (await send(`void     ${tag}`, "voidExpired", [], m.market, MARKET_ABI)) {

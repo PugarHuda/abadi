@@ -142,18 +142,40 @@ contract LiquidityVault is ERC4626, AbadiReactive, ReentrancyGuard {
     }
 
     /// @dev Capped at the quoted size: what this vault escrowed is all it can be owed.
+    ///
+    ///      Deliberately a low-level staticcall rather than a typed `try/catch`. A typed
+    ///      call does NOT catch two of the failures that matter, because both revert in
+    ///      this frame rather than the callee's: a `pool` with no code at all (solc's
+    ///      extcodesize check) and a return buffer that does not decode (a shorter or
+    ///      differently-shaped `getOrder`). Either one would propagate out of a `view`
+    ///      that sits on the path of every deposit and every withdrawal — and the pools
+    ///      here are beacon proxies whose implementation can change with no address
+    ///      change and no version to pin, which is exactly how a return shape moves under
+    ///      you. See SDK feedback issue 16.
+    ///
+    ///      A revert with a short payload is the pool saying it has no active order under
+    ///      this id, which is the answer "nothing is resting here" and worth zero. A
+    ///      successful call that does not carry a full order is not an answer at all, and
+    ///      is refused rather than quietly priced at zero: a silently understated NAV is
+    ///      a discount for the next depositor, paid by the holders already there.
     function _legEscrow(address pool, uint128 orderId, uint256 size, uint256 price)
         internal
         view
         returns (uint256)
     {
         if (orderId == 0) return 0;
-        try IBinaryPool(pool).getOrder(orderId) returns (PoolOrder memory o) {
-            uint256 remaining = o.quantityRemaining > size ? size : o.quantityRemaining;
-            return MarketEngine.costOf(remaining, price, priceOne);
-        } catch {
-            return 0; // the pool holds nothing under this id
+        (bool ok, bytes memory ret) = pool.staticcall(abi.encodeCall(IBinaryPool.getOrder, (orderId)));
+        if (!ok) {
+            // `IncorrectOrder()` and friends: a bare selector, or empty. Nothing resting.
+            if (ret.length <= 4) return 0;
+            revert PoolAnsweredStrangely(pool, orderId);
         }
+        // Eight static fields, so a whole order is exactly eight words.
+        if (ret.length < 256) revert PoolAnsweredStrangely(pool, orderId);
+        uint256 remaining;
+        assembly { remaining := mload(add(ret, 224)) } // 32 (length) + 6 * 32
+        if (remaining > size) remaining = size;
+        return MarketEngine.costOf(remaining, price, priceOne);
     }
 
     // ----------------------------------------------------------------- events
@@ -190,6 +212,11 @@ contract LiquidityVault is ERC4626, AbadiReactive, ReentrancyGuard {
     error NotPendingGovernor(address caller);
     error NotSelf(address caller);
     error LastShareWhileOpen(uint256 slot);
+    /// @dev A deposit that would mint no shares at all. See `_deposit`.
+    error DepositMintsNothing(uint256 assets);
+    /// @dev The pool answered `getOrder` with something that is neither an order nor the
+    ///      "no such order" revert. NAV cannot be priced, so nothing is priced.
+    error PoolAnsweredStrangely(address pool, uint128 orderId);
     error MarketAlreadyQuoted(bytes32 marketId, uint256 slot);
     error CancelFailed(uint128 orderId, bytes reason);
     /// @dev The pool's own answer for an order id it no longer holds for the caller.
@@ -295,13 +322,25 @@ contract LiquidityVault is ERC4626, AbadiReactive, ReentrancyGuard {
     ///      it. Withdrawals are unrestricted once every slot is closed.
     uint256 public constant MIN_SUPPLY_WHILE_OPEN = 1e6;
 
-    /// @dev OpenZeppelin's virtual-share defence scales with this offset, and the default
-    ///      of 0 leaves the classic first-deposit attack open: seed one wei, donate, and
-    ///      the next depositor's shares round to zero. Measured against this vault at
-    ///      offset 0 — a 1,000 deposit minting 0 shares, a total loss for the victim.
-    ///      Six decimals of offset is the collateral's own scale and closes it.
-    function _decimalsOffset() internal pure override returns (uint8) {
-        return 6;
+    /// @dev The first-deposit attack is closed here rather than with a decimals offset.
+    ///
+    ///      An offset of 6 was tried and reverted the same day. It multiplies the share
+    ///      scale by 1e6, which silently made `MIN_SUPPLY_WHILE_OPEN` — written as "one
+    ///      whole share" — worth one WEI of collateral, so a one-wei deposit landed
+    ///      exactly on the floor and the dust guard above stopped guarding anything. It
+    ///      also broke every off-chain consumer at once: `scripts/ledger.ts`, `web/app.js`,
+    ///      `web/live.js` and `web/ledger.js` all read `assets/supply` as a share price,
+    ///      and all of them would have started printing 0.000001. Two fixes written apart
+    ///      from each other, each correct alone.
+    ///
+    ///      What the offset was for was the case where a donation makes the next
+    ///      depositor's shares round to zero — a total loss for them. That is what this
+    ///      refuses, directly and where it happens. OpenZeppelin's virtual share already
+    ///      makes the attack unprofitable for the attacker; this makes it harmless for
+    ///      the victim.
+    function _deposit(address caller, address receiver, uint256 assets, uint256 shares) internal override {
+        if (shares == 0) revert DepositMintsNothing(assets);
+        super._deposit(caller, receiver, assets, shares);
     }
 
     /// @notice The most `owner` can actually take out right now.
@@ -564,6 +603,13 @@ contract LiquidityVault is ERC4626, AbadiReactive, ReentrancyGuard {
             // deleted above, so nothing could ever come back for it. Redeem every side
             // that pays anything, exactly as the voided branch already does.
             uint256[] memory payouts = IBinaryMarket(market).payoutNumerators();
+            bool paysSomething = (payouts.length > 0 && payouts[0] > 0) || (payouts.length > 1 && payouts[1] > 0);
+            // A market that reports resolved with an empty or all-zero vector pays no
+            // side at all. Redeeming nothing here would delete the slot and leave the
+            // outcome tokens on the ERC-6909 with no function left that can reach them.
+            // Refuse instead: the slot survives, and settle can be retried when the
+            // market reports a vector that means something.
+            if (!paysSomething) revert MarketNotSettled(id, _statusOf(id));
             if (payouts.length > 0 && payouts[0] > 0) _redeemOutcome(id, 0, yesId);
             if (payouts.length > 1 && payouts[1] > 0) _redeemOutcome(id, 1, noId);
         }

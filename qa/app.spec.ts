@@ -264,7 +264,9 @@ test.describe("app with a wallet", () => {
     await page.locator("#connect").click();
     await expect(page.locator("#allPreview")).toContainText(/only 5\.00 of that is available now/i);
     await page.locator("#withdrawAll").click();
-    await expect(page.locator("#status")).toContainText(/needs 900\.00 tUSDC and 5\.00 is available now/i);
+    // The sentence names the exact amount, not a rounded one: the number shown has to be
+    // the number the vault would be asked for.
+    await expect(page.locator("#status")).toContainText(/needs 900 tUSDC and 5 is available now/i);
     await expect(page.locator("#withdrawAll")).toHaveText(/redeem all shares/i);
     await page.locator("#withdrawAll").click();
     expect(await sent(page)).toHaveLength(0);
@@ -411,6 +413,10 @@ const ERRORS = [
   "MarketNotTrading(bytes32,uint8)",
   "ERC20InsufficientBalance(address,uint256,uint256)",
   "ERC20InsufficientAllowance(address,uint256,uint256)",
+  // The vault caps maxWithdraw/maxRedeem, so OpenZeppelin refuses at the max check
+  // before the transfer — these two are the likeliest reverts this page will meet.
+  "ERC4626ExceededMaxWithdraw(address,uint256,uint256)",
+  "ERC4626ExceededMaxRedeem(address,uint256,uint256)",
   "Error(string)",
   "Panic(uint256)",
 ];

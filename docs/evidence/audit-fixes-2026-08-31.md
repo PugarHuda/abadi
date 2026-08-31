@@ -53,6 +53,17 @@ Fixed by not inferring. `_restingEscrow` now asks the pool — `getOrder(orderId
 a frozen book while every cancel path reverts, so the freeze gates writes, not reads.
 `test_flattenInTheFrozenGapDoesNotInventEscrow` is the regression.
 
+That call is a low-level `staticcall` rather than a typed `try/catch`, which was the first
+attempt. A typed call does **not** catch two failures that matter, because both revert in
+the caller's frame: a `pool` with no code (solc's extcodesize check) and a return buffer
+that does not decode. Either would propagate out of a view on the path of every deposit
+and every withdrawal — and these pools are beacon proxies whose implementation can change
+with no address change and no version to pin, which is exactly how a return shape moves
+under you. A short revert is read as "no order here"; a successful call that does not carry
+a full eight-word order is refused with `PoolAnsweredStrangely` rather than quietly priced
+at zero, because a silently understated NAV is a discount for the next depositor paid by
+the holders already there.
+
 **A tied or split payout vector abandoned half the position.** `_settle` took the argmax of
 `payoutNumerators()` and redeemed that side alone. Settlement v3 stores a vector, not a
 winner: on `[7, 3]` the 30% side was abandoned, and on a tie `[5, 5]` with `isVoided()`
@@ -67,7 +78,22 @@ now gates on what is *left*: `MIN_SUPPLY_WHILE_OPEN`, one whole share.
 
 **First-deposit inflation was live.** No decimals offset and no seed deposit: a one-wei
 first deposit plus a donation rounded the next depositor's shares to zero, a total loss.
-`_decimalsOffset()` now returns 6.
+A deposit that would mint no shares is now refused, so the victim keeps their money.
+
+> This first shipped as `_decimalsOffset() = 6` and was reverted within the hour, because
+> a review of the change set found it contradicted another fix written beside it. The
+> offset multiplies the share scale by 1e6, which silently made `MIN_SUPPLY_WHILE_OPEN` —
+> written as "one whole share" and relied on as the dust floor — worth **one wei** of
+> collateral. A one-wei deposit minted exactly 1,000,000 shares and landed on the floor,
+> so the guard directly above it stopped guarding anything; the reviewer reproduced the
+> full attack against the patched build, 1 wei in and 52.55 tUSDC out. It would also have
+> broken every off-chain consumer at once — `scripts/ledger.ts`, `web/app.js`,
+> `web/live.js` and `web/ledger.js` all read `assets/supply` as a share price and would
+> have started printing 0.000001, on the same day the dashboard was reworked to make per
+> share its headline. Two correct fixes, written apart from each other, wrong together.
+> The regression test did not catch it because it asserted against the constant itself
+> (`totalSupply() - max >= MIN_SUPPLY_WHILE_OPEN()`), which holds at any magnitude — the
+> same self-referential flaw this document accuses the old invariant of two sections down.
 
 **`maxWithdraw` and `maxRedeem` lied.** ERC-4626 requires an amount that does not revert;
 these reported the full NAV share while a withdrawal is paid out of idle collateral. Both
@@ -148,3 +174,13 @@ the endpoint were right), and a byte count that was a hex-string length.
   patch.
 - **The strategy is losing.** It needs an adverse rate under 8.9% and is running at 21.8%.
   No code change here addresses that.
+- **The ledger attributes a pool refund to "the most recent episode quoted on that pool".**
+  Pools are recycled across markets — 10 of 37 host more than one — and before this commit
+  nothing stopped two slots quoting the same market. Net P&L is unaffected and the share
+  price is read from chain, but two v8 episodes are split as −97.60 and +102.40 where each
+  actually earned about +2.40. The key should be `(pool, marketId)` with the refund's
+  position required to fall inside the owning episode's lifetime.
+- **The escrow invariant asserts exact equality and the fixture cannot produce a partial
+  fill.** `MockPool.fillPartial` recomputes `remainingOf` by floor-then-multiply, which
+  drifts by a few wei; the handler has no partial-fill action, so `remaining` is only ever
+  0 or `size` and the branch the whole `_legEscrow` change exists for is never fuzzed.

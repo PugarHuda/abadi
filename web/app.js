@@ -50,6 +50,8 @@
 
   var cfg = window.ABADI;
   var RPC = cfg.rpc, VAULT = cfg.vault, EXPLORER = cfg.explorer;
+  // LiquidityVault.MIN_SUPPLY_WHILE_OPEN — one whole share at the collateral's scale.
+  var MIN_SUPPLY = 1000000n;
   var USDC = "0x70a86D8842FB63C4Ad2b7cdddF530eBf1BB25d8E";
   var CHAIN_ID = "0xc488"; // 50312, Somnia Shannon
   var CHAIN = {
@@ -193,7 +195,11 @@
       .then(function (hex) {
         state.worth = u256(hex);
         els.worth.textContent = usd(state.worth);
-        var last = state.supply > 0n && state.shares === state.supply;
+        // The contract's rule is what is LEFT, not whether you are the only holder: a
+        // withdrawal is refused if it would take the supply under MIN_SUPPLY_WHILE_OPEN
+        // while a slot is open. Modelling it as `shares === supply` left the button
+        // enabled for a holder of supply-minus-dust, whose redeem then reverted on chain.
+        var last = state.supply > 0n && state.supply - state.shares < MIN_SUPPLY;
         var blocked = (last && state.openSlots > 0) || state.shares === 0n;
         els.guard.hidden = !(last && state.openSlots > 0);
         els.withdrawAll.dataset.blocked = blocked ? "true" : "false";
@@ -316,6 +322,12 @@
     "0x097ffe96": function (a) { return "that market is not trading (venue status " + u256(a, 1) + ")."; },     // MarketNotTrading(bytes32,uint8)
     "0xe450d38c": function (a) { return "the token refused: " + short(argAddr(a, 0)) + " holds " + usd(u256(a, 1)) + " and " + usd(u256(a, 2)) + " is needed. On a withdrawal that address is the vault, which pays only out of idle collateral — the rest is working in open quotes."; }, // ERC20InsufficientBalance(address,uint256,uint256)
     "0xfb8f41b2": function (a) { return "the token refused: " + short(argAddr(a, 0)) + " is approved for " + usd(u256(a, 1)) + " and " + usd(u256(a, 2)) + " is needed. Approve again."; }, // ERC20InsufficientAllowance(address,uint256,uint256)
+    // The vault caps maxWithdraw/maxRedeem by idle collateral and by the open-slot floor,
+    // so OpenZeppelin refuses at the max check BEFORE the token transfer. These two are
+    // now the likeliest reverts on this page, and both used to render as "an error this
+    // page cannot name".
+    "0xfe9cceec": function (a) { return "the vault will only let " + short(argAddr(a, 0)) + " take " + usd(u256(a, 2)) + " tUSDC right now, and " + usd(u256(a, 1)) + " was asked for. The rest is working in open quotes and comes back as they close."; }, // ERC4626ExceededMaxWithdraw(address,uint256,uint256)
+    "0xb94abeec": function (a) { return "the vault will only let " + short(argAddr(a, 0)) + " redeem " + usd(u256(a, 2)) + " shares right now, and " + usd(u256(a, 1)) + " was asked for. Either the rest is in open quotes, or emptying the vault would leave an open slot with no owner."; }, // ERC4626ExceededMaxRedeem(address,uint256,uint256)
     "0x08c379a0": function (a) { return argString(a); },                                                       // Error(string)
     "0x4e487b71": function (a) { return "the contract hit a panic (code " + u256(a) + ")."; }                   // Panic(uint256)
   };
@@ -440,10 +452,25 @@
   // decisions, and the number the confirmation showed is the number that gets sent —
   // a refresh landing in between must not change what the second press means.
   var DOUBLE_CLICK = 700;
+
+  /// Put the Redeem-all button back to rest. Every path that abandons a confirmation has
+  /// to come through here: leaving the timer running while the label and the status line
+  /// say something else is how a later press sends with no confirmation behind it.
+  function cancelConfirm(why) {
+    if (state.confirmAll !== null) clearTimeout(state.confirmAll);
+    state.confirmAll = null;
+    state.confirmShares = 0n;
+    state.confirmAt = 0;
+    els.withdrawAll.textContent = "Redeem all shares";
+    // Never step on a transaction that is genuinely in flight.
+    if (why && !state.busy) status(why, "info");
+  }
+  A.cancelConfirm = cancelConfirm;
   els.withdrawAll.addEventListener("click", function () {
     if (state.worth > state.idle) {
-      say("Redeeming every share needs " + usd(state.worth) + " tUSDC and " + usd(state.idle) + " is available now — the rest is working in open quotes. "
-        + "Withdraw up to " + usd(state.idle) + " with the field above, or come back once the quotes close. Nothing was sent.", null, "error");
+      cancelConfirm();
+      say("Redeeming every share needs " + exact(state.worth) + " tUSDC and " + exact(state.idle) + " is available now — the rest is working in open quotes. "
+        + "Withdraw up to " + exact(state.idle) + " with the field above, or come back once the quotes close. Nothing was sent.", null, "error");
       return;
     }
     if (state.confirmAll === null) {
@@ -451,13 +478,12 @@
       state.confirmAt = Date.now();
       els.withdrawAll.textContent = "Confirm: redeem " + exact(state.confirmShares) + " shares for ≈ " + exact(state.worth) + " tUSDC";
       status("Press again within five seconds to redeem every share you hold.", "busy");
-      state.confirmAll = setTimeout(function () { state.confirmAll = null; els.withdrawAll.textContent = "Redeem all shares"; status("Ready.", "info"); }, 5000);
+      state.confirmAll = setTimeout(function () { cancelConfirm("Ready."); }, 5000);
       return;
     }
     if (Date.now() - state.confirmAt < DOUBLE_CLICK) return;
     var shares = state.confirmShares;
-    clearTimeout(state.confirmAll); state.confirmAll = null;
-    els.withdrawAll.textContent = "Redeem all shares";
+    cancelConfirm();
     run(function () {
       if (state.stt === 0n) throw new Error("Your wallet holds no STT for gas. Get 0.5 STT from the Somnia faucet (link in the Gas panel), then try again.");
       if (!shares || shares === 0n) throw new Error("No shares to redeem.");
@@ -468,7 +494,17 @@
   document.addEventListener("visibilitychange", function () { if (document.visibilityState === "visible") refresh(); });
 
   if (provider()) {
-    provider().on && provider().on("accountsChanged", function (accs) { state.account = accs[0] || null; paintWallet(); refresh(); });
+    provider().on && provider().on("accountsChanged", function (accs) {
+      // Disarm first. The confirmation captures a share amount on the first press so the
+      // number shown is the number sent; if the account changes underneath it, that
+      // capture belongs to somebody else's balance. Before the capture existed the value
+      // was re-read at send time and self-corrected — the capture is right, but it has to
+      // be abandoned here rather than carried across.
+      cancelConfirm();
+      state.account = accs[0] || null;
+      paintWallet();
+      refresh();
+    });
     provider().on && provider().on("chainChanged", function (id) { state.chainOk = String(id).toLowerCase() === CHAIN_ID; paintWallet(); refresh(); });
   }
 
