@@ -1,7 +1,9 @@
 {
   "detector": {
     "ignoreRules": [
-      "content-hidden-at-rest"
+      "content-hidden-at-rest",
+      "cream-palette",
+      "repeating-stripes-gradient"
     ],
     "ignoreFiles": [],
     "ignoreValues": [

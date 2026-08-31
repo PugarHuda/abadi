@@ -1,264 +1,137 @@
 <title>Abadi</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Martian+Mono:wght@300;400;600&family=Public+Sans:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
 
 <style>
-  :root {
-    --ink:        #14203A;
-    --ink-raised: #1B2A48;
-    --ink-line:   #2A3B5E;
-    /* --ink-line is a hairline between things. A control's boundary is not a hairline:
-       WCAG 1.4.11 wants 3:1 against the surface behind it, and #2A3B5E measures 1.45:1
-       on --ink and 1.28:1 on --ink-raised. Same hue, lifted to 3.6:1 / 3.2:1. */
-    --ctl-line:   #64789F;
-    --cotton:     #EAE4D6;
-    --cotton-dim: #8D97AE;
-    --turmeric:   #E0A045;
-    --teal:       #4FA396;
-    --display: "Bricolage Grotesque", system-ui, sans-serif;
-    --body: "Public Sans", system-ui, sans-serif;
-    --mono: "Martian Mono", ui-monospace, monospace;
+  /* Page-specific only. The world lives in /recorder.css. */
+
+  /* ------------------------------------------------------------------ the pen carriage
+   *
+   * The price control is a pen on a carriage. Dragging it moves the pen across the chart
+   * and both channels redraw under it. It is the one instrument on the site that the
+   * reader operates, so it is the one thing drawn at full size. */
+  .carriage {
+    background: var(--stock-sunk);
+    border-top: 1px solid var(--rule-major);
+    border-bottom: 1px solid var(--rule-major);
+    padding: 20px 22px 22px;
+    margin: 0 0 var(--chart);
   }
 
-  * { box-sizing: border-box; }
-
-  body {
-    margin: 0;
-    background: var(--ink);
-    color: var(--cotton);
-    font-family: var(--body);
-    font-size: 16px;
-    line-height: 1.6;
-    -webkit-font-smoothing: antialiased;
-  }
-
-  a { color: var(--cotton); text-decoration-color: var(--ink-line); text-underline-offset: 3px; }
-  a:hover { text-decoration-color: var(--turmeric); }
-  :focus-visible { outline: 2px solid var(--turmeric); outline-offset: 3px; }
-
-  /* First stop on every page. Moved by transform, so it costs no layout at rest. */
-  .skip {
-    position: absolute; left: 12px; top: 12px; z-index: 60;
-    background: var(--ink-raised); color: var(--turmeric);
-    border: 1px solid var(--turmeric); padding: 10px 14px;
-    font-size: 15px; font-weight: 500; text-decoration: none;
-    transform: translateY(-200%);
-  }
-  .skip:focus { transform: none; }
-
-  .wrap { max-width: 1000px; margin: 0 auto; padding: 0 24px 96px; }
-
-  /* ---------- masthead ---------- */
-  .masthead {
-    display: flex; align-items: center; justify-content: space-between;
-    gap: 24px; flex-wrap: wrap;
-    padding: 36px 0 26px;
-    border-bottom: 1px solid var(--ink-line);
-  }
-  .lockup { display: flex; align-items: center; gap: 14px; }
-  .lockup svg { height: 46px; width: auto; display: block; flex: none; }
-  .lockup h1 {
-    font-family: var(--display); font-weight: 800;
-    font-size: clamp(32px, 5.4vw, 46px);
-    letter-spacing: -0.045em; line-height: 0.9; margin: 0;
-  }
-  .nav { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; font-size: 15px; }
-  .nav a { text-decoration: none; color: var(--cotton-dim); }
-  .nav a:hover { color: var(--cotton); }
-  .nav a.go { color: var(--turmeric); border: 1px solid var(--turmeric); padding: 10px 16px; font-weight: 500; transition: background .15s ease-out, color .15s ease-out; }
-  .nav a.go:hover { background: var(--turmeric); color: var(--ink); }
-
-  /* ---------- thesis ---------- */
-  .hero { margin: 56px 0 0; }
-  .thesis {
-    font-family: var(--display); font-weight: 600;
-    font-size: clamp(26px, 4.4vw, 44px);
-    line-height: 1.15; letter-spacing: -0.025em;
-    margin: 0 0 18px; max-width: 19ch;
-  }
-  .thesis em { font-style: normal; color: var(--turmeric); }
-  .lede { color: var(--cotton-dim); max-width: 44ch; margin: 0; font-size: 17px; }
-  @media (min-width: 900px) {
-    .hero { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 56px; align-items: end; }
-    .thesis { margin-bottom: 0; max-width: none; }
-    .lede { padding-bottom: 6px; }
-  }
-
-  /* ---------- the instrument ---------- */
-  .rig {
-    margin: 44px 0 0;
-    border: 1px solid var(--ink-line);
-    background: var(--ink-raised);
-    padding: 26px clamp(18px, 3vw, 32px) 28px;
-  }
-  .rig-head {
-    display: flex; justify-content: space-between; align-items: baseline;
-    gap: 16px; flex-wrap: wrap;
-    font-family: var(--body); font-size: 14px; color: var(--cotton-dim);
-    margin-bottom: 26px;
-  }
-
-  /* the slider: a probability is bounded, so the track is the whole of it */
   .track {
-    position: relative; height: 34px; cursor: ew-resize;
+    position: relative;
+    height: 44px;
+    margin: 4px 0 0;
+    cursor: ew-resize;
     touch-action: none;
-    border-left: 1px solid var(--ctl-line); border-right: 1px solid var(--ctl-line);
-  }
-  .track::before {
-    content: ""; position: absolute; left: 0; right: 0; top: 50%;
-    border-top: 1px dashed var(--ink-line);
+    border-bottom: 1px solid var(--ctl-line);
+    /* The carriage runs on a ruled bed, so the pen's position is readable against
+       something rather than floating. */
+    background-image: repeating-linear-gradient(to right,
+      var(--rule-major) 0, var(--rule-major) 1px, transparent 1px, transparent 10%);
   }
   .knob {
-    position: absolute; top: 0; bottom: 0; width: 2px; background: var(--cotton);
-    transform: translateX(-1px);
+    position: absolute; top: 50%; width: 15px; height: 15px;
+    margin: -7px 0 0 -7px; border-radius: 50%;
+    background: var(--ink); border: 2px solid var(--stock-sunk);
   }
+  /* The pen itself: a hairline dropped from the carriage to the paper. */
   .knob::after {
-    content: ""; position: absolute; left: 50%; top: 50%;
-    width: 13px; height: 13px; margin: -6.5px 0 0 -6.5px;
-    background: var(--cotton); border-radius: 50%;
+    content: ""; position: absolute; left: 50%; top: 11px; width: 1px; height: 15px;
+    margin-left: -0.5px; background: var(--ink);
   }
+
   .ends {
     display: flex; justify-content: space-between;
-    font-family: var(--mono); font-size: 12px; color: var(--cotton-dim);
-    margin-top: 6px;
+    font-family: var(--mono); font-size: 11.5px; color: var(--pencil);
+    padding-top: 5px;
   }
 
-  .legs { margin: 26px 0 0; }
-  .leg {
-    display: grid; grid-template-columns: 5.5ch 8ch 1fr; align-items: center;
-    gap: 14px; padding: 7px 0;
-    font-family: var(--mono); font-size: 12px;
+  .legs { margin-top: 18px; display: grid; gap: 10px; }
+  .leg, .sum {
+    display: grid; grid-template-columns: 6.5rem 5.5rem 1fr; gap: 14px; align-items: center;
   }
-  .leg .name { font-family: var(--body); color: var(--cotton-dim); font-size: 13px; }
-  .leg .val { font-weight: 600; font-variant-numeric: tabular-nums; }
-  .leg .bar { height: 9px; background: var(--ink); position: relative; overflow: hidden; }
-  .leg .bar i { position: absolute; inset: 0 auto 0 0; display: block; }
-  .leg.up .val { color: var(--turmeric); }
-  .leg.up .bar i { background: var(--turmeric); }
-  .leg.down .val { color: var(--cotton); }
-  .leg.down .bar i { background: var(--teal); }
-
-  .sum {
-    display: grid; grid-template-columns: 5.5ch 8ch 1fr; align-items: center;
-    gap: 14px; margin-top: 14px; padding-top: 16px;
-    border-top: 1px solid var(--ink-line);
-    font-family: var(--mono); font-size: 12px;
+  .leg .name, .sum .name { font-size: 13px; font-stretch: 80%; font-weight: 500; }
+  .leg .val, .sum .val { font-family: var(--mono); font-size: 14px; font-weight: 500; }
+  .bar, .whole { display: block; height: 12px; background: var(--stock); border: 1px solid var(--rule-major); }
+  .bar i { display: block; height: 100%; background: var(--ink); }
+  .leg.down .bar i {
+    background: var(--pen-down);
+    /* Channel two is the dashed pen. Colour is never the only signal. */
+    background-image: repeating-linear-gradient(45deg,
+      rgba(245,241,230,.55) 0 3px, transparent 3px 7px);
   }
-  .sum .name { font-family: var(--body); color: var(--cotton-dim); font-size: 13px; }
-  .sum .val { font-weight: 600; font-size: 15px; font-variant-numeric: tabular-nums; }
-  .sum .whole { height: 9px; display: flex; }
-  .sum .whole b { display: block; height: 100%; }
-  .sum .whole b:first-child { background: var(--turmeric); }
-  .sum .whole b:last-child { background: var(--teal); }
-  .rig-foot {
-    margin: 22px 0 0; color: var(--cotton-dim); font-size: 14px; max-width: 60ch;
+  .whole { display: flex; }
+  .whole b { display: block; height: 100%; }
+  .whole b:first-child { background: var(--ink); }
+  .whole b:last-child {
+    background: var(--pen-down);
+    background-image: repeating-linear-gradient(45deg,
+      rgba(245,241,230,.55) 0 3px, transparent 3px 7px);
   }
-  .rig-foot b { color: var(--cotton); font-weight: 500; }
+  .sum { margin-top: 4px; padding-top: 12px; border-top: 1px solid var(--rule-major); }
+  .sum .val { font-weight: 500; }
+  .rig-foot { margin: 16px 0 0; font-size: 15px; max-width: 70ch; }
 
-
-  /* ---------- live strip ---------- */
-  .live { border: 1px solid var(--ink-line); background: var(--ink-raised); padding: 20px clamp(16px, 2.4vw, 26px); }
-  .live-err { display: none; margin: 0; color: var(--turmeric); font-size: 14px; }
-  .live[data-state="unreachable"] .live-err { display: block; }
-  .live[data-state="unreachable"] .live-grid, .live[data-state="unreachable"] .live-slots { display: none; }
-  .live-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin: 0; }
-  .live-grid dt { font-family: var(--body); font-size: 13px; color: var(--cotton-dim); }
-  .live-grid dd { margin: 4px 0 0; font-family: var(--mono); font-size: clamp(15px, 2vw, 20px); font-weight: 600; font-variant-numeric: tabular-nums; }
-  .live-grid small { font-size: 12px; font-weight: 300; color: var(--cotton-dim); }
-  .live-slots { list-style: none; margin: 16px 0 0; padding: 14px 0 0; border-top: 1px solid var(--ink-line); font-family: var(--mono); font-size: 12px; color: var(--cotton-dim); }
-  .live-slots li { padding: 3px 0; }
-  .live-slots b { color: var(--turmeric); font-weight: 600; }
-  .live-foot { margin: 14px 0 0; font-family: var(--body); font-size: 13px; color: var(--cotton-dim); }
-  .live[data-state="loading"] [data-live] { color: var(--cotton-dim); }
-  @media (max-width: 620px) { .live-grid { grid-template-columns: repeat(2, 1fr); } }
-
-  /* ---------- section frame ---------- */
-  .eyebrow {
-    font-family: var(--display); font-size: 21px; font-weight: 600;
-    letter-spacing: -0.015em; color: var(--cotton);
-    padding-bottom: 12px; margin: 76px 0 22px;
-    border-bottom: 1px solid var(--ink-line);
-    display: flex; justify-content: space-between; align-items: baseline; gap: 16px;
-  }
-  .eyebrow span { font-family: var(--body); font-size: 14px; font-weight: 400; color: var(--cotton-dim); }
-
-  p.note { max-width: 62ch; color: var(--cotton-dim); }
-  p.note b { color: var(--cotton); font-weight: 500; }
-
-  /* ---------- the arithmetic ---------- */
+  /* ------------------------------------------------------------------- the arithmetic */
   .maths {
-    font-family: var(--mono); font-size: clamp(12px, 1.6vw, 13px);
-    background: var(--ink-raised); border: 1px solid var(--ink-line);
-    padding: 22px clamp(16px, 2.4vw, 26px); margin: 0 0 22px;
-    overflow-x: auto; line-height: 2;
+    font-family: var(--mono); font-size: 12.5px; line-height: 2;
+    background: var(--stock-sunk);
+    border-top: 1px solid var(--rule-major); border-bottom: 1px solid var(--rule-major);
+    padding: 18px 22px; margin: 0 0 var(--chart);
+    overflow-x: auto; white-space: nowrap;
   }
-  .maths .k { color: var(--cotton-dim); }
-  .maths .u { color: var(--turmeric); }
-  .maths .d { color: var(--cotton); font-weight: 600; }
-  .maths .r { border-top: 1px solid var(--ink-line); display: block; margin-top: 8px; padding-top: 8px; }
+  .maths .k { color: var(--pencil); }
+  .maths .u { color: var(--ink); font-weight: 500; }
+  .maths .d { color: var(--pen-down); font-weight: 500; }
+  .maths .r { display: inline-block; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--ctl-line); }
 
-  /* ---------- custody ---------- */
-  table { width: 100%; border-collapse: collapse; font-size: 15px; }
-  th, td { text-align: left; padding: 12px 14px 12px 0; border-bottom: 1px solid var(--ink-line); vertical-align: top; }
-  th { font-family: var(--body); font-size: 13px; font-weight: 500; color: var(--cotton-dim); }
-  td.who { font-family: var(--mono); font-size: 12px; color: var(--cotton); white-space: nowrap; }
-  td.cannot { color: var(--cotton-dim); }
-  td.cannot b { color: var(--turmeric); font-weight: 500; }
-
-  /* ---------- what happened ---------- */
-  .ran { list-style: none; margin: 0; padding: 0; }
+  /* --------------------------------------------------------------- the event channel
+   *
+   * What has run, written the way a recorder writes it: a pip in the margin, the event
+   * named in chart lettering, the reading beside it. */
+  .ran { list-style: none; margin: 0 0 var(--chart); padding: 0; }
   .ran li {
-    display: grid; grid-template-columns: 10ch 1fr auto; gap: 16px; align-items: baseline;
-    padding: 15px 0; border-bottom: 1px solid var(--ink-line);
+    display: grid; grid-template-columns: 7rem 1fr auto; gap: 6px 18px;
+    padding: 14px 0; border-bottom: 1px solid var(--rule);
+    align-items: baseline;
   }
-  .ran .what { font-family: var(--mono); font-size: 13px; color: var(--turmeric); }
-  .ran .said { color: var(--cotton-dim); font-size: 15px; }
-  .ran .said b { color: var(--cotton); font-weight: 500; }
-  .ran .tx { font-family: var(--mono); font-size: 12px; white-space: nowrap; }
+  .ran li:last-child { border-bottom: 0; }
+  .ran .what {
+    font-size: 13px; font-stretch: 80%; font-weight: 500;
+    position: relative; padding-left: 14px;
+  }
+  .ran .what::before {
+    content: ""; position: absolute; left: 0; top: .45em;
+    width: 7px; height: 7px; background: var(--ink);
+  }
+  .ran .said b { font-weight: 600; }
+  .ran .tx { font-family: var(--mono); font-size: 12px; color: var(--pencil); white-space: nowrap; }
 
-  /* ---------- out ---------- */
-  .out { display: flex; flex-wrap: wrap; gap: 12px; margin: 34px 0 0; }
-  .out a {
-    font-family: var(--body); font-size: 15px; font-weight: 500;
-    border: 1px solid var(--ctl-line); padding: 13px 18px; text-decoration: none;
-    color: var(--cotton); transition: border-color .15s ease-out, color .15s ease-out;
-  }
-  .out a:hover { border-color: var(--turmeric); color: var(--turmeric); }
-  .out a.lead { border-color: var(--turmeric); color: var(--turmeric); }
-  .out a.lead:hover { background: var(--turmeric); color: var(--ink); }
+  /* ------------------------------------------------------------------ the live channel */
+  .live-slots { list-style: none; margin: 16px 0 0; padding: 14px 0 0; border-top: 1px solid var(--rule-major); font-family: var(--mono); font-size: 12px; color: var(--pencil); }
+  .live-foot { margin: 14px 0 0; font-size: 13px; color: var(--pencil); }
+  .live-err { display: none; }
+  .live[data-state="error"] .live-err { display: block; }
 
-  .foot {
-    margin-top: 64px; padding-top: 22px; border-top: 1px solid var(--ink-line);
-    font-family: var(--mono); font-size: 12px;
-    color: var(--cotton-dim);
-    display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap;
-  }
-
-  @media (max-width: 620px) {
-    .gloss { text-align: left; }
-    /* The Pair row carries this label two inches lower. Twice is once too many. */
-    .rig-head span:last-child { display: none; }
-    .leg, .sum { grid-template-columns: 5ch 7.5ch 1fr; gap: 10px; }
-    .ran li { grid-template-columns: 1fr; gap: 4px; }
-  }
-  @media (prefers-reduced-motion: reduce) {
-    .out a { transition: none; }
+  @media (max-width: 640px) {
+    .leg, .sum { grid-template-columns: 5rem 4.5rem 1fr; gap: 10px; }
+    .ran li { grid-template-columns: 1fr; }
   }
 </style>
 
 <a class="skip" href="#main">Skip to content</a>
 
+<div class="rail" aria-hidden="true"><span>abadi · shannon 50312</span></div>
+
 <div class="wrap">
 
   <header class="masthead">
     <div class="lockup">
-      <svg viewBox="6 1 20 30" role="img" aria-label="Abadi">
-        <rect x="6" y="6" width="12.4" height="20" fill="#E0A045"/>
-        <rect x="18.4" y="6" width="7.6" height="20" fill="#4FA396"/>
-        <path d="M18.4 1V31" stroke="#EAE4D6" stroke-width="1" opacity=".5"/>
+      <svg viewBox="0 0 20 38" role="img" aria-label="Abadi">
+        <rect x="0" y="4" width="11.7" height="30" fill="#16262B"/>
+        <rect x="13.1" y="4" width="6.9" height="30" fill="#2A3A6B"/>
+        <path d="M12.4 0V38" stroke="#B4331C" stroke-width="1.4"/>
       </svg>
-      <h1>abadi</h1>
+      <h1 class="wordmark">abadi</h1>
     </div>
     <nav class="nav" aria-label="Site">
       <a href="/dashboard">The working</a>
@@ -269,19 +142,17 @@
 
   <main id="main" tabindex="-1">
 
-  <div class="hero">
-    <h2 class="thesis">The price moves. <em>The pair doesn’t.</em></h2>
-    <p class="lede">
-      Abadi quotes both sides of a DreamDEX event market, keeps one of each when they fill,
-      and collects the difference. It never needs an opinion about the outcome.
-    </p>
-  </div>
+  <h2 class="thesis">The price moves. <em>The pair doesn’t.</em></h2>
+  <p class="lede">
+    Abadi quotes both sides of a DreamDEX event market, keeps one of each when they fill,
+    and collects the difference. It never needs an opinion about the outcome.
+  </p>
 
   <!-- ============ the instrument ============ -->
-  <div class="rig">
-    <div class="rig-head">
-      <span>Drag the price, or use the arrow keys.</span>
-      <span>Up + Down</span>
+  <div class="carriage">
+    <div class="channel-head">
+      <span>Drag the pen, or use the arrow keys</span>
+      <span class="keys"><span><i></i>Up</span><span class="two"><i></i>Down</span></span>
     </div>
 
     <div class="track" id="track" role="slider" tabindex="0"
@@ -318,11 +189,11 @@
 
 
   <!-- ============ live, from the chain ============ -->
-  <h2 class="eyebrow">Live from the chain <span>read in your browser, no server of ours</span></h2>
+  <h2 class="band">Live from the chain <span>read in your browser, no server of ours</span></h2>
 
-  <div class="live" id="live" data-state="loading">
-    <p class="live-err" data-live="error"></p>
-    <dl class="live-grid">
+  <div class="channel live" id="live" data-state="loading">
+    <p class="live-err alarm" data-live="error"></p>
+    <dl class="figures">
       <div><dt>NAV</dt><dd><span data-live="nav">…</span> <small>tUSDC</small></dd></div>
       <div><dt>Idle</dt><dd><span data-live="idle">…</span> <small>tUSDC</small></dd></div>
       <div><dt>Resting</dt><dd><span data-live="resting">…</span> <small>tUSDC</small></dd></div>
@@ -337,7 +208,7 @@
   </div>
 
   <!-- ============ the trade ============ -->
-  <h2 class="eyebrow">Where the money comes from <span>zero inventory</span></h2>
+  <h2 class="band">Where the money comes from <span>zero inventory</span></h2>
 
   <!-- It scrolls sideways on a phone, so it has to be reachable by keyboard as well as
        by thumb: focusable, and named, or it is a region nobody can get into. -->
@@ -355,34 +226,36 @@
   </p>
 
   <!-- ============ custody ============ -->
-  <h2 class="eyebrow">Who can touch what <span>non-custodial</span></h2>
+  <h2 class="band">Who can touch what <span>non-custodial</span></h2>
 
-  <table>
-    <tr><th>Actor</th><th>Can</th><th>Cannot</th></tr>
-    <tr>
-      <td class="who">operator</td>
-      <td>Quote and cancel</td>
-      <td class="cannot"><b>Move a single token.</b> The bot key steers prices and has no path to the money</td>
-    </tr>
-    <tr>
-      <td class="who">governor</td>
-      <td>Set the operator, risk limits, price grid. Sweep the vault's native STT with <code>sweepNative</code> &mdash; ~32.8 STT today, the reserve that pays for the self-wake</td>
-      <td class="cannot"><b>Touch depositor collateral.</b> Handover is two-step, so a mistyped address hands the seat to nobody</td>
-    </tr>
-    <tr>
-      <td class="who">depositor</td>
-      <td>Deposit and withdraw against ERC-4626 shares</td>
-      <td class="cannot">Steer quotes</td>
-    </tr>
-    <tr>
-      <td class="who">anyone</td>
-      <td>Settle a resolved market, and merge a pair once the window can no longer trade</td>
-      <td class="cannot">Redirect the proceeds &mdash; they go to the vault, never the caller</td>
-    </tr>
-  </table>
+  <div class="scroll">
+    <table>
+      <tr><th>Actor</th><th>Can</th><th>Cannot</th></tr>
+      <tr>
+        <td class="who">operator</td>
+        <td>Quote and cancel</td>
+        <td class="cannot"><b>Move a single token.</b> The bot key steers prices and has no path to the money</td>
+      </tr>
+      <tr>
+        <td class="who">governor</td>
+        <td>Set the operator, risk limits, price grid. Sweep the vault's native STT with <code>sweepNative</code> &mdash; ~32.8 STT today, the reserve that pays for the self-wake</td>
+        <td class="cannot"><b>Touch depositor collateral.</b> Handover is two-step, so a mistyped address hands the seat to nobody</td>
+      </tr>
+      <tr>
+        <td class="who">depositor</td>
+        <td>Deposit and withdraw against ERC-4626 shares</td>
+        <td class="cannot">Steer quotes</td>
+      </tr>
+      <tr>
+        <td class="who">anyone</td>
+        <td>Settle a resolved market, and merge a pair once the window can no longer trade</td>
+        <td class="cannot">Redirect the proceeds &mdash; they go to the vault, never the caller</td>
+      </tr>
+    </table>
+  </div>
 
   <!-- ============ what ran ============ -->
-  <h2 class="eyebrow">What has actually run <span>Shannon testnet</span></h2>
+  <h2 class="band">What has actually run <span>Shannon testnet</span></h2>
 
   <ul class="ran">
     <li>
@@ -408,7 +281,7 @@
   </ul>
 
   <!-- ============ the honest part ============ -->
-  <h2 class="eyebrow">What this is not <span>yet</span></h2>
+  <h2 class="band">What this is not <span>yet</span></h2>
 
   <p class="note">
     A handful of fills proves the mechanism, not an edge. The real risk a maker carries is
@@ -443,7 +316,6 @@
 <script src="/live.js" defer></script>
 <script>
 (function () {
-  var rig   = document.querySelector(".rig");
   var track = document.getElementById("track");
   var knob  = document.getElementById("knob");
   var els = {
@@ -489,7 +361,6 @@
   track.addEventListener("pointerdown", function (e) {
     dragging = true;
     track.setPointerCapture(e.pointerId);
-    rig.classList.remove("anim");   // easing during a drag reads as lag, not polish
     fromEvent(e);
     track.focus();
   });
@@ -497,7 +368,6 @@
   function stop(e) {
     if (!dragging) return;
     dragging = false;
-    rig.classList.add("anim");
     try { track.releasePointerCapture(e.pointerId); } catch (err) {}
   }
   track.addEventListener("pointerup", stop);
@@ -514,7 +384,6 @@
     if (e.key === "End") { set(MAX); e.preventDefault(); }
   });
 
-  rig.classList.add("anim");
   render();
 })();
 </script>

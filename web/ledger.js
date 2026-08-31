@@ -245,7 +245,7 @@
   /* One series: cumulative realised across every closed episode, in the order they closed.
      Marks per the chart spec — 2px line, 10% wash, end dot with a surface ring, one direct
      label at the end, hairline grid, a crosshair tooltip that snaps to the nearest close.
-     Text wears text tokens; only the marks are turmeric. */
+     Text wears text tokens; only the marks carry a pen colour. */
   function chart(all) {
     var fig = document.getElementById("pnlChart");
     if (!fig) return;

@@ -226,7 +226,7 @@ test.describe("dashboard", () => {
       const el = document.querySelector(".wordmark");
       return el ? getComputedStyle(el).fontFamily : "";
     });
-    expect(family, "wordmark fell back to a system face").toContain("Bricolage");
+    expect(family, "wordmark fell back to a system face").toContain("Archivo");
   });
 });
 

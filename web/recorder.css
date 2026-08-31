@@ -1,0 +1,333 @@
+/* Abadi — the recorder.
+ *
+ * One stylesheet for every surface. Before this, each page carried its own <style> block
+ * and the five drifted; a world that lives in one file cannot drift.
+ *
+ * The page is a roll of chart paper feeding under a fixed rail. Everything here follows
+ * from that: the ground is printed with a time grid, content sits in channels between
+ * rules rather than in cards, and the only hue beyond the two pens is the alarm. */
+
+:root {
+  --stock:      #F5F1E6;
+  --stock-sunk: #EBE5D5;
+  --rule:       #DFD5BF;
+  --rule-major: #C3B392;
+  /* rule-major is a hairline between things, at 1.8:1. A control's boundary is not a
+     hairline: WCAG 1.4.11 wants 3:1 against the surface behind it. Same family, darker. */
+  --ctl-line:   #93805E;
+  /* The PRINTED grid is not the same thing as a border. Borders separate elements and
+     need to be seen; the grid is under everything including headings, so at border
+     strength it cuts the wordmark in half. Two lighter values, used only on the ground. */
+  --grid-fine:  #EAE3D2;
+  --grid-major: #DCD0B6;
+  --ink:        #16262B;
+  --pencil:     #5A6663;
+  --pen-down:   #2A3A6B;
+  --alarm:      #B4331C;
+
+  --sans: Archivo, system-ui, -apple-system, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
+
+  /* The chart's own division. Every vertical rhythm on the page is a multiple of it, so
+     the printed grid and the content land on the same lines. */
+  --chart: 22px;
+  --rail: 72px;
+  --measure: 1020px;
+  --gutter: 24px;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  background-color: var(--stock);
+  /* The printed time grid: a fine rule every division, a heavy one every fifth. This is
+     the page's signature texture and it costs one paint, no elements, no requests. */
+  background-image:
+    repeating-linear-gradient(to bottom,
+      var(--grid-major) 0, var(--grid-major) 1px,
+      transparent 1px, transparent calc(var(--chart) * 5)),
+    repeating-linear-gradient(to bottom,
+      var(--grid-fine) 0, var(--grid-fine) 1px,
+      transparent 1px, transparent var(--chart));
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 16px;
+  line-height: 1.62;
+  font-variant-numeric: tabular-nums;
+  overflow-x: hidden;
+}
+
+/* The browser's own surfaces belong to the design too. */
+::selection { background: var(--rule); color: var(--ink); }
+:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
+a { color: inherit; text-underline-offset: 3px; text-decoration-thickness: 1px; }
+a:hover { text-decoration-color: var(--alarm); }
+* { scrollbar-color: var(--ctl-line) var(--stock-sunk); scrollbar-width: thin; }
+::-webkit-scrollbar { width: 11px; height: 11px; }
+::-webkit-scrollbar-track { background: var(--stock-sunk); }
+::-webkit-scrollbar-thumb { background: var(--ctl-line); border: 3px solid var(--stock-sunk); }
+
+.skip {
+  position: absolute; left: -9999px; top: 0;
+  background: var(--ink); color: var(--stock);
+  padding: 10px 16px; z-index: 20;
+}
+.skip:focus { left: 8px; top: 8px; }
+
+/* ---------------------------------------------------------------- the roll and the rail */
+
+.wrap {
+  max-width: var(--measure);
+  margin: 0 auto;
+  padding: 0 var(--gutter) calc(var(--chart) * 3);
+  position: relative;
+}
+
+/* The rail is the one thing on the page that does not move: the chart feeds past it, and
+   there is always a fixed mark to read a figure against. It carries no content of its own
+   that is not repeated in the flow, so laying it down on a phone loses nothing. */
+.rail {
+  position: fixed;
+  /* Entirely outside the text column: the rail ends where the page's own margin
+     begins, so nothing is ever written across it. Below 1180px there is no margin left
+     to put it in, and it goes away rather than crowding the measure. */
+  left: calc((100vw - var(--measure)) / 2 - var(--rail) - 10px);
+  top: 0; bottom: 0;
+  width: var(--rail);
+  border-right: 1px solid var(--rule-major);
+  pointer-events: none;
+  z-index: 1;
+}
+.rail::before {
+  /* The calibration marks stamped down the edge of every roll. */
+  content: "";
+  position: absolute; inset: 0 8px 0 auto; width: 9px;
+  background-image: repeating-linear-gradient(to bottom,
+    var(--ctl-line) 0, var(--ctl-line) 1px,
+    transparent 1px, transparent calc(var(--chart) * 5));
+}
+.rail span {
+  position: absolute; left: 10px; top: calc(var(--chart) * 5);
+  font-size: 12px; font-stretch: 80%; color: var(--pencil);
+  writing-mode: vertical-rl;
+  letter-spacing: 0;
+}
+
+@media (max-width: 1180px) { .rail { display: none; } }
+
+/* ------------------------------------------------------------------------- the masthead */
+
+.masthead {
+  display: flex; flex-wrap: wrap; gap: 16px;
+  align-items: flex-end; justify-content: space-between;
+  padding: calc(var(--chart) * 2) 0 var(--chart);
+  border-bottom: 2px solid var(--ink);
+  margin-bottom: calc(var(--chart) * 2);
+}
+.lockup { display: flex; align-items: center; gap: 12px; }
+.lockup svg { width: 20px; height: 38px; display: block; }
+.wordmark, .lockup h1 {
+  margin: 0;
+  font-size: clamp(30px, 5vw, 44px);
+  font-weight: 700; font-stretch: 112%;
+  letter-spacing: -0.03em; line-height: 0.92;
+}
+.nav { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.nav a {
+  font-size: 15px; font-weight: 500;
+  padding: 8px 12px;
+  text-decoration: none;
+  border: 1px solid transparent;
+  transition: background-color 140ms ease-out, border-color 140ms ease-out;
+}
+.nav a:hover { background: var(--stock-sunk); }
+.nav a[aria-current="page"] { border-color: var(--ctl-line); }
+.nav a.go {
+  background: var(--ink); color: var(--stock); border-color: var(--ink);
+}
+.nav a.go:hover { background: var(--alarm); border-color: var(--alarm); }
+
+/* --------------------------------------------------------------------------- the thesis */
+
+.thesis {
+  margin: calc(var(--chart) * 2) 0 var(--chart);
+  font-size: clamp(28px, 4.6vw, 46px);
+  font-weight: 600; line-height: 1.12; letter-spacing: -0.022em;
+  max-width: 18ch;
+  text-wrap: balance;
+}
+.thesis em { font-style: normal; color: var(--pen-down); }
+.lede { margin: 0 0 calc(var(--chart) * 2); max-width: 66ch; font-size: 17px; }
+
+/* ------------------------------------------------------------- calibration band = heading
+ *
+ * A section is marked the way an operator marks a roll when the range changes: a heavy
+ * rule across the paper, the name written on it, the aside in pencil on the same
+ * baseline. Nothing sits above it — the heading carries its own weight. */
+
+.band {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px;
+  margin: calc(var(--chart) * 3) 0 var(--chart);
+  padding-bottom: 8px;
+  border-bottom: 2px solid var(--ink);
+  font-size: 20px; font-weight: 600; letter-spacing: -0.012em;
+}
+.band span {
+  font-size: 14px; font-weight: 400; color: var(--pencil); letter-spacing: 0;
+}
+h3.sub { margin: calc(var(--chart) * 1.5) 0 8px; font-size: 17px; font-weight: 600; }
+
+p { max-width: 68ch; }
+.note { margin: 0 0 var(--chart); max-width: 68ch; }
+.note b { font-weight: 600; }
+small, .aside { color: var(--pencil); font-size: 14px; }
+
+/* Superseded, not deleted: the record shows its own strata. */
+.struck { color: var(--pencil); text-decoration: line-through; text-decoration-color: var(--alarm); }
+
+/* -------------------------------------------------------------------------- the channels */
+
+.channel {
+  background: var(--stock-sunk);
+  border-top: 1px solid var(--rule-major);
+  border-bottom: 1px solid var(--rule-major);
+  padding: 20px 22px;
+  margin: 0 0 var(--chart);
+}
+.channel-head {
+  display: flex; flex-wrap: wrap; gap: 8px 16px;
+  justify-content: space-between; align-items: baseline;
+  margin-bottom: 14px;
+  font-size: 13px; font-stretch: 80%; font-weight: 500; color: var(--pencil);
+}
+
+.keys { display: flex; flex-wrap: wrap; gap: 6px 18px; align-items: center; font-size: 13px; font-stretch: 80%; }
+.keys i { display: inline-block; width: 22px; height: 0; border-top: 2px solid var(--ink); vertical-align: middle; margin-right: 6px; }
+.keys .two i { border-top-style: dashed; border-color: var(--pen-down); }
+
+/* ---------------------------------------------------------------------------- the figures */
+
+.figures { display: grid; gap: 16px 22px; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); margin: 0; }
+.figures div { margin: 0; }
+.figures dt { font-size: 13px; color: var(--pencil); }
+.figures dd {
+  margin: 3px 0 0;
+  font-family: var(--mono);
+  font-size: clamp(16px, 2.1vw, 21px);
+  font-weight: 500; letter-spacing: -0.01em; line-height: 1.25;
+}
+.figures dd small { font-family: var(--sans); font-size: 12.5px; color: var(--pencil); }
+
+/* ----------------------------------------------------------------------------- the pens */
+
+.trace { display: block; width: 100%; height: auto; }
+.trace .grid { stroke: var(--rule-major); stroke-width: 1; fill: none; }
+.trace .line, .trace path.line { stroke: var(--ink); stroke-width: 1.5; fill: none; }
+.trace .line.two { stroke: var(--pen-down); stroke-width: 1.25; stroke-dasharray: 5 3; }
+.trace .endlabel { font-family: var(--mono); font-size: 11px; fill: var(--pencil); }
+
+/* The one authored moment on the site: the pen lays the trace down when the data lands. */
+@media (prefers-reduced-motion: no-preference) {
+  .trace .draw { stroke-dasharray: var(--len, 2000); stroke-dashoffset: var(--len, 2000); animation: ink 900ms cubic-bezier(.16,1,.3,1) forwards; }
+}
+@keyframes ink { to { stroke-dashoffset: 0; } }
+
+/* ---------------------------------------------------------------------------- the tables */
+
+.scroll { overflow-x: auto; margin: 0 0 var(--chart); }
+/* Mono is a measurement, not a costume for "technical". A table of sentences is
+   sentences: it gets the sans. Only a table that is actually a readout — the ledger,
+   the episode list — takes .data, and inside any table a figure cell takes .num. */
+table { border-collapse: collapse; width: 100%; font-family: var(--sans); font-size: 14.5px; line-height: 1.5; }
+table.data { font-family: var(--mono); font-size: 12.5px; }
+td.num, td .mono, td code, td .addr, td.who { font-family: var(--mono); font-size: 12.5px; }
+th {
+  font-family: var(--sans); font-size: 13px; font-weight: 500; font-stretch: 80%;
+  color: var(--pencil); text-align: left;
+  padding: 8px 12px 8px 0; border-bottom: 1px solid var(--ctl-line); white-space: nowrap;
+}
+td { padding: 9px 12px 9px 0; border-bottom: 1px solid var(--rule); vertical-align: top; }
+td.num, th.num { text-align: right; padding-right: 16px; }
+tr:last-child td { border-bottom: 0; }
+.up { color: var(--ink); }
+.down { color: var(--pen-down); }
+.bad { color: var(--alarm); }
+
+/* ---------------------------------------------------------------------------- the buttons */
+
+.btn, button, .out .lead {
+  font-family: var(--sans); font-size: 15px; font-weight: 500;
+  padding: 11px 18px; border: 1px solid var(--ctl-line);
+  background: transparent; color: var(--ink);
+  border-radius: 0; cursor: pointer;
+  text-decoration: none; display: inline-block;
+  transition: background-color 140ms ease-out, color 140ms ease-out, border-color 140ms ease-out;
+}
+.btn:hover, button:hover { background: var(--stock-sunk); }
+.btn.primary, button.primary, .out .lead {
+  background: var(--ink); color: var(--stock); border-color: var(--ink);
+}
+.btn.primary:hover, button.primary:hover, .out .lead:hover {
+  background: var(--alarm); border-color: var(--alarm);
+}
+.btn[disabled], button[disabled] {
+  cursor: not-allowed;
+  background: var(--stock-sunk); color: var(--pencil); border-color: var(--ctl-line);
+}
+.btn[disabled]:hover, button[disabled]:hover { background: var(--stock-sunk); }
+
+/* ----------------------------------------------------------------------------- the inputs */
+
+label { display: block; font-size: 13px; color: var(--pencil); margin-bottom: 5px; }
+input[type="text"], input[type="number"] {
+  width: 100%;
+  font-family: var(--mono); font-size: 16px; /* 16px: any smaller and mobile Safari zooms */
+  padding: 11px 12px;
+  background: var(--stock); color: var(--ink);
+  border: 1px solid var(--ctl-line); border-radius: 0;
+  caret-color: var(--ink);
+}
+input:focus-visible { border-color: var(--ink); }
+
+/* ------------------------------------------------------------------------------ the alarm
+ *
+ * Three steps, and only the last one is red. Routine stays in pen; a degraded read is
+ * pencil on a hatched bed; a genuine failure gets the event pen and a pip in the margin. */
+
+.alarm {
+  margin: 0 0 var(--chart);
+  padding: 12px 0 12px 22px;
+  border-top: 1px solid var(--alarm); border-bottom: 1px solid var(--alarm);
+  color: var(--alarm); font-size: 15px;
+  position: relative;
+}
+/* The event pip: what the second pen actually draws in the margin channel when
+   something happens. A full-height coloured rail down the edge is the generated-UI
+   tell, and it is not what a recorder does. */
+.alarm::before {
+  content: ""; position: absolute; left: 0; top: 1.05em;
+  width: 8px; height: 8px; background: var(--alarm);
+}
+.waiting { color: var(--pencil); }
+
+/* ------------------------------------------------------------------------------ the outro */
+
+.out { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; margin: calc(var(--chart) * 2) 0 0; }
+.out a:not(.lead) { font-size: 15px; font-weight: 500; padding: 11px 4px; text-decoration: none; border-bottom: 1px solid var(--ctl-line); }
+.out a:not(.lead):hover { border-bottom-color: var(--alarm); }
+
+.foot {
+  display: flex; flex-wrap: wrap; gap: 8px 20px; justify-content: space-between;
+  margin-top: calc(var(--chart) * 3);
+  padding-top: var(--chart);
+  border-top: 1px solid var(--rule-major);
+  font-size: 13px; color: var(--pencil);
+}
+.foot span:first-child { font-family: var(--mono); font-size: 12.5px; }
+
+/* ------------------------------------------------------------------------------ the mono */
+
+code, .addr, .mono { font-family: var(--mono); font-size: 12.5px; }

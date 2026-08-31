@@ -1,119 +1,112 @@
 <title>Abadi App</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Martian+Mono:wght@300;400;600&family=Public+Sans:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
 
 <style>
-  :root {
-    --ink: #14203A; --ink-raised: #1B2A48; --ink-line: #2A3B5E;
-    /* --ink-line is a hairline between things. A control's boundary is not a hairline:
-       WCAG 1.4.11 wants 3:1 against the surface behind it, and #2A3B5E measures 1.45:1
-       on --ink and 1.28:1 on --ink-raised. Same hue, lifted to 3.6:1 / 3.2:1. */
-    --ctl-line: #64789F;
-    --cotton: #EAE4D6; --cotton-dim: #8D97AE; --turmeric: #E0A045; --teal: #4FA396;
-    --display: "Bricolage Grotesque", system-ui, sans-serif;
-    --body: "Public Sans", system-ui, sans-serif;
-    --mono: "Martian Mono", ui-monospace, monospace;
+  /* Page-specific only; the world lives in /recorder.css.
+     Operate mode: the visitor is here to do something with their own money, so
+     scanability and state beat expression. The instrument recedes. */
+
+  .masthead nav { display: flex; flex-wrap: wrap; gap: 4px; }
+  .masthead nav a {
+    font-size: 15px; font-weight: 500; padding: 8px 12px; text-decoration: none;
+    border: 1px solid transparent;
   }
-  * { box-sizing: border-box; }
-  body { margin: 0; background: var(--ink); color: var(--cotton); font-family: var(--body); font-size: 16px; line-height: 1.6; -webkit-font-smoothing: antialiased; }
-  a { color: var(--cotton); text-decoration-color: var(--ink-line); text-underline-offset: 3px; }
-  a:hover { text-decoration-color: var(--turmeric); }
-  :focus-visible { outline: 2px solid var(--turmeric); outline-offset: 3px; }
-  ::selection { background: var(--turmeric); color: var(--ink); }
+  .masthead nav a:hover { background: var(--stock-sunk); }
+  .masthead nav a[aria-current="page"] { border-color: var(--ctl-line); }
+  .lockup { text-decoration: none; color: inherit; }
+  .lockup h1 { font-size: clamp(26px, 4vw, 36px); font-weight: 700; font-stretch: 112%; letter-spacing: -0.03em; margin: 0; }
 
-  /* First stop on every page. Moved by transform, so it costs no layout at rest. */
-  .skip {
-    position: absolute; left: 12px; top: 12px; z-index: 60;
-    background: var(--ink-raised); color: var(--turmeric);
-    border: 1px solid var(--turmeric); padding: 10px 14px;
-    font-size: 15px; font-weight: 500; text-decoration: none;
-    transform: translateY(-200%);
+  /* Every h2 on this page is a calibration band, same as .band elsewhere. */
+  main h2 {
+    display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px;
+    margin: calc(var(--chart) * 2.5) 0 var(--chart);
+    padding-bottom: 8px; border-bottom: 2px solid var(--ink);
+    font-size: 20px; font-weight: 600; letter-spacing: -0.012em;
   }
-  .skip:focus { transform: none; }
+  main h2 span { font-size: 14px; font-weight: 400; color: var(--pencil); }
 
-  .wrap { max-width: 1000px; margin: 0 auto; padding: 0 24px 96px; }
-
-  .masthead { display: flex; align-items: center; justify-content: space-between; gap: 24px; flex-wrap: wrap; padding: 36px 0 26px; border-bottom: 1px solid var(--ink-line); }
-  .lockup { display: flex; align-items: center; gap: 14px; text-decoration: none; color: inherit; }
-  .lockup svg { height: 46px; width: auto; display: block; }
-  .lockup h1 { font-family: var(--display); font-weight: 800; font-size: clamp(32px, 5.4vw, 46px); letter-spacing: -0.045em; line-height: 0.9; margin: 0; }
-  nav { display: flex; gap: 18px; flex-wrap: wrap; font-size: 15px; }
-  nav a { text-decoration: none; color: var(--cotton-dim); }
-  nav a[aria-current] { color: var(--cotton); font-weight: 500; }
-
-  h2 { font-family: var(--display); font-size: 21px; font-weight: 600; letter-spacing: -0.015em; margin: 56px 0 18px; padding-bottom: 12px; border-bottom: 1px solid var(--ink-line); display: flex; justify-content: space-between; align-items: baseline; gap: 16px; }
-  h2 span { font-family: var(--body); font-size: 14px; font-weight: 400; color: var(--cotton-dim); }
-
-  .panel { border: 1px solid var(--ink-line); background: var(--ink-raised); padding: 22px clamp(16px, 2.4vw, 26px); }
-  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px 22px; margin: 0; }
-  .grid dt { font-size: 13px; color: var(--cotton-dim); }
-  .grid dd { margin: 4px 0 0; font-family: var(--mono); font-size: clamp(15px, 2vw, 20px); font-weight: 600; font-variant-numeric: tabular-nums; }
-  .grid dd small { font-size: 12px; font-weight: 300; color: var(--cotton-dim); }
-
-  .wallet { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
-  .wallet .who { font-family: var(--mono); font-size: 15px; }
-  .wallet .net { font-size: 14px; color: var(--cotton-dim); }
-
-  button {
-    font: inherit; font-weight: 500; font-size: 15px; cursor: pointer;
-    color: var(--cotton); background: transparent; border: 1px solid var(--ctl-line);
-    padding: 12px 18px; transition: border-color .15s ease-out, color .15s ease-out, background .15s ease-out;
+  .panel {
+    background: var(--stock-sunk);
+    border-top: 1px solid var(--rule-major); border-bottom: 1px solid var(--rule-major);
+    padding: 20px 22px; margin: 0 0 var(--chart);
   }
-  button:hover:not(:disabled) { border-color: var(--turmeric); color: var(--turmeric); }
-  button.lead { border-color: var(--turmeric); color: var(--turmeric); }
-  button.lead:hover:not(:disabled) { background: var(--turmeric); color: var(--ink); }
-  button:disabled { opacity: .45; cursor: not-allowed; }
+  .wallet { display: flex; flex-wrap: wrap; gap: 14px 20px; align-items: center; justify-content: space-between; }
+  .who { font-family: var(--mono); font-size: 13.5px; }
+  .net { font-size: 13px; color: var(--pencil); margin-top: 3px; }
 
-  .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }
-  .action { border: 1px solid var(--ink-line); background: var(--ink-raised); padding: 22px clamp(16px, 2.4vw, 26px); }
-  .action h3 { font-family: var(--display); font-size: 18px; font-weight: 600; margin: 0 0 6px; letter-spacing: -0.01em; }
-  .action p { margin: 0 0 16px; color: var(--cotton-dim); font-size: 14px; }
-  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; }
-  .row.all { margin-top: 12px; align-items: center; }
-  .field { flex: 1 1 140px; min-width: 0; }
-  label { display: block; font-size: 13px; color: var(--cotton-dim); margin-bottom: 6px; }
-  input[type=text] {
-    font: inherit; font-family: var(--mono); font-size: 16px; color: var(--cotton);
-    background: var(--ink); border: 1px solid var(--ctl-line); padding: 11px 12px; width: 100%;
-    caret-color: var(--turmeric);
+  .grid { display: grid; gap: 16px 22px; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); margin: 0; }
+  .grid div { margin: 0; }
+  .grid dt { font-size: 13px; color: var(--pencil); }
+  .grid dd {
+    margin: 3px 0 0; font-family: var(--mono);
+    font-size: clamp(16px, 2vw, 20px); font-weight: 500; letter-spacing: -0.01em;
   }
-  button.max { padding: 12px 14px; color: var(--cotton-dim); }
-  .preview { font-family: var(--mono); font-size: 13px; color: var(--cotton-dim); }
-  .status { margin: 0 0 16px; padding: 12px 14px; border: 1px solid var(--ink-line); background: var(--ink-raised); font-size: 15px; }
-  .status[data-tone="busy"] { border-color: var(--turmeric); }
-  .status[data-tone="error"] { border-color: var(--turmeric); color: var(--cotton); }
-  .status a { margin-left: 6px; }
-  .nowallet[hidden] { display: none; }
-  .log .empty { color: var(--cotton-dim); }
-  /* A 1px border swap is not a focus indicator. The field gets the same 2px turmeric ring
-     every other control on the site gets; the border change is the extra, not the whole. */
-  input[type=text]:focus { border-color: var(--turmeric); }
-  .guard { margin: 12px 0 0; padding: 12px 14px; border: 1px solid var(--turmeric); color: var(--cotton); font-size: 14px; }
-  .guard[hidden] { display: none; }
+  .grid dd small { font-family: var(--sans); font-size: 12.5px; color: var(--pencil); }
 
-  table { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 13px; }
-  th, td { text-align: left; padding: 10px 14px 10px 0; border-bottom: 1px solid var(--ink-line); }
-  th { font-family: var(--body); font-size: 13px; font-weight: 500; color: var(--cotton-dim); }
+  /* The status line is the escalation ladder's middle rung: pencil while routine,
+     the event pen only when something actually failed. */
+  /* The escalation ladder, drawn as the recorder draws it: a pip in the margin whose
+     colour is the pen that wrote the line. A 3px rail down the side is the generated-UI
+     tell and says nothing a pip does not. */
+  .status {
+    position: relative;
+    margin: 0 0 var(--chart); padding: 11px 0 11px 22px;
+    border-top: 1px solid var(--rule-major);
+    font-size: 15px; color: var(--pencil); max-width: 80ch;
+  }
+  .status::before { content: ""; position: absolute; left: 0; top: 1.05em; width: 8px; height: 8px; background: var(--ctl-line); }
+  .status[data-tone="work"] { color: var(--ink); }
+  .status[data-tone="work"]::before { background: var(--ink); }
+  .status[data-tone="ok"] { color: var(--ink); }
+  .status[data-tone="ok"]::before { background: var(--pen-down); }
+  .status[data-tone="bad"] { color: var(--alarm); }
+  .status[data-tone="bad"]::before { background: var(--alarm); }
 
-  .log { list-style: none; margin: 0; padding: 0; font-size: 14px; }
-  .log li { padding: 8px 0; border-bottom: 1px solid var(--ink-line); }
-  .log time { font-family: var(--mono); font-size: 12px; color: var(--cotton-dim); margin-right: 8px; }
-  .log a { margin-left: 6px; }
-  #app[data-busy="true"] .actions { opacity: .7; }
+  .actions { display: grid; gap: var(--chart); grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); margin-bottom: var(--chart); }
+  .action {
+    background: var(--stock-sunk);
+    border-top: 1px solid var(--rule-major); border-bottom: 1px solid var(--rule-major);
+    padding: 18px 20px 20px;
+  }
+  .action h3 { margin: 0 0 6px; font-size: 17px; font-weight: 600; }
+  .action p { margin: 0 0 14px; font-size: 14.5px; color: var(--pencil); max-width: 46ch; }
+  .action a { color: var(--ink); }
 
-  /* A number that could not be read is still shown — it was true once — but never as if
-     it were true now: struck through, dimmed, with the heading saying when it was read. */
-  #app[data-stale="true"] .grid dd { color: var(--cotton-dim); text-decoration: line-through; text-decoration-color: var(--turmeric); }
-  #app[data-stale="true"] #freshness { color: var(--turmeric); }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; }
+  .row .field { flex: 1 1 150px; }
+  .row.all { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--rule-major); align-items: center; }
+  .preview { font-family: var(--mono); font-size: 12.5px; color: var(--pencil); }
+  .max { padding: 11px 12px; }
+  .lead:not([disabled]) { background: var(--ink); color: var(--stock); border-color: var(--ink); }
+  .lead:hover:not([disabled]) { background: var(--alarm); border-color: var(--alarm); }
 
-  .note { color: var(--cotton-dim); max-width: 66ch; font-size: 15px; }
-  #contracts a { font-family: var(--mono); font-size: 13px; word-break: break-all; }
-  .note b { color: var(--cotton); font-weight: 500; }
-  #wake b { font-family: var(--mono); font-weight: 600; }
+  .guard {
+    position: relative;
+    margin: 12px 0 0; padding: 11px 0 11px 22px;
+    border-top: 1px solid var(--alarm); color: var(--alarm); font-size: 14.5px;
+  }
+  .guard::before { content: ""; position: absolute; left: 0; top: 1.05em; width: 8px; height: 8px; background: var(--alarm); }
+  .nowallet { color: var(--alarm); }
+  .nowallet a { color: var(--alarm); }
 
-  @media (max-width: 640px) { .actions { grid-template-columns: 1fr; } }
-  @media (prefers-reduced-motion: reduce) { button { transition: none; } }
+  .log { list-style: none; margin: 0; padding: 0; }
+  .log li {
+    padding: 11px 0; border-bottom: 1px solid var(--rule);
+    font-family: var(--mono); font-size: 12.5px;
+    display: flex; flex-wrap: wrap; gap: 4px 14px;
+  }
+  .log li:last-child { border-bottom: 0; }
+  .log .empty { font-family: var(--sans); font-size: 14.5px; color: var(--pencil); }
+  .log a { color: var(--pen-down); }
+
+  main table { font-family: var(--mono); font-size: 12.5px; }
+
+  [data-busy="true"] button:not([disabled]) { opacity: .6; }
+
+  /* A number that was true once is kept and struck, never quietly served as current.
+     Same rule as .struck in the world sheet; app.js flips data-stale. */
+  [data-stale="true"] .grid dd { text-decoration: line-through; text-decoration-color: var(--alarm); color: var(--pencil); }
+  #freshness { color: var(--pencil); }
+  [data-stale="true"] #freshness { color: var(--alarm); }
 </style>
 
 <a class="skip" href="#app">Skip to content</a>
@@ -122,10 +115,10 @@
 
   <header class="masthead">
     <a class="lockup" href="/" aria-label="Abadi home">
-      <svg viewBox="6 1 20 30" aria-hidden="true">
-        <rect x="6" y="6" width="12.4" height="20" fill="#E0A045"/>
-        <rect x="18.4" y="6" width="7.6" height="20" fill="#4FA396"/>
-        <path d="M18.4 1V31" stroke="#EAE4D6" stroke-width="1" opacity=".5"/>
+      <svg viewBox="0 0 20 38" aria-hidden="true">
+        <rect x="0" y="4" width="11.7" height="30" fill="#16262B"/>
+        <rect x="13.1" y="4" width="6.9" height="30" fill="#2A3A6B"/>
+        <path d="M12.4 0V38" stroke="#B4331C" stroke-width="1.4"/>
       </svg>
       <h1>abadi</h1>
     </a>

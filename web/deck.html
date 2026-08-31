@@ -1,126 +1,16 @@
-<!-- impeccable-disable content-hidden-at-rest: one slide is shown at a time by design -->
-<title>Abadi Deck</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Martian+Mono:wght@300;400;600&family=Public+Sans:wght@400;500&display=swap" rel="stylesheet">
+<title>Abadi — deck</title>
 
 <style>
-  :root {
-    --ink:        #14203A;
-    --ink-line:   #2A3B5E;
-    /* --ink-line is a hairline between things. A control's boundary is not a hairline:
-       WCAG 1.4.11 wants 3:1 against the surface behind it, and #2A3B5E measures 1.45:1
-       on --ink. Same hue, lifted to 3.6:1. */
-    --ctl-line:   #64789F;
-    --cotton:     #EAE4D6;
-    --cotton-dim: #8D97AE;
-    --turmeric:   #E0A045;
-    --teal:       #4FA396;
-    --wax:        #F7F3E7;
-    --display: "Bricolage Grotesque", system-ui, sans-serif;
-    --body: "Public Sans", system-ui, sans-serif;
-    --mono: "Martian Mono", ui-monospace, monospace;
-  }
-  * { box-sizing: border-box; }
-  body {
-    margin: 0; background: var(--ink); color: var(--cotton);
-    font-family: var(--body); line-height: 1.55;
-    -webkit-font-smoothing: antialiased;
-    scroll-snap-type: y proximity;
-  }
+  /* Page-specific only; the world lives in /recorder.css.
+     Experience mode: one slide at a time, the paper still feeding underneath. */
 
-  .slide {
-    min-height: 100vh; scroll-snap-align: start;
-    display: flex; flex-direction: column; justify-content: center;
-    padding: 68px 40px; max-width: 940px; margin: 0 auto;
-    border-bottom: 1px solid var(--ink-line);
-    position: relative;
-  }
-  .n {
-    position: absolute; top: 34px; left: 40px;
-    font-family: var(--mono); font-size: 12px;
-    color: var(--cotton-dim);
-  }
-  h2 {
-    font-family: var(--display); font-weight: 800;
-    font-size: clamp(30px, 5.4vw, 56px); line-height: 1.04;
-    letter-spacing: -0.035em; margin: 0 0 22px; max-width: 19ch;
-  }
-  h2 em { font-style: normal; color: var(--turmeric); }
-  p { font-size: clamp(16px, 1.9vw, 19px); margin: 0 0 16px; max-width: 60ch; }
-  p.dim { color: var(--cotton-dim); }
-  code, .mono { font-family: var(--mono); font-size: 0.88em; }
-  pre {
-    font-family: var(--mono); font-size: clamp(11px, 1.5vw, 14px);
-    line-height: 1.8; color: var(--cotton);
-    background: rgba(255,255,255,.03);
-    border-left: 2px solid var(--turmeric);
-    padding: 20px 22px; overflow-x: auto; margin: 0 0 20px;
-  }
-  pre b { color: var(--turmeric); font-weight: 600; }
-  pre i { color: var(--cotton-dim); font-style: normal; }
-
-  table { border-collapse: collapse; width: 100%; margin: 0 0 20px; }
-  th, td {
-    text-align: left; padding: 9px 12px 9px 0;
-    border-bottom: 1px solid var(--ink-line); font-size: 15px;
-  }
-  th {
-    font-family: var(--body); font-size: 13px; font-weight: 500;
-    color: var(--cotton-dim);
-  }
-  td.num { font-family: var(--mono); font-size: 14px; text-align: right; }
-  tr.hi td { color: var(--turmeric); }
-
-  /* cover */
-  .cover h1 {
-    font-family: var(--display); font-weight: 800;
-    font-size: clamp(64px, 17vw, 190px); line-height: 0.82;
-    letter-spacing: -0.055em; margin: 0 0 26px;
-  }
-  .cover h1 span { color: var(--turmeric); }
-  .cover .line {
-    font-family: var(--display); font-weight: 600;
-    font-size: clamp(20px, 3.2vw, 32px); letter-spacing: -0.02em;
-    max-width: 22ch; line-height: 1.3; margin: 0 0 30px;
-  }
-  .cover .meta {
-    font-family: var(--body); font-size: 14px;
-    color: var(--cotton-dim);
-    margin-left: 0;
-  }
-
-  .big {
-    font-family: var(--mono); font-weight: 600;
-    font-size: clamp(56px, 13vw, 128px); line-height: 0.86;
-    letter-spacing: -0.05em; color: var(--wax); margin: 8px 0 14px;
-  }
-  .big.amber { color: var(--turmeric); }
-
-  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 34px; }
-  @media (max-width: 720px) { .two { grid-template-columns: 1fr; } }
-
-  .tick { color: var(--cotton); }
-  .cross { color: var(--turmeric); }
-
-  ul { padding-left: 20px; margin: 0 0 16px; max-width: 60ch; }
-  li { margin-bottom: 9px; font-size: clamp(15px, 1.8vw, 18px); }
-  li::marker { color: var(--turmeric); }
-</style>
-
-
-
-<style>
   html, body { height: 100%; overflow: hidden; }
-  body { scroll-snap-type: none; }
 
   .deck { position: fixed; inset: 0; }
 
   .slide {
     position: absolute; inset: 0;
-    min-height: 0; border-bottom: 0;
-    max-width: none; margin: 0;
-    padding: clamp(56px, 7vh, 92px) clamp(28px, 7vw, 96px);
+    padding: clamp(56px, 7vh, 92px) clamp(28px, 7vw, 96px) clamp(70px, 9vh, 100px);
     display: flex; flex-direction: column; justify-content: center;
     opacity: 0; visibility: hidden;
     transform: translateY(14px);
@@ -133,55 +23,77 @@
     opacity: 1; visibility: visible; transform: none;
     transition: opacity .34s ease, transform .34s ease, visibility 0s;
   }
+
+  .slide h1 {
+    margin: 0 0 14px;
+    font-size: clamp(44px, 8vw, 92px); font-weight: 700; font-stretch: 112%;
+    letter-spacing: -0.035em; line-height: 0.92;
+  }
+  .slide h2 {
+    margin: 0 0 20px;
+    font-size: clamp(26px, 3.6vw, 44px); font-weight: 600;
+    letter-spacing: -0.022em; line-height: 1.14;
+    max-width: 22ch; text-wrap: balance;
+  }
+  .slide h2 em { font-style: normal; color: var(--pen-down); }
+  .slide p { margin: 0 0 16px; font-size: clamp(16px, 1.9vw, 19px); }
+  .slide p.line { font-size: clamp(19px, 2.5vw, 27px); font-weight: 500; max-width: 26ch; }
+  .slide p.line em { font-style: normal; color: var(--pen-down); }
+  .slide p.meta { font-size: 14px; color: var(--pencil); }
+  .slide p.dim { color: var(--pencil); }
+
   .cover .mark {
-    height: clamp(60px,9vh,104px); width: auto; align-self: flex-start;
-    display: block; margin: 0 0 clamp(10px,1.8vh,20px);
+    height: clamp(60px, 9vh, 104px); width: auto; align-self: flex-start;
+    display: block; margin: 0 0 clamp(10px, 1.8vh, 20px);
   }
 
-  /* chrome */
-  .bar {
-    position: fixed; left: 0; right: 0; bottom: 0; height: 2px;
-    background: var(--ink-line); z-index: 20;
-  }
-  .bar i { display: block; height: 100%; width: 100%; transform-origin: left; background: var(--turmeric); transition: transform .34s cubic-bezier(.2,.8,.2,1); }
+  .slide ul { padding-left: 20px; margin: 0 0 16px; }
+  .slide li { margin-bottom: 9px; font-size: clamp(15px, 1.8vw, 18px); }
+  .slide li::marker { color: var(--pen-down); }
 
-  .nav {
-    position: fixed; bottom: 22px; right: clamp(20px,4vw,40px);
-    display: flex; align-items: center; gap: 6px; z-index: 20;
+  .slide table { font-family: var(--sans); font-size: clamp(14px, 1.6vw, 16px); margin-bottom: 18px; }
+  .slide th { border-bottom: 1px solid var(--ctl-line); padding: 8px 14px 8px 0; }
+  .slide td { border-bottom: 1px solid var(--rule); padding: 9px 14px 9px 0; }
+  .slide td.num { font-family: var(--mono); text-align: right; font-size: clamp(13px, 1.5vw, 15px); }
+  .slide tr.hi td { border-top: 2px solid var(--ink); border-bottom: 0; font-weight: 600; }
+
+  .slide pre {
+    font-family: var(--mono); font-size: clamp(12px, 1.4vw, 14.5px); line-height: 1.85;
+    background: var(--stock-sunk);
+    border-top: 1px solid var(--rule-major); border-bottom: 1px solid var(--rule-major);
+    padding: 16px 20px; margin: 0 0 18px;
+    overflow-x: auto;
   }
+  .slide pre b { font-weight: 500; }
+  .slide pre i { font-style: normal; color: var(--pencil); }
+
+  /* ------------------------------------------------------------------------- chrome */
+
+  /* The paper feed: how far through the roll this slide is. */
+  .bar { position: fixed; left: 0; right: 0; bottom: 0; height: 3px; background: var(--rule); z-index: 20; }
+  .bar i { display: block; height: 100%; width: 100%; transform-origin: left; background: var(--ink); transition: transform .34s cubic-bezier(.2,.8,.2,1); }
+
+  .nav { position: fixed; bottom: 20px; right: clamp(20px, 4vw, 40px); display: flex; align-items: center; gap: 6px; z-index: 20; }
   .nav button {
-    appearance: none; background: none; cursor: pointer;
-    border: 1px solid var(--ctl-line); color: var(--cotton-dim);
+    appearance: none; background: var(--stock); cursor: pointer;
+    border: 1px solid var(--ctl-line); color: var(--ink);
     font-family: var(--mono); font-size: 13px; line-height: 1;
-    width: 34px; height: 30px; border-radius: 2px;
-    transition: color .15s, border-color .15s;
+    width: 34px; height: 30px; padding: 0;
+    transition: background-color .15s, border-color .15s;
   }
-  .nav button:hover:not(:disabled) { color: var(--turmeric); border-color: var(--turmeric); }
-  .nav button:disabled { opacity: .3; cursor: default; }
-  .nav button:focus-visible { outline: 2px solid var(--turmeric); outline-offset: 2px; }
-  .count {
-    font-family: var(--mono); font-size: 12px;
-    color: var(--cotton-dim); margin-right: 10px;
-  }
-  .count b { color: var(--cotton); font-weight: 400; }
+  .nav button:hover:not(:disabled) { background: var(--ink); color: var(--stock); border-color: var(--ink); }
+  .nav button:disabled { cursor: default; background: var(--stock-sunk); color: var(--pencil); border-color: var(--ctl-line); }
+  .count { font-family: var(--mono); font-size: 12px; color: var(--pencil); margin-right: 10px; }
+  .count b { color: var(--ink); font-weight: 500; }
 
   .hint {
-    position: fixed; bottom: 24px; left: clamp(28px,7vw,96px);
-    font-family: var(--body); font-size: 13px;
-    color: var(--cotton-dim); z-index: 20;
+    position: fixed; bottom: 22px; left: clamp(28px, 7vw, 96px);
+    font-size: 13px; color: var(--pencil); z-index: 20;
     transition: opacity .4s ease;
   }
   .hint.gone { opacity: 0; }
 
-  /* First stop on the page. Moved by transform, so it costs no layout at rest. */
-  .skip {
-    position: fixed; left: 12px; top: 12px; z-index: 60;
-    background: var(--ink); color: var(--turmeric);
-    border: 1px solid var(--turmeric); padding: 10px 14px;
-    font-family: var(--body); font-size: 15px; font-weight: 500; text-decoration: none;
-    transform: translateY(-200%);
-  }
-  .skip:focus { transform: none; }
+  .skip { position: fixed; }
 
   /* Announced, never drawn. A slide change is silent to a screen reader otherwise. */
   .sr-only {
@@ -189,7 +101,7 @@
     overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0;
   }
 
-  .slide:focus-visible, pre:focus-visible { outline: 2px solid var(--turmeric); outline-offset: -2px; }
+  .slide:focus-visible, .slide pre:focus-visible { outline: 2px solid var(--ink); outline-offset: -2px; }
 
   @media (max-width: 640px) {
     .hint { display: none; }
@@ -201,17 +113,18 @@
   }
 </style>
 
+
 <a class="skip" href="#main">Skip to content</a>
 
 <main class="deck" id="main" tabindex="-1">
 <section class="slide cover" data-i="0" tabindex="0" aria-label="Slide 1 of 10">
-  <svg class="mark" viewBox="6 1 20 30" aria-hidden="true">
-    <rect x="6" y="6" width="12.4" height="20" fill="#E0A045"/>
-        <rect x="18.4" y="6" width="7.6" height="20" fill="#4FA396"/>
-        <path d="M18.4 1V31" stroke="#EAE4D6" stroke-width="1" opacity=".5"/>
+  <svg class="mark" viewBox="0 0 20 38" aria-hidden="true">
+    <rect x="0" y="4" width="11.7" height="30" fill="#16262B"/>
+    <rect x="13.1" y="4" width="6.9" height="30" fill="#2A3A6B"/>
+    <path d="M12.4 0V38" stroke="#B4331C" stroke-width="1.4"/>
   </svg>
-  <h1>ABA<span>DI</span></h1>
-  <p class="line">The markets expire every window. <span style="color:var(--turmeric)">The liquidity doesn't.</span></p>
+  <h1>abadi</h1>
+  <p class="line">The markets expire every window. <em>The liquidity doesn't.</em></p>
   <p class="meta">Somnia × DreamDEX Event Contracts Hackathon · Shannon testnet</p>
 </section>
 <section class="slide" data-i="1" tabindex="0" aria-label="Slide 2 of 10">

@@ -6,7 +6,23 @@ import { join, extname } from "node:path";
 
 const ROOT = "dist";
 const PORT = Number(process.env.PORT ?? 4321);
-const TYPES = { ".html": "text/html; charset=utf-8", ".json": "application/json", ".svg": "image/svg+xml" };
+/** Browsers enforce the stylesheet MIME type strictly: served as octet-stream, a .css
+ *  file is fetched, ignored, and reported nowhere. This table had .html/.json/.svg only,
+ *  so the first shared stylesheet the site ever had rendered as an unstyled page in QA
+ *  while production served it fine. Scripts and images are here for the same reason —
+ *  they survive a wrong type today by sniffing, which is luck, not a contract. */
+const TYPES = {
+  ".html": "text/html; charset=utf-8",
+  ".css": "text/css; charset=utf-8",
+  ".js": "text/javascript; charset=utf-8",
+  ".mjs": "text/javascript; charset=utf-8",
+  ".json": "application/json",
+  ".svg": "image/svg+xml",
+  ".png": "image/png",
+  ".webp": "image/webp",
+  ".ico": "image/x-icon",
+  ".woff2": "font/woff2",
+};
 
 async function resolve(url) {
   const clean = decodeURIComponent(url.split("?")[0]);

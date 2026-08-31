@@ -71,17 +71,27 @@ function splitHead(html) {
   return { head: head.join("\n  "), body: rest };
 }
 
-// The mark: one contract split by a price, the two sides always filling the whole.
-// Same geometry as web/logo.svg, on an ink field so it survives a light browser
-// chrome. Inline so it costs no request.
+// Two faces, and the first one has a width axis the design actually uses: Archivo runs
+// from 80% on chart-margin lettering to 112% on the wordmark. Loaded once here rather
+// than five times in five page heads, which is how the old three-family stack drifted.
+const FONTS = [
+  '<link rel="preconnect" href="https://fonts.googleapis.com">',
+  '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>',
+  '<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400;62..125,500;62..125,600;62..125,700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">',
+].join("\n  ");
+
+// The mark: one contract split by a price, the two sides always filling the whole. Same
+// geometry it has always had, redrawn in the recorder's pens — channel one solid ink,
+// channel two the second pen, the price a gap the paper shows through. Inline so it
+// costs no request.
 const FAVICON =
   "data:image/svg+xml," +
   encodeURIComponent(
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">` +
-      `<rect width="32" height="32" fill="#14203A"/>` +
-      `<rect x="6" y="6" width="12.4" height="20" fill="#E0A045"/>` +
-      `<rect x="18.4" y="6" width="7.6" height="20" fill="#4FA396"/>` +
-      `<path d="M18.4 2V30" stroke="#EAE4D6" stroke-width="1" opacity=".5"/>` +
+      `<rect width="32" height="32" fill="#F5F1E6"/>` +
+      `<rect x="6" y="6" width="11.7" height="20" fill="#16262B"/>` +
+      `<rect x="19.1" y="6" width="6.9" height="20" fill="#2A3A6B"/>` +
+      `<path d="M18.4 2V30" stroke="#B4331C" stroke-width="1.4"/>` +
       `</svg>`,
   );
 
@@ -99,10 +109,12 @@ for (const [file, meta] of Object.entries(PAGES)) {
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>${title}</title>
   <meta name="description" content="${meta.description}">
-  <meta name="color-scheme" content="dark">
-  <meta name="theme-color" content="#14203A">
+  <meta name="color-scheme" content="light">
+  <meta name="theme-color" content="#F5F1E6">
   <link rel="icon" href="${FAVICON}">
   <link rel="canonical" href="${ORIGIN}${meta.path}">
+  ${FONTS}
+  <link rel="stylesheet" href="/recorder.css">
   <meta property="og:type" content="website">
   <meta property="og:title" content="${title}">
   <meta property="og:description" content="${meta.description}">

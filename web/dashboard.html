@@ -1,307 +1,155 @@
-<title>Abadi</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Martian+Mono:wght@300;400;600&family=Public+Sans:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+<title>Abadi — the working</title>
 
 <style>
-  :root {
-    --ink:        #14203A;
-    --ink-raised: #1B2A48;
-    --ink-line:   #2A3B5E;
-    --cotton:     #EAE4D6;
-    --cotton-dim: #8D97AE;
-    --turmeric:   #E0A045;
-    --teal:       #4FA396;
-    --wax:        #F7F3E7;
-    --display: "Bricolage Grotesque", system-ui, sans-serif;
-    --body: "Public Sans", system-ui, sans-serif;
-    --mono: "Martian Mono", ui-monospace, monospace;
+  /* Page-specific only; the world lives in /recorder.css.
+     Read mode: this page exists so a sceptic can check the claims. Structure for
+     comprehension first, then make it worth staying in. */
+
+  .home { display: flex; align-items: center; gap: 12px; text-decoration: none; color: inherit; }
+  .home svg { width: 20px; height: 38px; display: block; }
+  .gloss { font-size: 13px; font-stretch: 80%; color: var(--pencil); text-align: right; line-height: 1.5; }
+  .gloss b { color: var(--ink); font-weight: 500; }
+  .nav { margin: 0 0 var(--chart); padding-bottom: var(--chart); border-bottom: 1px solid var(--rule-major); }
+
+  .thesis { max-width: 22ch; }
+  .sub { margin: 0 0 calc(var(--chart) * 2); max-width: 68ch; font-size: 17px; }
+
+  /* ------------------------------------------------------------------- live channel */
+  .live, .ledger-live {
+    background: var(--stock-sunk);
+    border-top: 1px solid var(--rule-major); border-bottom: 1px solid var(--rule-major);
+    padding: 20px 22px; margin: 0 0 var(--chart);
   }
+  .live-err { display: none; position: relative; margin: 0 0 14px; padding: 11px 0 11px 22px; border-top: 1px solid var(--alarm); border-bottom: 1px solid var(--alarm); color: var(--alarm); }
+  .live-err::before { content: ""; position: absolute; left: 0; top: 1.05em; width: 8px; height: 8px; background: var(--alarm); }
+  [data-state="error"] .live-err { display: block; }
+  .live-slots { list-style: none; margin: 16px 0 0; padding: 14px 0 0; border-top: 1px solid var(--rule-major); font-family: var(--mono); font-size: 12px; color: var(--pencil); }
+  .live-foot { margin: 16px 0 0; font-size: 13px; color: var(--pencil); max-width: 74ch; }
 
-  * { box-sizing: border-box; }
-
-  body {
-    margin: 0;
-    background: var(--ink);
-    color: var(--cotton);
-    font-family: var(--body);
-    font-size: 16px;
-    line-height: 1.6;
-    -webkit-font-smoothing: antialiased;
-  }
-
-  a:focus-visible, [tabindex]:focus-visible { outline: 2px solid var(--turmeric); outline-offset: 3px; }
-
-  /* First stop on every page. Moved by transform, so it costs no layout at rest. */
-  .skip {
-    position: absolute; left: 12px; top: 12px; z-index: 60;
-    background: var(--ink-raised); color: var(--turmeric);
-    border: 1px solid var(--turmeric); padding: 10px 14px;
-    font-size: 15px; font-weight: 500; text-decoration: none;
-    transform: translateY(-200%);
-  }
-  .skip:focus { transform: none; }
-
-  .wrap { max-width: 1000px; margin: 0 auto; padding: 0 24px 96px; }
-
-  /* ---------- masthead ---------- */
-  .masthead {
-    display: flex; align-items: baseline; justify-content: space-between;
-    gap: 24px; flex-wrap: wrap;
-    padding: 40px 0 28px;
-    border-bottom: 1px solid var(--ink-line);
-  }
-  .wordmark {
-    font-family: var(--display);
-    font-weight: 800;
-    font-size: clamp(38px, 7vw, 62px);
-    letter-spacing: -0.045em;
-    line-height: 0.9;
-    margin: 0;
-  }
-  .wordmark span { color: var(--turmeric); }
-  .home { display: flex; align-items: center; gap: 14px; text-decoration: none; color: inherit; }
-  .home svg { height: 52px; width: auto; display: block; flex: none; }
-  .gloss {
-    font-family: var(--body); font-size: 14px; line-height: 1.45;
-    color: var(--cotton-dim); text-align: right; max-width: 30ch;
-  }
-  .gloss b { color: var(--cotton); font-weight: 500; }
-
-  /* ---------- thesis ---------- */
-  .thesis {
-    font-family: var(--display); font-weight: 600;
-    font-size: clamp(21px, 3.2vw, 31px);
-    line-height: 1.35; letter-spacing: -0.02em;
-    margin: 44px 0 8px; max-width: 24ch;
-  }
-  .thesis em { font-style: normal; color: var(--turmeric); }
-  .sub { color: var(--cotton-dim); max-width: 58ch; margin: 0 0 52px; }
-
-
-  /* ---------- live strip ---------- */
-  .live { border: 1px solid var(--ink-line); background: var(--ink-raised); padding: 20px clamp(16px, 2.4vw, 26px); }
-  .live-err { display: none; margin: 0; color: var(--turmeric); font-size: 14px; }
-  .live[data-state="unreachable"] .live-err { display: block; }
-  .live[data-state="unreachable"] .live-grid, .live[data-state="unreachable"] .live-slots { display: none; }
-  .live-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin: 0; }
-  .live-grid dt { font-family: var(--body); font-size: 13px; color: var(--cotton-dim); }
-  .live-grid dd { margin: 4px 0 0; font-family: var(--mono); font-size: clamp(15px, 2vw, 20px); font-weight: 600; font-variant-numeric: tabular-nums; }
-  .live-grid small { font-size: 12px; font-weight: 300; color: var(--cotton-dim); }
-  .live-slots { list-style: none; margin: 16px 0 0; padding: 14px 0 0; border-top: 1px solid var(--ink-line); font-family: var(--mono); font-size: 12px; color: var(--cotton-dim); }
-  .live-slots li { padding: 3px 0; }
-  .live-slots b { color: var(--turmeric); font-weight: 600; }
-  .live-foot { margin: 14px 0 0; font-family: var(--body); font-size: 13px; color: var(--cotton-dim); }
-  .live[data-state="loading"] [data-live] { color: var(--cotton-dim); }
-  @media (max-width: 620px) { .live-grid { grid-template-columns: repeat(2, 1fr); } }
-
-
-  /* ---------- live ledger ---------- */
-  .ledger-live { border: 1px solid var(--ink-line); background: var(--ink-raised); padding: 20px clamp(16px, 2.4vw, 26px); }
-  .ledger-live[data-state="unreachable"] .live-err { display: block; }
-  .ledger-live[data-state="unreachable"] .live-grid, .ledger-live[data-state="unreachable"] .tablewrap { display: none; }
-  /* Six figures, and the first two are the headline: per share and what it cost depositors. */
-  .ledger-live .live-grid { grid-template-columns: repeat(3, 1fr); }
-  @media (max-width: 620px) { .ledger-live .live-grid { grid-template-columns: repeat(2, 1fr); } }
-  .ledger-live[data-state="loading"] [data-ledger] { color: var(--cotton-dim); }
-  .tablewrap { overflow-x: auto; margin-top: 16px; }
-  /* ---------- the one chart: a single series, so no legend; the caption names it ---------- */
-  .chart { margin: 18px 0 0; }
-  .chart figcaption { font-size: 14px; color: var(--cotton-dim); margin: 0 0 8px; display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
-  .chart figcaption span { font-family: var(--mono); font-size: 12px; }
-  .chart-plot { position: relative; height: 220px; }
-  .chart-plot svg { width: 100%; height: 100%; display: block; }
-  .chart .grid { stroke: var(--ink-line); stroke-width: 1; }
-  .chart .axis { fill: var(--cotton-dim); font-family: var(--mono); font-size: 11px; }
-  .chart .line { fill: none; stroke: var(--turmeric); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke; }
-  .chart .wash { fill: var(--turmeric); fill-opacity: .1; }
-  .chart .end { fill: var(--turmeric); stroke: var(--ink-raised); stroke-width: 2; vector-effect: non-scaling-stroke; }
-  .chart .endlabel { fill: var(--cotton); font-family: var(--mono); font-size: 12px; font-weight: 600; }
-  .chart .dot { fill: var(--turmeric); stroke: var(--ink-raised); stroke-width: 2; vector-effect: non-scaling-stroke; }
-  .chart .dot.neg { fill: var(--cotton-dim); }
-  .xhair { position: absolute; top: 0; bottom: 22px; width: 1px; background: var(--cotton-dim); pointer-events: none; }
-  .xhair[hidden] { display: none; }
-  .tip { position: absolute; top: 8px; background: var(--ink); border: 1px solid var(--ink-line); padding: 8px 10px; font-size: 13px; pointer-events: none; max-width: 260px; }
-  .tip b { font-family: var(--mono); font-size: 15px; display: block; }
-  .tip[hidden] { display: none; }
-  .chart[data-state="loading"] .chart-plot { opacity: .5; }
-  table.episodes { font-family: var(--mono); font-size: 12px; white-space: nowrap; }
-  table.episodes th, table.episodes td { padding: 7px 12px 7px 0; }
-  table.episodes td.pos { color: var(--cotton); }
-  table.episodes td.neg { color: var(--turmeric); }
-  table.episodes td.open { color: var(--cotton-dim); }
-
-  /* prose never runs the full 1000px: ~68 characters is where the eye stops losing the line */
-  .wrap p, .wrap .sub { max-width: 68ch; }
-
-  .nav { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; font-size: 15px; padding: 18px 0 0; }
-  .nav a { text-decoration: none; color: var(--cotton-dim); }
-  .nav a[aria-current] { color: var(--cotton); font-weight: 500; }
-  .nav a:hover { color: var(--cotton); }
-  .nav a.go { color: var(--turmeric); border: 1px solid var(--turmeric); padding: 8px 14px; font-weight: 500; }
-  .nav a.go:hover { background: var(--turmeric); color: var(--ink); }
-
-  /* ---------- section frame ---------- */
-  .eyebrow {
-    font-family: var(--display); font-size: 21px; font-weight: 600;
-    letter-spacing: -0.015em; color: var(--cotton);
-    padding-bottom: 12px; margin: 68px 0 22px;
-    border-bottom: 1px solid var(--ink-line);
-    display: flex; justify-content: space-between; gap: 16px;
-  }
-  .eyebrow span { font-family: var(--body); font-size: 14px; font-weight: 400; color: var(--cotton-dim); }
-
-  /* ---------- the rail: probability is bounded, so show the whole of it ---------- */
-  .rail-frame { margin: 30px 0 8px; }
-  .rail {
+  /* --------------------------------------------------------------- the bounded axis
+   * A prediction market's price axis is bounded 0..1, which is the whole point of the
+   * picture: the tradable spread is three percent of the paper. */
+  .axis-frame { margin: 0 0 12px; }
+  .axis {
     position: relative; height: 46px;
-    border-left: 1px solid var(--ink-line);
-    border-right: 1px solid var(--ink-line);
+    background: var(--stock-sunk);
+    border-top: 1px solid var(--rule-major); border-bottom: 1px solid var(--rule-major);
+    background-image: repeating-linear-gradient(to right,
+      var(--rule-major) 0, var(--rule-major) 1px, transparent 1px, transparent 10%);
   }
-  .rail::before {
-    content: ""; position: absolute; left: 0; right: 0; top: 50%;
-    border-top: 1px dashed var(--ink-line);
-  }
-  .band {
-    position: absolute; top: 0; bottom: 0;
-    border-left: 2px solid; border-right: 2px solid;
-  }
-  .band.theirs { border-color: var(--cotton-dim); background: rgba(141,151,174,.10); }
-  .band.ours   { border-color: var(--turmeric); background: rgba(224,160,69,.16); }
-  .band b {
-    position: absolute; top: -21px; left: 50%; transform: translateX(-50%);
-    font-family: var(--mono); font-size: 12px; font-weight: 400;
-    letter-spacing: .08em; white-space: nowrap;
-  }
-  .band.theirs b { color: var(--cotton); }
-  .band.ours b   { color: var(--turmeric); top: auto; bottom: -21px; }
-  .rail-ends {
-    display: flex; justify-content: space-between;
-    font-family: var(--mono); font-size: 12px; color: var(--cotton-dim);
-    margin-top: 30px;
-  }
-  .rail-note { color: var(--cotton-dim); font-size: 14px; max-width: 62ch; margin: 22px 0 0; }
+  .span { position: absolute; top: 0; bottom: 0; }
+  .span b { position: absolute; left: 50%; transform: translateX(-50%); top: -21px; white-space: nowrap; font-family: var(--mono); font-size: 11px; font-weight: 400; background: var(--stock); padding: 1px 5px; }
+  .span.theirs { background: var(--rule); top: 12px; bottom: 12px; }
+  .span.theirs b { color: var(--ink); }
+  .span.ours { background: var(--ink); top: 0; bottom: 0; }
+  .span.ours b { top: auto; bottom: -20px; color: var(--ink); font-weight: 500; }
+  .axis-ends { display: flex; justify-content: space-between; margin-top: 26px; font-size: 12.5px; color: var(--pencil); }
+  .axis-note { margin: 26px 0 var(--chart); max-width: 68ch; }
 
-  /* ---------- ladder ---------- */
-  .ladder { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; margin-top: 34px; }
-  .col-head {
-    font-family: var(--mono); font-size: 12px;
-    text-transform: uppercase; padding: 0 12px 9px;
+  /* ------------------------------------------------------------------- the order book */
+  .ladder { display: grid; gap: var(--chart); grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); margin: 0 0 var(--chart); }
+  .bids, .asks {
+    background: var(--stock-sunk);
+    border-top: 1px solid var(--rule-major); border-bottom: 1px solid var(--rule-major);
+    padding: 16px 18px;
   }
-  .col-head.bid { color: var(--turmeric); }
-  .col-head.ask { color: var(--cotton); text-align: right; }
-  .lvl {
-    display: flex; justify-content: space-between; align-items: center;
-    font-family: var(--mono); font-size: 14px;
-    padding: 9px 12px; position: relative;
-    border-top: 1px solid var(--ink-line);
-  }
-  .lvl .depth {
-    position: absolute; top: 0; bottom: 0;
-    background: rgba(141,151,174,.09);
-  }
-  .bids .depth { right: 0; }
-  .asks .depth { left: 0; }
-  .lvl .px, .lvl .sz { position: relative; }
-  .lvl .sz { color: var(--cotton); font-size: 12px; font-weight: 300; }
-  .asks .lvl { flex-direction: row-reverse; }
-  .mine {
-    background: rgba(224,160,69,.10);
-    box-shadow: inset 2px 0 0 var(--turmeric);
-  }
-  .asks .mine { box-shadow: inset -2px 0 0 var(--turmeric); }
-  .mine .px { color: var(--wax); font-weight: 600; }
-  .tag {
-    font-family: var(--mono); font-size: 12px;
-    color: var(--turmeric); margin-left: 10px;
-  }
-  .asks .tag { margin: 0 10px 0 0; }
+  .col-head { font-size: 13px; font-stretch: 80%; font-weight: 500; color: var(--pencil); padding-bottom: 10px; margin-bottom: 6px; border-bottom: 1px solid var(--rule-major); }
+  .lvl { position: relative; display: flex; justify-content: space-between; align-items: baseline; padding: 7px 8px; font-family: var(--mono); font-size: 13px; }
+  /* Depth is drawn behind the numbers, never over them. */
+  /* Depth is a tint, not a fill. At --ctl-line the vault's own level failed 4.5:1
+     against its ink price, and the size column failed against a full-width bar; both
+     are measured text, so the bar lightens rather than the text. */
+  .depth { position: absolute; left: 0; top: 0; bottom: 0; background: rgba(22, 38, 43, .08); z-index: 0; }
+  .asks .depth { background: rgba(42, 58, 107, .13); }
+  .px, .sz { position: relative; z-index: 1; }
+  .sz { color: var(--ink); }
+  .lvl.mine { font-weight: 500; }
+  .lvl.mine .depth { background: rgba(22, 38, 43, .18); }
+  .tag { font-family: var(--sans); font-size: 11px; font-stretch: 80%; font-weight: 500; color: var(--stock); background: var(--ink); padding: 1px 5px; margin-left: 8px; }
 
-  /* ---------- position ---------- */
-  .ledger { margin-top: 34px; border-top: 1px solid var(--ink-line); }
-  .row {
-    display: flex; justify-content: space-between; align-items: baseline;
-    gap: 20px; padding: 13px 0; border-bottom: 1px solid var(--ink-line);
-  }
-  .row dt { color: var(--cotton-dim); font-size: 14px; margin: 0; }
-  .row dd { font-family: var(--mono); font-size: 15px; margin: 0; text-align: right; }
-  .row.total dd { color: var(--turmeric); font-weight: 600; }
-  .row.total dt { color: var(--cotton); }
+  /* -------------------------------------------------------------------- the verdicts */
+  .verdict { margin: 0 0 calc(var(--chart) * 1.5); padding: 14px 0 0 22px; border-top: 1px solid var(--ctl-line); }
+  .verdict p { margin: 0 0 10px; max-width: 68ch; }
+  .verdict p:last-child { margin-bottom: 0; }
+  .verdict code { background: var(--stock-sunk); padding: 1px 5px; }
 
-  .zero {
-    margin-top: 40px; padding: 30px 0 0; border-top: 1px solid var(--ink-line);
-    display: flex; align-items: baseline; gap: 22px; flex-wrap: wrap;
+  /* ----------------------------------------------------------------------- the chart */
+  .chart { margin: var(--chart) 0 0; }
+  .chart figcaption { font-size: 13px; color: var(--pencil); margin-bottom: 10px; }
+  .chart-plot { position: relative; }
+  .chart svg { display: block; width: 100%; height: 220px; background: var(--stock); border: 1px solid var(--rule-major); }
+  .chart .grid { stroke: var(--rule); stroke-width: 1; }
+  /* text, not a line: an axis label wants a fill. Given a stroke it renders as outlined
+     glyphs, which is how these read until it was looked at. */
+  .chart text.axis { fill: var(--pencil); font-family: var(--mono); font-size: 11px; stroke: none; background: none; height: auto; border: 0; }
+  /* ledger.js draws the area and the trace as two paths. The wash has no style of its
+     own, so an unstyled .wash falls back to SVG's default fill — solid black — and the
+     chart reads as a filled block rather than a curve. */
+  .chart path.wash { fill: rgba(22, 38, 43, .10); stroke: none; }
+  .chart path.line { fill: none; stroke: var(--ink); stroke-width: 1.6; stroke-linejoin: round; }
+  .chart .end { fill: var(--ink); }
+  .chart .dot { fill: var(--ink); }
+  .chart .dot.neg { fill: var(--alarm); }
+  .chart .endlabel { font-family: var(--mono); font-size: 11px; fill: var(--pencil); }
+  .xhair { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--alarm); pointer-events: none; }
+  .tip {
+    position: absolute; z-index: 3; pointer-events: none;
+    background: var(--ink); color: var(--stock);
+    font-family: var(--mono); font-size: 11.5px; padding: 7px 9px; white-space: nowrap;
   }
-  .zero .n {
-    font-family: var(--mono); font-weight: 600;
-    font-size: clamp(52px, 10vw, 92px); line-height: 0.9;
-    letter-spacing: -0.04em; color: var(--wax);
-  }
-  .zero .l { max-width: 34ch; }
-  .zero .l b {
-    display: block; font-family: var(--mono); font-size: 12px;
-    letter-spacing: .18em; text-transform: uppercase; color: var(--turmeric);
-    font-weight: 400; margin-bottom: 7px;
-  }
-  .zero .l p { margin: 0; color: var(--cotton-dim); font-size: 14px; }
+  .tip b { font-weight: 500; }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13px; color: var(--pencil); margin-top: 10px; }
 
-  /* ---------- calibration ---------- */
-  .cal { display: grid; grid-template-columns: repeat(6, 1fr); gap: 2px; margin-top: 26px; }
+  .tablewrap { overflow-x: auto; margin: var(--chart) 0 0; }
+  .episodes { font-family: var(--mono); font-size: 12px; }
+  .episodes th, .episodes td { white-space: nowrap; }
+
+  /* --------------------------------------------------------------- the filled position */
+  .ledger { margin: 0 0 var(--chart); }
+  .ledger .row { display: flex; justify-content: space-between; gap: 20px; padding: 11px 0; border-bottom: 1px solid var(--rule); }
+  .ledger dt { font-size: 15px; }
+  .ledger dd { margin: 0; font-family: var(--mono); font-size: 13.5px; }
+  .ledger .total { border-bottom: 0; border-top: 2px solid var(--ink); margin-top: 4px; padding-top: 13px; }
+  .ledger .total dt, .ledger .total dd { font-weight: 500; }
+
+  .readout {
+    display: flex; flex-wrap: wrap; gap: 16px 28px; align-items: baseline;
+    background: var(--stock-sunk);
+    border-top: 1px solid var(--rule-major); border-bottom: 1px solid var(--rule-major);
+    padding: 20px 22px; margin: 0 0 var(--chart);
+  }
+  .readout .n { font-family: var(--mono); font-size: clamp(34px, 6vw, 56px); font-weight: 500; letter-spacing: -0.02em; line-height: 1; }
+  .readout .l { flex: 1 1 320px; }
+  .readout .l b { display: block; font-size: 15px; font-weight: 600; margin-bottom: 5px; }
+  .readout .l p { margin: 0; font-size: 14.5px; color: var(--pencil); max-width: 60ch; }
+
+  /* ------------------------------------------------------------------- the calibration */
+  .cal { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; margin: 0 0 8px; }
   .tier { text-align: center; }
-  .tier .plot {
-    height: 132px; position: relative;
-    border-bottom: 1px solid var(--ink-line);
+  /* One plot per tier, the 50% line dashed across it: a bar above the line is up winning
+     more often than a coin, below it is less. */
+  .plot {
+    position: relative; height: 120px;
+    background: var(--stock-sunk);
+    border-top: 1px solid var(--rule-major); border-bottom: 1px solid var(--rule-major);
   }
-  .tier .plot::before {
-    content: ""; position: absolute; left: 0; right: 0; top: 50%;
-    border-top: 1px dashed var(--ink-line);
-  }
-  .tier .bar {
-    position: absolute; left: 34%; right: 34%;
-    background: var(--teal);
-  }
-  .tier .t {
-    font-family: var(--mono); font-size: 12px; color: var(--cotton-dim);
-    letter-spacing: .08em; padding-top: 9px;
-  }
-  .tier .v { font-family: var(--mono); font-size: 12px; color: var(--cotton); }
-  .cal-axis {
-    display: flex; justify-content: space-between;
-    font-family: var(--mono); font-size: 12px; color: var(--cotton-dim);
-    margin-top: 18px;
-    border-top: 1px solid var(--ink-line); padding-top: 12px;
-  }
+  .plot::before { content: ""; position: absolute; left: 0; right: 0; top: 50%; border-top: 1px dashed var(--ctl-line); }
+  /* The pen says which way the tier missed the coin, so the class has to carry the
+     meaning. Colouring the first three by nth-child matched the data by luck on this
+     dataset and would have lied the moment a tier crossed 50%. */
+  .bar { position: absolute; left: 32%; right: 32%; }
+  .bar.over { background: var(--ink); }
+  .bar.under { background: var(--pen-down); }
+  .v { font-family: var(--mono); font-size: 13px; margin-top: 8px; }
+  .t { font-size: 12.5px; color: var(--pencil); }
+  .cal-axis { display: flex; flex-wrap: wrap; gap: 8px 20px; justify-content: space-between; font-size: 13px; color: var(--pencil); margin: 0 0 var(--chart); }
 
-  .verdict {
-    margin-top: 26px; padding-left: 18px;
-    border-left: 2px solid var(--turmeric);
-    max-width: 64ch;
-  }
-  .verdict p { margin: 0 0 10px; }
-  .verdict p:last-child { margin: 0; }
-  .verdict code {
-    font-family: var(--mono); font-size: 13px; color: var(--turmeric);
-  }
-
-  .foot {
-    margin-top: 76px; padding-top: 22px; border-top: 1px solid var(--ink-line);
-    font-family: var(--mono); font-size: 12px; color: var(--cotton-dim);
-    display: flex; justify-content: space-between; gap: 18px; flex-wrap: wrap;
-    letter-spacing: 0;
-  }
-  .foot a { color: var(--cotton-dim); }
-
-  @media (max-width: 680px) {
-    .ladder { grid-template-columns: 1fr; }
-    .asks .lvl { flex-direction: row; }
-    .asks .lvl .depth { right: 0; left: auto; }
-    .col-head.ask { text-align: left; }
+  @media (max-width: 620px) {
     .cal { grid-template-columns: repeat(3, 1fr); }
-  }
-  @media (prefers-reduced-motion: no-preference) {
-    .band, .lvl, .tier .bar { transition: none; }
+    .gloss { text-align: left; }
   }
 </style>
+
 
 <a class="skip" href="#main">Skip to content</a>
 
@@ -309,12 +157,12 @@
 
   <header class="masthead">
     <a class="home" href="/" aria-label="Abadi home">
-      <svg viewBox="6 1 20 30" aria-hidden="true">
-        <rect x="6" y="6" width="12.4" height="20" fill="#E0A045"/>
-        <rect x="18.4" y="6" width="7.6" height="20" fill="#4FA396"/>
-        <path d="M18.4 1V31" stroke="#EAE4D6" stroke-width="1" opacity=".5"/>
+      <svg viewBox="0 0 20 38" aria-hidden="true">
+        <rect x="0" y="4" width="11.7" height="30" fill="#16262B"/>
+        <rect x="13.1" y="4" width="6.9" height="30" fill="#2A3A6B"/>
+        <path d="M12.4 0V38" stroke="#B4331C" stroke-width="1.4"/>
       </svg>
-      <h1 class="wordmark">ABA<span>DI</span></h1>
+      <h1 class="wordmark">abadi</h1>
     </a>
     <div class="gloss">
       Market making for<br>DreamDEX Event Contracts<br>
@@ -330,7 +178,7 @@
 
   <main id="main" tabindex="-1">
 
-  <p class="thesis">The markets expire every window. <em>The liquidity does not.</em></p>
+  <h2 class="thesis">The markets expire every window. <em>The liquidity does not.</em></h2>
   <p class="sub">
     Abadi rests a two-sided quote inside the incumbent spread and holds no view on the
     outcome. Every number below was read off the chain, not modelled.
@@ -339,11 +187,11 @@
   <!-- ============ the rail ============ -->
 
   <!-- ============ live, from the chain ============ -->
-  <h2 class="eyebrow">Live from the chain <span>read in your browser, no server of ours</span></h2>
+  <h2 class="band">Live from the chain <span>read in your browser, no server of ours</span></h2>
 
   <div class="live" id="live" data-state="loading">
     <p class="live-err" data-live="error"></p>
-    <dl class="live-grid">
+    <dl class="figures">
       <div><dt>NAV</dt><dd><span data-live="nav">…</span> <small>tUSDC</small></dd></div>
       <div><dt>Idle</dt><dd><span data-live="idle">…</span> <small>tUSDC</small></dd></div>
       <div><dt>Resting</dt><dd><span data-live="resting">…</span> <small>tUSDC</small></dd></div>
@@ -357,27 +205,27 @@
     </p>
   </div>
 
-  <h2 class="eyebrow">Where the market sits <span>ETH-0-27AUG26 · 24h tier</span></h2>
+  <h2 class="band">Where the market sits <span>ETH-0-27AUG26 · 24h tier</span></h2>
 
-  <div class="rail-frame">
-    <div class="rail">
-      <div class="band theirs" style="left:74.2%; right:22.8%"><b>0.742 — 0.772</b></div>
-      <div class="band ours"   style="left:74.4%; right:23.0%"><b>abadi 0.744 — 0.770</b></div>
+  <div class="axis-frame">
+    <div class="axis">
+      <div class="span theirs" style="left:74.2%; right:22.8%"><b>0.742 — 0.772</b></div>
+      <div class="span ours"   style="left:74.4%; right:23.0%"><b>abadi 0.744 — 0.770</b></div>
     </div>
-    <div class="rail-ends">
+    <div class="axis-ends">
       <span>0.000 — certain down</span>
       <span>certain up — 1.000</span>
     </div>
   </div>
 
-  <p class="rail-note">
+  <p class="axis-note">
     A prediction market has a bounded axis: every price is a probability between 0 and 1.
     At this width the entire tradable spread is three percent of the rail. Abadi's quote
     sits inside it — the narrow band, not the wide one.
   </p>
 
   <!-- ============ ladder ============ -->
-  <h2 class="eyebrow">The book, as read back <span>after quoting</span></h2>
+  <h2 class="band">The book, as read back <span>after quoting</span></h2>
 
   <div class="ladder">
     <div class="bids">
@@ -416,11 +264,11 @@
   </div>
 
   <!-- ============ track record, live ============ -->
-  <h2 class="eyebrow">Track record, live from the chain <span>every vault, every episode</span></h2>
+  <h2 class="band">Track record, live from the chain <span>every vault, every episode</span></h2>
 
   <div class="ledger-live" id="ledger" data-state="loading">
     <p class="live-err" data-ledger="error"></p>
-    <dl class="live-grid">
+    <dl class="figures">
       <div><dt>Per share</dt><dd data-ledger="share">…</dd></div>
       <div><dt>Depositors, vs. par</dt><dd><span data-ledger="depositors">…</span> <small>tUSDC</small></dd></div>
       <div><dt>Realised, every closed episode</dt><dd><span data-ledger="pnl">…</span> <small>tUSDC</small></dd></div>
@@ -455,7 +303,7 @@
   </div>
 
   <!-- ============ the position ============ -->
-  <h2 class="eyebrow">What filled <span>both legs taken</span></h2>
+  <h2 class="band">What filled <span>both legs taken</span></h2>
 
   <dl class="ledger">
     <div class="row"><dt>Paid at quote time</dt><dd>97.40 tUSDC</dd></div>
@@ -485,7 +333,7 @@
     </p>
   </div>
 
-  <div class="zero">
+  <div class="readout">
     <div class="n">0.00</div>
     <div class="l">
       <b>directional exposure</b>
@@ -497,20 +345,20 @@
   </div>
 
   <!-- ============ calibration ============ -->
-  <h2 class="eyebrow">Why quote instead of predict <span>2,422 settled markets</span></h2>
+  <h2 class="band">Why quote instead of predict <span>2,422 settled markets</span></h2>
 
   <div class="cal">
-    <div class="tier"><div class="plot"><div class="bar" style="top:50%; height:1.6%"></div></div>
+    <div class="tier"><div class="plot"><div class="bar under" style="top:50%; height:1.6%"></div></div>
       <div class="v">49.6</div><div class="t">60s</div></div>
-    <div class="tier"><div class="plot"><div class="bar" style="top:50%; height:5.6%"></div></div>
+    <div class="tier"><div class="plot"><div class="bar under" style="top:50%; height:5.6%"></div></div>
       <div class="v">48.6</div><div class="t">300s</div></div>
-    <div class="tier"><div class="plot"><div class="bar" style="top:50%; height:7.2%"></div></div>
+    <div class="tier"><div class="plot"><div class="bar under" style="top:50%; height:7.2%"></div></div>
       <div class="v">48.2</div><div class="t">900s</div></div>
-    <div class="tier"><div class="plot"><div class="bar" style="bottom:50%; height:4.0%"></div></div>
+    <div class="tier"><div class="plot"><div class="bar over" style="bottom:50%; height:4.0%"></div></div>
       <div class="v">51.0</div><div class="t">1h</div></div>
-    <div class="tier"><div class="plot"><div class="bar" style="bottom:50%; height:7.6%"></div></div>
+    <div class="tier"><div class="plot"><div class="bar over" style="bottom:50%; height:7.6%"></div></div>
       <div class="v">51.9</div><div class="t">4h</div></div>
-    <div class="tier"><div class="plot"><div class="bar" style="bottom:50%; height:34.4%"></div></div>
+    <div class="tier"><div class="plot"><div class="bar over" style="bottom:50%; height:34.4%"></div></div>
       <div class="v">58.6</div><div class="t">24h</div></div>
   </div>
   <div class="cal-axis">

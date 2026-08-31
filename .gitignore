@@ -16,6 +16,8 @@ test-results/
 playwright-report/
 .impeccable/config.local.json
 .impeccable/live/
+# Decision-page server logs, one per served question. Local session state, not a record.
+.impeccable/questions/
 # docs/evidence/keeper-local.log is deliberately NOT ignored. The keeper's only real
 # log lived on one machine and out of the repository, so the two days a slot sat frozen
 # left no evidence anyone else could read. Every line in it carries a date now; commit it
