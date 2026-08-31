@@ -31,9 +31,11 @@
  * LIMITS, because a model that is wrong and trusted is worse than no model:
  *   - Lognormal with zero drift. Crypto minute bars are fat-tailed; N(d2) understates the
  *     tails, so the model is most wrong exactly where the payoff is most binary.
- *   - The vol estimator is local. At the default lambda=0.94 on 1-minute bars the half-life
- *     is about 11 minutes, so a 4h window is priced off the last quarter of an hour of
- *     realised movement. On a quiet testnet that reads low and the model gets over-confident.
+ *   - The vol estimator now matches its horizon (see decayFor) rather than reading the
+ *     last eleven minutes for every window, but it is still backward-looking realised
+ *     vol off 240 minute bars of a testnet oracle: no jump term, no fat tail, no implied
+ *     vol to check itself against. On a quiet stretch it reads low and the model gets
+ *     over-confident, and the three-tick skew cap is what stops that reaching the quote.
  *   - The strike for the rolling series is the feed's first tick at or after `tradingStart`.
  *     That is what the venue's own fixed-strike markets record at the same instant (proved
  *     in docs/evidence/fair-value-2026-08-31.md), but it is a reconstruction, not a read of
@@ -46,8 +48,31 @@ import type { PriceFeedInfo } from "@somnia-chain/markets-sdk";
 import { shannon, addresses, INDEXER, WS } from "./somnia.ts";
 import type { Candidate } from "./quoting.ts";
 
-/** RiskMetrics decay on the EWMA. On M1 bars the half-life is ln(0.5)/ln(lambda) ~ 11 bars. */
-export const LAMBDA = Number(process.env.FV_LAMBDA ?? 0.94);
+/**
+ * RiskMetrics' 0.94 is a decay for forecasting *tomorrow* from daily bars. Used on M1
+ * bars it has a half-life of ln(0.5)/ln(0.94) ~ 11 minutes, and on 2026-08-31 that showed
+ * up in production exactly as the arithmetic says it must: BTC's sigma read 64.8% at
+ * 09:13Z and 34.6% at 09:52Z, and the fair value of the same 4h window moved from 0.674
+ * to 0.818 on that alone. Forecasting four hours of variance from the last eleven minutes
+ * of it is not a tuning choice, it is the wrong horizon.
+ *
+ * So the decay is derived from the window instead of fixed: half-life in bars = minutes
+ * to expiry, floored so a 15m window still has a usable sample behind it and capped at
+ * half the candles pulled, past which the estimate is the equal-weight sample anyway.
+ * `FV_LAMBDA` still overrides, for reproducing an old run.
+ */
+export const LAMBDA_OVERRIDE = process.env.FV_LAMBDA ? Number(process.env.FV_LAMBDA) : null;
+/** Below this the sample behind the estimate is too short to say anything. */
+const MIN_HALF_LIFE_BARS = 15;
+
+/** Half-life in M1 bars for a window with `secsLeft` to run, and the decay that gives it. */
+export function decayFor(secsLeft: number): { halfLifeBars: number; lambda: number } {
+  const halfLifeBars = Math.min(Math.max(secsLeft / 60, MIN_HALF_LIFE_BARS), VOL_CANDLES / 2);
+  return {
+    halfLifeBars,
+    lambda: LAMBDA_OVERRIDE ?? Math.pow(0.5, 1 / halfLifeBars),
+  };
+}
 /** M1 candles pulled per vol estimate. 240 = the last four hours. */
 export const VOL_CANDLES = Number(process.env.FV_VOL_CANDLES ?? 240);
 /** Beyond this the oracle has stopped writing and its price is not an input to anything. */
@@ -100,6 +125,8 @@ export type Vol = {
   /** Usable returns behind it (gap-spanning pairs are dropped, so this is <= candles-1). */
   returns: number;
   lambda: number;
+  /** The EWMA's half-life in M1 bars, which is the window's own length (see decayFor). */
+  halfLifeBars: number;
   fromSec: number;
   toSec: number;
 };
@@ -150,8 +177,12 @@ async function feedInfo(asset: string): Promise<PriceFeedInfo> {
  * Returns that span a missing candle are dropped rather than kept: the feed does skip
  * minutes, and a 3-minute move counted as a 1-minute return inflates sigma by sqrt(3).
  */
-async function realisedVol(asset: string): Promise<Vol> {
-  const hit = volCache.get(asset);
+async function realisedVol(asset: string, secsLeft: number): Promise<Vol> {
+  const { halfLifeBars, lambda } = decayFor(secsLeft);
+  // Two windows of different lengths on the same asset get different sigmas now, so the
+  // key has to carry the horizon or the 4h estimate would be served to the 15m one.
+  const key = `${asset}|${halfLifeBars.toFixed(1)}`;
+  const hit = volCache.get(key);
   if (hit && Date.now() - hit.at < VOL_TTL_MS) return hit.v;
 
   const candles = await feed.client.fetchPriceCandles(asset, "M1", { limit: VOL_CANDLES });
@@ -166,18 +197,19 @@ async function realisedVol(asset: string): Promise<Vol> {
     throw new Error(`only ${r.length} usable M1 returns for ${asset}, need ${MIN_RETURNS}`);
 
   let v = r.reduce((s, x) => s + x * x, 0) / r.length;
-  for (const x of r) v = LAMBDA * v + (1 - LAMBDA) * x * x;
+  for (const x of r) v = lambda * v + (1 - lambda) * x * x;
   const sigma = Math.sqrt(v * MINUTES_PER_YEAR);
   if (!(sigma > 0)) throw new Error(`${asset} realised vol is zero over the last ${r.length} minutes`);
 
   const out: Vol = {
     sigma,
     returns: r.length,
-    lambda: LAMBDA,
+    lambda,
+    halfLifeBars,
     fromSec: candles[0].bucketStart,
     toSec: candles[candles.length - 1].bucketStart,
   };
-  volCache.set(asset, { at: Date.now(), v: out });
+  volCache.set(key, { at: Date.now(), v: out });
   return out;
 }
 
@@ -247,7 +279,7 @@ export async function fairProbability(c: Candidate, now = Date.now() / 1000): Pr
   if (strike > spot * 10 || strike * 10 < spot)
     throw new Error(`strike ${strike} vs spot ${spot} — off by more than 10x, refusing the scale`);
 
-  const vol = await realisedVol(c.asset);
+  const vol = await realisedVol(c.asset, secsLeft);
   const T = secsLeft / YEAR_SEC;
   const den = vol.sigma * Math.sqrt(T);
   if (!(den > 0)) throw new Error(`sigma*sqrt(T) is ${den}`);
@@ -261,7 +293,8 @@ export function fmtFair(f: FairValue): string {
   return (
     `fair ${f.p.toFixed(3)}  spot ${f.spot.toFixed(2)} strike ${f.strike.toFixed(2)} ` +
     `(${f.strikeSource})  sigma ${(f.vol.sigma * 100).toFixed(1)}% on ${f.vol.returns} M1 returns ` +
-    `(lambda ${f.vol.lambda})  ${Math.round(f.secsLeft)}s left  d2 ${f.d2.toFixed(3)}  feed ${Math.round(f.feedAgeMs / 1000)}s old`
+    `(half-life ${f.vol.halfLifeBars.toFixed(0)}m, lambda ${f.vol.lambda.toFixed(4)})  ` +
+    `${Math.round(f.secsLeft)}s left  d2 ${f.d2.toFixed(3)}  feed ${Math.round(f.feedAgeMs / 1000)}s old`
   );
 }
 
@@ -289,5 +322,34 @@ if (process.argv[1]?.replace(/\\/g, "/").endsWith("scripts/lib/fairvalue.ts") &&
   if (!(up(1.01) > 0.7)) throw new Error(`1% ITM 4h should be well over 0.7, got ${up(1.01)}`);
   if (!(up(1 / 1.01) < 0.3)) throw new Error(`1% OTM 4h should be well under 0.3, got ${up(1 / 1.01)}`);
   near(up(1.01) + up(1 / 1.01), 1, 5e-3, "near-symmetry about the strike (drift term aside)");
+
+  // The decay is a forecast horizon, so it has to answer to the window, and the numbers
+  // below are the ones the bot actually uses: 15m, 1h, 4h and a day.
+  const hl = (s: number) => decayFor(s).halfLifeBars;
+  if (!(hl(900) === MIN_HALF_LIFE_BARS)) throw new Error(`15m window should floor at ${MIN_HALF_LIFE_BARS}m, got ${hl(900)}`);
+  if (!(hl(3600) === 60)) throw new Error(`1h window wants a 60m half-life, got ${hl(3600)}`);
+  if (!(hl(14400) === VOL_CANDLES / 2)) throw new Error(`4h window should cap at ${VOL_CANDLES / 2}m, got ${hl(14400)}`);
+  if (!(hl(86400) === VOL_CANDLES / 2)) throw new Error("a day must cap at the same place as 4h");
+  for (const s of [900, 3600, 14400]) {
+    const { halfLifeBars, lambda } = decayFor(s);
+    near(Math.pow(lambda, halfLifeBars), 0.5, 1e-12, `lambda^half-life = 1/2 at ${s}s`);
+  }
+  if (!(decayFor(3600).lambda > decayFor(900).lambda)) throw new Error("a longer window must decay slower");
+
+  // The point of the change, as an assertion: a burst of volatility in the last ten
+  // minutes must move the 15m estimate far more than the 4h one. Same series, one quiet
+  // hour then ten loud minutes; EWMA seeded on the sample second moment, as above.
+  const quiet = Array(230).fill(0.0002), loud = Array(10).fill(0.004);
+  const series = [...quiet, ...loud];
+  const est = (secs: number) => {
+    const { lambda } = decayFor(secs);
+    let v = series.reduce((s, x) => s + x * x, 0) / series.length;
+    for (const x of series) v = lambda * v + (1 - lambda) * x * x;
+    return Math.sqrt(v * MINUTES_PER_YEAR);
+  };
+  const fast = est(900), slow = est(14400);
+  if (!(fast > slow * 1.5))
+    throw new Error(`the burst should dominate the short horizon and not the long one: 15m ${fast}, 4h ${slow}`);
+  console.log(`ok  burst moves 15m to ${(fast * 100).toFixed(0)}% and 4h only to ${(slow * 100).toFixed(0)}%`);
   console.log("ok  fairvalue self-check");
 }

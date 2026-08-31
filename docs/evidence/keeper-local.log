@@ -2309,3 +2309,23 @@
 2026-08-31 09:57:43 fv       ETH-0-31AUG26-1200/tUSDC  fair 0.662  spot 2446.38 strike 2440.34 (feed tick at tradingStart+0s)  sigma 38.4% on 239 M1 returns (lambda 0.94)  7355s left  d2 0.419  feed 0s old  book mid 0.703  edge 0.041
 2026-08-31 09:57:43 skip     ETH-0-31AUG26-1200/tUSDC  mid moved 12 ticks in 20s — trending, not quoting
 2026-08-31 09:57:46 cycle 1  NAV 9458.87  idle 9360.47  resting 98.40  share 1.000000
+2026-08-31 10:11:11 vault    0x2c96022771e8368283F8909C9a1923a4De9781E7
+2026-08-31 10:11:11 operator 0x39D2bae5EAedA9283535dDC98F1991c81eD5Cd7E
+2026-08-31 10:11:11 interval 30s  active 3  size 100 (x0.5 on 900s)  dead 6 ticks  momentum 3 ticks/20s  gas floor 0.5 STT  1 cycles
+2026-08-31 10:11:11 fv       ON  refuse over 0.1 of edge, skew up to 3 ticks toward fair; no model means book-only and a log line saying so
+2026-08-31 10:11:57 tiers    quoting 14400s, 900s only — 3600s and 86400s are left alone on the ledger's record
+2026-08-31 10:11:58 sampled  1 books in 0.4s; second look in 20s
+2026-08-31 10:12:21 fv       ETH-0-31AUG26-1200/tUSDC  fair 0.667  spot 2446.23 strike 2440.34 (feed tick at tradingStart+0s)  sigma 38.9% on 239 M1 returns (lambda 0.94)  6461s left  d2 0.431  feed 1s old  book mid 0.706  edge 0.039
+2026-08-31 10:12:21 skip     ETH-0-31AUG26-1200/tUSDC  mid moved 14 ticks in 20s — trending, not quoting
+2026-08-31 10:12:23 cycle 1  NAV 9372.77  idle 9360.47  resting 12.30  share 0.990897
+2026-08-31 10:26:02 vault    0x2c96022771e8368283F8909C9a1923a4De9781E7
+2026-08-31 10:26:02 operator 0x39D2bae5EAedA9283535dDC98F1991c81eD5Cd7E
+2026-08-31 10:26:02 interval 30s  active 3  size 100 (x0.5 on 900s)  dead 6 ticks  momentum 3 ticks/20s  gas floor 0.5 STT  1 cycles
+2026-08-31 10:26:02 fv       ON  refuse over 0.1 of edge, skew up to 3 ticks toward fair; no model means book-only and a log line saying so
+2026-08-31 10:26:50 tiers    quoting 14400s, 900s only — 3600s and 86400s are left alone on the ledger's record
+2026-08-31 10:26:51 sampled  1 books in 0.3s; second look in 20s
+2026-08-31 10:27:15 fv       ETH-0-31AUG26-1200/tUSDC  fair 0.761  spot 2448.29 strike 2440.34 (feed tick at tradingStart+0s)  sigma 34.4% on 239 M1 returns (lambda 0.94)  5568s left  d2 0.708  feed 0s old  book mid 0.788  edge 0.027
+2026-08-31 10:27:15 quote    slot 1 ETH-0-31AUG26-1200/tUSDC  theirs 0.775/0.801  ours 0.774/0.796  size 100  escrow 97.80  (mid still, 0 ticks)  skew -3 ticks toward fair
+2026-08-31 10:27:18 quote    slot 1 eb79  worked  0x23b6453bac37b70e32a9c264f79d17681034982c1001f78e02fc78597952fe65  gas 2995933
+2026-08-31 10:27:19 arm      12:05:15Z  already armed; one callback covers every slot
+2026-08-31 10:27:23 cycle 1  NAV 9372.77  idle 9262.67  resting 110.10  share 0.990897

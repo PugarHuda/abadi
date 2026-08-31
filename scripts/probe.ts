@@ -64,7 +64,7 @@ async function fairValueTable(ex: any, all: unknown[]) {
       `${head}  ${mid.toFixed(3).padStart(8)}  ${fv.p.toFixed(3)}  ${edge.toFixed(3)}  ${(fv.vol.sigma * 100).toFixed(0).padStart(4)}%  ${why}`,
     );
     console.log(
-      `   spot ${fv.spot.toFixed(2)}  strike ${fv.strike.toFixed(2)} (${fv.strikeSource})  d2 ${fv.d2.toFixed(3)}  sigma over ${fv.vol.returns} M1 returns, lambda ${fv.vol.lambda}, feed ${Math.round(fv.feedAgeMs / 1000)}s old`,
+      `   spot ${fv.spot.toFixed(2)}  strike ${fv.strike.toFixed(2)} (${fv.strikeSource})  d2 ${fv.d2.toFixed(3)}  sigma over ${fv.vol.returns} M1 returns, half-life ${fv.vol.halfLifeBars.toFixed(0)}m (lambda ${fv.vol.lambda.toFixed(4)}), feed ${Math.round(fv.feedAgeMs / 1000)}s old`,
     );
   }
 }

@@ -89,6 +89,8 @@ v_t = λ·v_{t−1} + (1−λ)·r_t²      seeded with the sample second moment 
 
 - **λ = 0.94** (`FV_LAMBDA`), the RiskMetrics decay. On 1-minute bars that is a half-life of
   about **11 minutes**, so a 4-hour window is priced off the last quarter-hour of movement.
+  *Superseded the same day — see "The decay was the wrong horizon" at the end of this file.
+  λ is now derived from the window's own length; `FV_LAMBDA` remains as an override.*
 - **240 M1 candles** (`FV_VOL_CANDLES`), i.e. a 4-hour lookback; **239 usable returns** in
   every run below.
 - Returns spanning a **missing** candle are dropped, not kept. The feed does skip minutes,
@@ -295,3 +297,72 @@ BTC disagreement of 0.13 that the probe shows on both BTC tiers at once — 0.78
 the daily and 0.803 vs 0.667 on the four-hour. A gap that size and that one-directional is
 either a stale incumbent or a wrong sigma, and until a resolved window says which, refusing
 is the cheaper of the two errors.
+
+## The decay was the wrong horizon
+
+Three hours of production logs settled the question the "What is not claimed" section
+above left open. σ did not drift; it swung, and the fair value swung with it:
+
+```
+09:13Z  BTC-0-31AUG26-1200  sigma 64.8%  d2 0.452  fair 0.674   book mid 0.805  edge 0.131  REFUSED
+09:52Z  BTC-0-31AUG26-1200  sigma 34.6%  d2 0.906  fair 0.818   book mid 0.872  edge 0.054  quoted
+```
+
+Same window, same strike, thirty-nine minutes apart, spot thirty dollars lower. σ halved,
+and 14 points of probability came out of that alone.
+
+That is not the estimator misbehaving. It is the estimator doing exactly what λ = 0.94 on
+M1 bars instructs it to do: ln(0.5)/ln(0.94) is a half-life of **11 minutes**, so a
+four-hour window was being priced off the last quarter of an hour of movement. RiskMetrics
+picked 0.94 for forecasting *tomorrow* from *daily* bars. Carried onto minute bars it
+keeps the arithmetic and drops the horizon, and the horizon was the whole point.
+
+**The decay now comes from the window.** Half-life in bars equals minutes to expiry,
+floored at 15 so a short window still has a sample behind it, capped at half the 240
+candles pulled, beyond which the estimate is the equal-weight sample anyway:
+
+| window | half-life | λ |
+|---|---|---|
+| 15m | 15m (floor) | 0.9548 |
+| 1h | 60m | 0.9885 |
+| 4h | 120m (cap) | 0.9942 |
+| 24h | 120m (cap) | 0.9942 |
+
+`FV_LAMBDA` still overrides, so an old run can be reproduced exactly.
+
+The self-check asserts the property rather than the constants: on a synthetic series of
+230 quiet minutes followed by 10 loud ones, the 15-minute horizon reads **177%** and the
+four-hour horizon **76%** — the burst dominates the estimate it should dominate and not
+the one it should not. It also asserts `λ^half-life = ½` at each tier, which is the one
+line where an off-by-one would go unnoticed forever.
+
+Live, immediately after, with the same four windows the table earlier in this file shows
+at 34.6–68%:
+
+```
+market                     tier   left   book mid   fair    edge   sigma  half-life
+ETH-0-01SEP26             86400s  48232s    0.862  0.797  0.065    38%   120m
+BTC-0-01SEP26             86400s  48230s    0.863  0.744  0.120    35%   120m
+ETH-0-31AUG26-1200        14400s   5028s    0.804  0.723  0.081    38%   120m
+BTC-0-31AUG26-1200        14400s   5027s    0.831  0.711  0.120    35%   120m
+BTC-0-31AUG26-1100         3600s   1426s    0.142  0.224  0.082    28%    60m
+ETH-0-31AUG26-1100-ECDF    3600s   1425s    0.591  0.572  0.019    35%    60m
+```
+
+σ across every asset and tier now sits in a 28–38% band instead of a 34–68% one.
+
+### And a second thing that table says, which is not fixed
+
+Look at the direction of every disagreement. Four windows are trading above their opening
+price and the book prices *all four* above the model. The fifth is trading below, and the
+book prices it *below* the model — 0.142 against 0.224. The book is not noisily wrong
+around us; it is consistently further in the direction the underlying has already moved,
+on both sides.
+
+Zero drift is a deliberate assumption in this model, and it is the assumption that
+disagreement is measuring. Either the venue's book extrapolates momentum and is wrong,
+or it is reading something a backward-looking realised-vol estimate cannot, and the
+ledger's 18% adverse rate is not evidence for the flattering answer. `FV_MAX_EDGE = 0.1`
+means the refusals are currently one-directional, which makes it a bias and not only a
+filter. Naming it here because the next resolved windows can decide it and nothing else
+can.
