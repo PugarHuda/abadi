@@ -50,8 +50,9 @@ cost, and what was fixed is part of the positioning, not an apology for it.
 
 - Contracts: `LiquidityVault` (ERC-4626, quote/cancel/flatten/settle, per-slot sweep,
   `sweepNative`, `LastShareWhileOpen`, `MarketAlreadyQuoted`), `AbadiReactive`,
-  `MarketEngine`. 76 unit tests, five stateful invariants, four fork tests against the
-  real venue, verified source on the explorer.
+  `MarketEngine`. 87 unit tests, five stateful invariants, five fork tests against the
+  real venue. The explorer's verified source is the previous build; the 2026-08-30 fixes
+  are not deployed yet.
 - Scripts: `bot.ts` (requote loop), `ledger.ts` (episodes from chain events),
   `attest.ts` (live bytecode vs. artifact), `fork-test.ts`, `operator.ts`, `verify.ts`.
 - Site: three static pages plus 404, built by `scripts/build-site.mjs` into `dist/`,

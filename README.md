@@ -99,8 +99,12 @@ works today is a contract that owns its own orders. That is exactly what Abadi i
 | Actor | Can | Cannot |
 |---|---|---|
 | `operator` (bot key) | quote, cancel | **move a single token** |
-| `governor` | set operator, risk params, grid | touch assets |
+| `governor` | set operator, risk params, grid; `sweepNative` the vault's native STT | **touch depositor collateral** |
 | depositor | deposit, withdraw against shares | steer quotes |
+
+`sweepNative(address,uint256)` moves the vault's entire native balance anywhere the
+governor names — today ~32.8 STT, and that is the same reserve the vault spends to wake
+itself up. Depositor collateral is reachable from no governor entry point at all.
 
 ---
 
@@ -169,7 +173,7 @@ src/
     IBinaryPool.sol            placeBinaryOrder, ORDER_KIND, ERC-6909 outcomes
     IBinaryMarketsModule.sol   markets(), mint/merge, redeem, keeper entries
 
-scripts/                  read-only probes that produced docs/evidence/
+scripts/                  the chain scripts that produced docs/evidence/
   probe.ts                live markets, tiers, spreads
   history.ts              settled-market calibration
   operator.ts             reads the book and quotes inside it, in one pass
@@ -208,7 +212,7 @@ direction — `flatten` merges what it can and leaves the slot open for `settle(
 ```bash
 npm install
 forge install foundry-rs/forge-std   # forge-std is not vendored
-forge test                 # 78 tests, no network needed
+forge test                 # 87 tests, no network needed
 
 node scripts/probe.ts      # live markets and spreads
 node scripts/history.ts    # settled-market calibration
@@ -247,12 +251,24 @@ bot skips arming and says so until then. `sweepNative` brings the reserve back o
 **Run against the venue, on Shannon**
 
 - Quoting inside the incumbent's spread, top of book, both legs filling into complete sets
-- `settle()` and `flatten()`, dozens of times — **83 episodes across 9 vaults, 61
-  complete sets, +133.85 tUSDC on 5,641.15 of basis (2.37%), 22% of filled quotes
-  adverse** at the last ledger run, every one read back off the chain by
-  `scripts/ledger.ts` rather than remembered, and growing every fifteen minutes. By
-  window length the record is not uniform: 4h ran 7% adverse over 30 episodes and 15m
-  0% over 6, while 1h ran 36% over 37 and 24h 25% over 10
+- **The vault is down, and the number that says so is the one to read.** Per share
+  **0.931581** — 4,363.87 of assets against 4,684.37 of shares issued at par, so
+  **−320.50 tUSDC, −6.84%**, for anyone who deposited. Across 95 episodes on 9 vaults:
+  72 closed into a complete set, 18 one-sided, 1 with neither leg filled, 4 still open,
+  and **−217.90 realised on 8,280.95 of basis**. Every figure is read back off the chain
+  by `scripts/ledger.ts`, and it grows every fifteen minutes.
+
+  This replaces "+133.85 on 5,641.15 of basis (2.37%)", which this file carried until
+  2026-08-31. That figure was not invented: it was the realised spread on the winning
+  episodes. But the ledger accumulated profit and basis *only* in the complete-set
+  branch, so the 18 one-sided episodes entered neither the numerator nor the denominator,
+  and the published return was arithmetically incapable of going negative. The dashboard
+  ran the same code, so its equity curve could not draw a drawdown either. Both are fixed;
+  the sign of the answer changed.
+- The record is not uniform by window length, and that is where the loss lives: a
+  complete set earns about 2.19 and an adverse fill costs about 22, so the strategy needs
+  an adverse rate under roughly 9% and is running at 20%. The 4h tier is the only one
+  measurably above water
 - **The vault wakes itself up.** A 900s window was quoted, expired, resolved, and the
   reactivity precompile called the vault at the armed second; the vault redeemed its own
   position and freed the slot with nobody calling it. Tx `0x66c0e1ec…`, block 472752861.
@@ -275,8 +291,8 @@ bot skips arming and says so until then. `sweepNative` brings the reserve back o
   redeployed**.
   [`docs/evidence/dead-oracle-2026-08-30.md`](docs/evidence/dead-oracle-2026-08-30.md)
 - `scripts/bot.ts` — the requote loop, three markets at a time, with a **momentum filter**:
-  every candidate's book is read twice, twenty seconds apart, and a window whose mid moved
-  three ticks in between is not quoted — every adverse fill in the ledger came from a
+  up to eight candidates' books are read twice, twenty seconds apart, and a window whose
+  mid moved three ticks in between is not quoted — every adverse fill in the ledger came from a
   trending hour, and one adverse fill costs what twenty complete sets earn. Size halves
   on the 900s tier, windows priced under 0.08 or over 0.92 are left alone — the only
   thing that can happen to the expensive leg there is the tail event — and the 24h tier
@@ -305,19 +321,21 @@ bot skips arming and says so until then. `sweepNative` brings the reserve back o
   what the page sends with the encoding written out by hand, byte for byte. The guard
   the contract enforces (`LastShareWhileOpen`) is explained before the button is pressed,
   not after it reverts
-- The site reads the vault live in the visitor's browser — four `eth_call`s to the public
-  RPC, no server of ours, and an explicit failure state rather than a stale number. The
-  dashboard also renders the whole track record from the explorer's log API, decoded in
+- The site reads the vault live in the visitor's browser — five `eth_call`s to the public
+  RPC plus one per slot, fourteen requests at the widest, no server of ours, and an
+  explicit failure state rather than a stale number. The dashboard also renders the whole
+  track record from the explorer's log API, decoded in
   the browser against the vault's ABI — as a table, as one cumulative line with a
   crosshair readout, and as a heartbeat ("last activity 12 min ago") that would be the
   first thing to change if a keeper died — so the numbers above can be checked without
   trusting this file
-- 76 unit tests including two fuzzed properties and five stateful invariants, 4 fork tests against the venue, 36
-  browser tests (axe-core WCAG 2.1 AA, Core Web Vitals, touch, every cited transaction
-  checked against the explorer); `scripts/attest.ts` says the live address is running
-  this source
+- 87 unit tests including two fuzzed properties and five stateful invariants, 5 fork tests against the venue, 64
+  browser tests (axe-core WCAG 2.1 AA, Core Web Vitals, touch, the transactions cited on
+  the landing page checked against the explorer); `scripts/attest.ts` compares the live
+  address against this source and currently reports MISMATCH — the fixes of 2026-08-30
+  are in the source and not yet deployed
 - The site passes [Impeccable](https://impeccable.style)'s 59-rule design detector on
-  every rendered page, desktop and mobile, as a CI gate. Its first run found 131 of the
+  every rendered page, desktop and mobile, as a CI gate. Its first run found the
   defaults AI-built interfaces reach for — 10px tracked-caps labels, eyebrows above
   headings, monospace as a costume, transitions on `width`, teal text reading as neon
   — and they are gone. Product truth lives in `PRODUCT.md`; waivers with reasons in
@@ -325,8 +343,10 @@ bot skips arming and says so until then. `sweepNative` brings the reserve back o
 
 **What it cost to get here**
 
-Seven deployments in two days, each one a fix the previous one lacked, all listed in
-`scripts/ledger.ts` with the reason. Written off along the way, all testnet:
+Nine vaults between 26 and 30 August, each one a fix the previous one lacked: eight
+retired, listed in `scripts/lib/vaults.json` with the reason, plus the live one. The same
+key also deployed `0x5e6b9242Db15959EdCEccBa5C369fca3576fd598` at nonce 8, which is
+recorded in no file here. Written off along the way, all testnet:
 
 | where | how much | why |
 |---|---|---|
@@ -351,7 +371,7 @@ now pins `cancun`, and the live address shows source rather than bytecode.
 
 **Not done**
 
-- A track record. Seven complete sets is a mechanism working, not an edge. The ledger
+- A track record. What the ledger holds is a mechanism working, not an edge. The ledger
   script exists so the number can grow without anyone having to trust it.
 
 ---

@@ -1,7 +1,7 @@
 # Reactivity spike — Shannon testnet, 2026-08-26
 
 Account `0x39D2bae5EAedA9283535dDC98F1991c81eD5Cd7E` (50 STT).
-Probe contract `0xE9DC8a36e8f14c85E687eEe26978692dA98cbeab` (10 STT, 9213 bytes of code).
+Probe contract `0xE9DC8a36e8f14c85E687eEe26978692dA98cbeab` (10 STT, 4605 bytes of code).
 
 ## What worked
 

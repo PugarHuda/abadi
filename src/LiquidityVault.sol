@@ -10,7 +10,7 @@ import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IER
 
 import {AbadiReactive} from "./AbadiReactive.sol";
 import {MarketEngine} from "./MarketEngine.sol";
-import {IBinaryPool, IBinaryMarket, IOutcomeToken6909, ORDER_KIND, ORDER_TYPE} from "./interfaces/IBinaryPool.sol";
+import {IBinaryPool, PoolOrder, IBinaryMarket, IOutcomeToken6909, ORDER_KIND, ORDER_TYPE} from "./interfaces/IBinaryPool.sol";
 import {IBinaryMarketsModule, MarketStatus} from "./interfaces/IBinaryMarketsModule.sol";
 
 /// @title LiquidityVault
@@ -120,19 +120,39 @@ contract LiquidityVault is ERC4626, AbadiReactive, ReentrancyGuard {
         }
     }
 
-    /// @dev A leg holds escrow only for the part of it that has not filled, and only
-    ///      while its order is still live. A cancelled leg has its id zeroed, which is
-    ///      what says the collateral came back.
+    /// @dev Ask the pool. It is the other party to the order and it keeps the only
+    ///      authoritative record of what is still resting under an id.
+    ///
+    ///      This used to infer the unfilled quantity as `size - balanceOf(outcomeId)`,
+    ///      which is only valid while fills are the ONLY thing that moves that balance.
+    ///      Two things also move it. `mergeCompleteSet` burns the tokens, so a leg that
+    ///      had filled in full read back as never filled and its escrow was counted a
+    ///      second time on top of the cash the merge had just delivered — 600.00 of
+    ///      reported assets against 503.00 of real cash, and a holder able to redeem the
+    ///      difference. And ERC-6909 transfers are permissionless, so a stranger could
+    ///      donate outcome tokens and move this vault's share price without touching it.
+    ///
+    ///      `getOrder` reverts for an id the pool has no active order under, which is
+    ///      precisely the answer "nothing is resting here", so the catch returns zero
+    ///      rather than propagating. Nothing else in this function can revert, and it is
+    ///      on the path of every deposit and every withdrawal.
     function _restingEscrow(Slot storage s) internal view returns (uint256 resting) {
-        if (s.yesOrderId != 0) {
-            uint256 yes = outcomeToken.balanceOf(address(this), s.yesId);
-            if (yes < s.size) resting += MarketEngine.costOf(s.size - yes, s.bidPrice, priceOne);
-        }
-        if (s.noOrderId != 0) {
-            uint256 no = outcomeToken.balanceOf(address(this), s.noId);
-            if (no < s.size) {
-                resting += MarketEngine.costOf(s.size - no, MarketEngine.mirror(s.askPrice, priceOne), priceOne);
-            }
+        resting = _legEscrow(s.pool, s.yesOrderId, s.size, s.bidPrice)
+            + _legEscrow(s.pool, s.noOrderId, s.size, MarketEngine.mirror(s.askPrice, priceOne));
+    }
+
+    /// @dev Capped at the quoted size: what this vault escrowed is all it can be owed.
+    function _legEscrow(address pool, uint128 orderId, uint256 size, uint256 price)
+        internal
+        view
+        returns (uint256)
+    {
+        if (orderId == 0) return 0;
+        try IBinaryPool(pool).getOrder(orderId) returns (PoolOrder memory o) {
+            uint256 remaining = o.quantityRemaining > size ? size : o.quantityRemaining;
+            return MarketEngine.costOf(remaining, price, priceOne);
+        } catch {
+            return 0; // the pool holds nothing under this id
         }
     }
 
@@ -237,7 +257,10 @@ contract LiquidityVault is ERC4626, AbadiReactive, ReentrancyGuard {
             // marking it at what it cost is how the next depositor buys into a loss that
             // has already happened. It is worth nothing here until settlement says
             // otherwise: NAV may understate, never overstate.
-            total += yes < no ? yes : no;
+            uint256 pairs_ = yes < no ? yes : no;
+            // Cap at what this slot actually quoted. A stranger may transfer outcome
+            // tokens to this vault; they are not the vault's to mark.
+            total += pairs_ > s.size ? s.size : pairs_;
         }
         return total;
     }
@@ -252,12 +275,76 @@ contract LiquidityVault is ERC4626, AbadiReactive, ReentrancyGuard {
         internal
         override
     {
-        if (shares == totalSupply()) {
+        // Gating on `shares == totalSupply()` was the wrong test: one wei left behind
+        // defeats it. The holder is then no longer "the last share" and may exit in full
+        // at a NAV that marks the open slot's naked leg at zero, and the slot's proceeds
+        // land on whatever dust remains. Measured: a 1-wei holder inheriting 50.00 of a
+        // position it paid a wei for, and it fires by accident against any honest last
+        // holder who leaves a rounding remainder. Gate on what is LEFT instead.
+        if (totalSupply() - shares < MIN_SUPPLY_WHILE_OPEN) {
             for (uint256 i = 0; i < MAX_SLOTS; i++) {
                 if (_slots[i].active) revert LastShareWhileOpen(i);
             }
         }
         super._withdraw(caller, receiver, owner, assets, shares);
+    }
+
+    /// @notice Shares that must remain outstanding while any slot is open.
+    /// @dev One whole share at the collateral's scale. Below this the remaining holder is
+    ///      dust rather than a depositor, and an open slot's proceeds would settle onto
+    ///      it. Withdrawals are unrestricted once every slot is closed.
+    uint256 public constant MIN_SUPPLY_WHILE_OPEN = 1e6;
+
+    /// @dev OpenZeppelin's virtual-share defence scales with this offset, and the default
+    ///      of 0 leaves the classic first-deposit attack open: seed one wei, donate, and
+    ///      the next depositor's shares round to zero. Measured against this vault at
+    ///      offset 0 — a 1,000 deposit minting 0 shares, a total loss for the victim.
+    ///      Six decimals of offset is the collateral's own scale and closes it.
+    function _decimalsOffset() internal pure override returns (uint8) {
+        return 6;
+    }
+
+    /// @notice The most `owner` can actually take out right now.
+    /// @dev ERC-4626 requires these to return an amount that does not revert, and the
+    ///      inherited versions do not: a withdrawal is paid out of `idleAssets()`, not
+    ///      NAV, so anything above idle reverts on the transfer, and the last-share guard
+    ///      refuses the rest. The app's own "Max" button trusted the inherited answer and
+    ///      sent transactions that could only fail.
+    ///      Both return the real maximum rather than zero when a limit binds: a holder
+    ///      blocked from taking everything can still take what leaves the floor, and a
+    ///      caller is entitled to be told that number rather than to discover it by
+    ///      reverting.
+    function maxWithdraw(address owner) public view override returns (uint256) {
+        uint256 assets = super.maxWithdraw(owner);
+        uint256 idle = idleAssets();
+        if (assets > idle) assets = idle;
+        uint256 shareCap = _shareCeilingWhileOpen();
+        if (shareCap != type(uint256).max) {
+            uint256 byShares = convertToAssets(shareCap);
+            if (assets > byShares) assets = byShares;
+        }
+        return assets;
+    }
+
+    function maxRedeem(address owner) public view override returns (uint256) {
+        uint256 shares = super.maxRedeem(owner);
+        uint256 byIdle = convertToShares(idleAssets());
+        if (shares > byIdle) shares = byIdle;
+        uint256 shareCap = _shareCeilingWhileOpen();
+        if (shares > shareCap) shares = shareCap;
+        return shares;
+    }
+
+    /// @dev The most shares any single holder may burn while a slot is open, so that
+    ///      MIN_SUPPLY_WHILE_OPEN is always left behind. `type(uint256).max` when no slot
+    ///      is open, which is no constraint at all.
+    function _shareCeilingWhileOpen() internal view returns (uint256) {
+        for (uint256 i = 0; i < MAX_SLOTS; i++) {
+            if (!_slots[i].active) continue;
+            uint256 supply = totalSupply();
+            return supply > MIN_SUPPLY_WHILE_OPEN ? supply - MIN_SUPPLY_WHILE_OPEN : 0;
+        }
+        return type(uint256).max;
     }
 
     /// @notice Collateral not currently committed to a quote.
@@ -468,14 +555,17 @@ contract LiquidityVault is ERC4626, AbadiReactive, ReentrancyGuard {
             _redeemOutcome(id, 0, yesId);
             _redeemOutcome(id, 1, noId);
         } else {
-            // `winningOutcome()` was removed in settlement v3 and now reverts. The winner
-            // is the argmax of the payout vector.
+            // `winningOutcome()` was removed in settlement v3 and now reverts: the market
+            // stores a payout VECTOR. This used to take its argmax and redeem that side
+            // alone, which is only right when the vector is one-hot. Settlement v3 does
+            // not promise that. On a split vector like [7, 3] the smaller side still pays
+            // 30% and was abandoned; on a tie [5, 5] with `isVoided() == false` the argmax
+            // silently picked index 0 and abandoned the NO side entirely — and the slot is
+            // deleted above, so nothing could ever come back for it. Redeem every side
+            // that pays anything, exactly as the voided branch already does.
             uint256[] memory payouts = IBinaryMarket(market).payoutNumerators();
-            uint8 winner = 0;
-            for (uint256 i = 1; i < payouts.length; i++) {
-                if (payouts[i] > payouts[winner]) winner = uint8(i);
-            }
-            _redeemOutcome(id, winner, winner == 0 ? yesId : noId);
+            if (payouts.length > 0 && payouts[0] > 0) _redeemOutcome(id, 0, yesId);
+            if (payouts.length > 1 && payouts[1] > 0) _redeemOutcome(id, 1, noId);
         }
 
         // A slot that holds only the losing side redeems nothing, and that is a result,
@@ -542,15 +632,23 @@ contract LiquidityVault is ERC4626, AbadiReactive, ReentrancyGuard {
     ///      rather than letting the precompile fail with empty data.
     /// @dev Gas for the callback. The first live wake-up on Shannon was armed at 500,000
     ///      and ran OUT_OF_GAS with one idle slot to look at — `eth_estimateGas` from the
-    ///      precompile's address put that no-op sweep at 1,151,045. The limit is sized for
-    ///      the worst case: MAX_SLOTS slots all needing the dead-oracle path, measured on
-    ///      Shannon at voidExpired 694,993 + syncSettlement 2,322,671 + finalizeMarket
-    ///      1,617,295 + settle 679,349 = 5,314,308 for one slot. 8,000,000 covered barely
-    ///      one and a half of those. The precompile accepts up to 200,000,000; only gas
-    ///      actually used is paid for, and it is paid out of the handler's own balance —
-    ///      so the ceiling that matters is not this number but MIN_HANDLER_BALANCE, which
-    ///      a full 40M sweep at the 50 gwei cap would cost 2 STT of.
-    uint64 public constant SWEEP_GAS = 40_000_000;
+    ///      precompile's address put that no-op sweep at 1,151,045.
+    ///
+    ///      Sized for the worst case: MAX_SLOTS slots all taking the dead-oracle path.
+    ///      Measured on Shannon at voidExpired 694,993 + settle 679,349 = 1,374,342 per
+    ///      slot, so 8 slots is 10,994,736; 16,000,000 covers that with room for the
+    ///      per-slot reads and the 1/64 each guarded self-call retains.
+    ///
+    ///      This was briefly 40,000,000, sized on the since-disproved belief that the
+    ///      callback also had to run `syncSettlement` and `finalizeMarket` (3.94M more per
+    ///      slot). That number did not even fit its own stated worst case — 8 × 5,314,308
+    ///      is 42.5M — and it mattered because only gas used is paid but it is paid from
+    ///      the handler's OWN balance: at the 50 gwei cap a full 40M sweep costs 2 STT,
+    ///      against a live headroom over MIN_HANDLER_BALANCE of 0.82 STT. One worst-case
+    ///      callback would have taken the vault under the floor and it could never have
+    ///      armed again. At 16M the same worst case costs 0.8 STT; a real callback has
+    ///      measured 291,526 gas, or 0.0047 STT.
+    uint64 public constant SWEEP_GAS = 16_000_000;
 
     function armSweep(uint64 firesAtSec) external onlyOperator returns (uint256 subscriptionId) {
         return _arm(uint256(firesAtSec) * 1000, 10 gwei, 50 gwei, SWEEP_GAS);
@@ -588,13 +686,18 @@ contract LiquidityVault is ERC4626, AbadiReactive, ReentrancyGuard {
     ///      answered every fifteen minutes and resolved nothing; the hatch had been open
     ///      the whole time.
     ///
-    ///      The hatch writes the market directly, so the module never learns of it. The
-    ///      two permissionless nudges that follow are not optional: `syncSettlement`
-    ///      releases the hub earmark the adapter never released, `finalizeMarket` moves
-    ///      the pool's backing into settlement, and without them `_settle` redeems into
-    ///      an empty settlement and returns nothing. Each is wrapped: a market that is
-    ///      already terminal reaches here through the same path, and their no-op guards
-    ///      are the venue's business, not a reason to lose the sweep.
+    ///      The hatch writes the market directly, so the module never learns of it, and
+    ///      an earlier version of this function followed it with `syncSettlement` and
+    ///      `finalizeMarket` on the belief that redemption would otherwise find an empty
+    ///      settlement. Measured on a fork against the real module, that is false: after
+    ///      a bare `voidExpired`, `settle` redeemed 100.000000 of 100. Those two calls
+    ///      cost 3.94M of gas between them, which is most of what a slot needs here, and
+    ///      the sweep pays for its own gas out of a balance that must stay above
+    ///      MIN_HANDLER_BALANCE. So they are gone from the callback. The bot still makes
+    ///      both from off-chain, where gas is the operator's and belt-and-braces is free.
+    ///      If redemption ever does need them, `_settle` reverts, this slot's guarded
+    ///      call is caught, and the bot closes it on the next cycle — the failure is a
+    ///      delay, not a loss.
     function releaseSlot(uint256 slot) external nonReentrant returns (bool closed) {
         if (msg.sender != address(this)) revert NotSelf(msg.sender);
         Slot storage s = _slots[slot];
@@ -608,8 +711,6 @@ contract LiquidityVault is ERC4626, AbadiReactive, ReentrancyGuard {
             try mkt.voidExpired() {} catch {}
         }
         if (mkt.isResolved() || mkt.isVoided()) {
-            try module.syncSettlement(id) {} catch {}
-            try module.finalizeMarket(id) {} catch {}
             _settle(slot);
             return true;
         }

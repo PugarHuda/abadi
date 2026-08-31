@@ -1,6 +1,6 @@
 /*
  * Reads the vault straight off the chain, in the reader's own browser, with nothing in
- * between. No snapshot, no indexer, no server of ours: four eth_calls to the public RPC
+ * between. No snapshot, no indexer, no server of ours: five eth_calls to the public RPC plus one per slot
  * and the numbers on screen are the numbers on chain at that block.
  *
  * When the RPC cannot be reached the strip says so and shows nothing. A stale number

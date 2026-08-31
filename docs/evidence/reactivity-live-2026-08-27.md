@@ -74,16 +74,31 @@ block 472752861   from 0x1aeB…a058   onEvent   success   gasUsed 397746
   Settled(slot 0, …b2a1, redeemed 100.000000, voided false)
   Swept(1787848245060, slotsReleased 1)
 
-NAV   4619.60  ->  4622.20     +2.60 on a 97.40 basis, 2.67%
+totalAssets  4622.199998  ->  4622.199998     unchanged across the settle
+idleAssets   4522.20      ->  4622.20         the redeemed 100 left escrow and became cash
 slot 0 free    resting 0.00
 ```
+
+NAV did not move here, and it is not supposed to. A complete set is already marked at
+what it redeems for, so settling only moves the same assets from escrow into cash — NAV
+is exactly cash plus resting plus complete sets, which is the invariant the stateful
+fuzzer asserts, and the chain holds it across this settlement to the millionth. The
++2.60 on a 97.40 basis, 2.67%, is the whole episode rather than the callback: 4619.60 was
+the NAV before the quote was placed, some 9,100 blocks and two and a half hours earlier.
 
 The window resolved, the chain woke the vault, the vault redeemed its own position and
 freed the slot. The name is literal now. Both legs had filled during the window — a
 complete set — so the 100 came back whole. The exact same path handles a naked leg
-(`_settle` redeems what it holds) and an unresolved-but-expired market (`_release`
-pulls the legs); the isolated per-slot call means one shape failing cannot stop the
-others.
+(`_settle` redeems what it holds); the isolated per-slot call means one shape failing
+cannot stop the others.
+
+> **Retracted 2026-08-30.** This paragraph also claimed the same path handled an
+> unresolved-but-expired market, with `_release` pulling the legs. It never did. The pool
+> freezes a window's order book from the instant it expires until the market is terminal,
+> so both cancels reverted, `releaseSlot` reverted with them, and the per-slot `try/catch`
+> swallowed it. The current `_release` does not cancel at all; escrow on an expired window
+> comes back only through settlement.
+> [`dead-oracle-2026-08-30.md`](dead-oracle-2026-08-30.md)
 
 ## The jitter, and the third fix
 

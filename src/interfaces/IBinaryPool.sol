@@ -49,6 +49,13 @@ interface IBinaryPool {
     ) external payable returns (bool success, uint128 id);
 
     function cancelOrder(uint128 orderId) external;
+
+    /// @notice The pool's own record of a resting order.
+    /// @dev REVERTS (`IncorrectOrder`) for an id the pool has no ACTIVE order for —
+    ///      unknown, filled, cancelled, or replaced by a reduce. That revert is the
+    ///      answer "nothing is resting under this id", so callers catch it rather than
+    ///      treating it as a failure.
+    function getOrder(uint128 orderId) external view returns (PoolOrder memory);
     function cancelExpiredOrders(uint128[] calldata orderIds) external;
     function reduceOrder(uint128 orderId, uint256 newQuantityRemaining) external;
 
@@ -65,6 +72,19 @@ interface IBinaryPool {
 }
 
 /// @notice On-chain settlement reads on the per-window market contract.
+/// @notice One resting order, as the pool itself keeps it.
+/// @dev Field order matches the venue's `getOrder` return exactly.
+struct PoolOrder {
+    uint128 orderId;
+    bool isBid;
+    address owner;
+    uint64 userData;
+    uint256 price;
+    uint256 fullQuantity;
+    uint256 quantityRemaining;
+    uint64 expireTimestampNs;
+}
+
 interface IBinaryMarket {
     function isResolved() external view returns (bool);
     function isVoided() external view returns (bool);

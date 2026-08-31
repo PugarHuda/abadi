@@ -68,6 +68,7 @@ const VAULT_ABI = parseAbi([
   "function armSweep(uint64 firesAtSec) returns (uint256)",
   "function armed(uint256 firesAtMillis) view returns (uint256)",
   "function MIN_HANDLER_BALANCE() view returns (uint256)",
+  "function SWEEP_GAS() view returns (uint64)",
 ]);
 const MODULE_ABI = parseAbi([
   "function markets(bytes32) view returns (uint256,uint8,uint8,address,uint32,bytes32,address,address,address,address,uint256,uint256,uint64,uint64)",
@@ -112,6 +113,9 @@ function sizeFor(intervalSec: number): bigint {
 }
 
 const usd = (v: bigint) => (Number(v) / 1e6).toFixed(2);
+
+/** How many cycles a market has refused the dead-oracle hatch. Escalates the log line. */
+const stuck = new Map<string, number>();
 const ts = () => new Date().toISOString().slice(11, 19);
 const log = (...a: unknown[]) => console.log(ts(), ...a);
 
@@ -185,13 +189,33 @@ async function held(yesId: bigint, noId: bigint) {
  */
 async function armAt(firesAtSec: number) {
   const ms = BigInt(firesAtSec) * 1000n;
-  if ((await read<bigint>("armed", [ms])) !== 0n) return;
-  const [bal, floor] = await Promise.all([pub.getBalance({ address: vault }), read<bigint>("MIN_HANDLER_BALANCE")]);
-  if (bal < floor) {
-    log(`arm      skipped: vault holds ${formatEther(bal)} STT, floor is ${formatEther(floor)}`);
-    return;
+  const at = new Date(firesAtSec * 1000).toISOString().slice(11, 19);
+  // Every window in a tier expires on the same second, so the second slot quoted into a
+  // tier finds the instant already armed. That is correct — one callback loops every
+  // slot — but it used to return in silence, and a slot that was never armed at all
+  // looked exactly the same in the log.
+  if ((await read<bigint>("armed", [ms])) !== 0n) {
+    log(`arm      ${at}Z  already armed; one callback covers every slot`);
+    return true;
   }
-  await send(`arm      ${new Date(firesAtSec * 1000).toISOString().slice(11, 19)}Z`, "armSweep", [BigInt(firesAtSec)]);
+  const [bal, floor, gas] = await Promise.all([
+    pub.getBalance({ address: vault }),
+    read<bigint>("MIN_HANDLER_BALANCE"),
+    read<bigint>("SWEEP_GAS").catch(() => 0n),
+  ]);
+  if (bal < floor) {
+    log(`arm      SKIPPED, VAULT UNARMED: holds ${formatEther(bal)} STT, floor is ${formatEther(floor)}.`);
+    log(`         Send it STT or the chain will not close these windows by itself.`);
+    return false;
+  }
+  // The callback is paid out of the vault's own balance. If a worst-case sweep would
+  // take it under the floor it can never arm again, and nothing else watches for that.
+  const worst = gas * 50_000_000_000n; // SWEEP_GAS at the arm's maxFeePerGas cap
+  if (bal - floor < worst) {
+    log(`arm      WARNING: headroom ${formatEther(bal - floor)} STT is under the ${formatEther(worst)} STT`);
+    log(`         a worst-case callback could cost. One bad sweep ends arming for good.`);
+  }
+  return await send(`arm      ${at}Z`, "armSweep", [BigInt(firesAtSec)]);
 }
 
 /**
@@ -212,8 +236,20 @@ async function sweepOld() {
       const s: any = await pub.readContract({ address: v.address, abi: VAULT_ABI, functionName: "slots", args: [BigInt(i)] }).catch(() => null);
       if (!s?.active) continue;
       const m = await marketState(s.marketId).catch(() => null);
-      if (!m || !(m.resolved || m.voided)) continue;
-      await send(`settle   old ${v.address.slice(0, 8)} slot ${i}`, "settle", [BigInt(i)], v.address);
+      if (!m) continue;
+      const tag = `old ${v.address.slice(0, 8)} slot ${i}`;
+      if (!(m.resolved || m.voided)) {
+        // An old vault holding an expired window whose oracle never answered used to be
+        // skipped here in complete silence — no settle, no log line, nothing. The hatch
+        // is permissionless and works on any vault's position, not just the live one.
+        if (m.expiry > Date.now() / 1000) continue; // still trading; leave it be
+        const gate = m.expiry + Number(await settlementWindow(m.market));
+        if (Date.now() / 1000 < gate) continue; // the oracle still has time
+        if (!(await send(`void     ${tag}`, "voidExpired", [], m.market, MARKET_ABI))) continue;
+        await send(`sync     ${tag}`, "syncSettlement", [s.marketId], addresses.binaryModule as `0x${string}`, MODULE_ABI);
+        await send(`final    ${tag}`, "finalizeMarket", [s.marketId], addresses.binaryModule as `0x${string}`, MODULE_ABI);
+      }
+      await send(`settle   ${tag}`, "settle", [BigInt(i)], v.address);
     }
   }
 }
@@ -255,9 +291,23 @@ async function cycle(n: number, bySymbol: Map<string, any>) {
       if (Date.now() / 1000 < gate) {
         await send(`poke     ${tag}`, "pokeOracle", [m.questionId], addresses.binaryModule as `0x${string}`, MODULE_ABI);
       } else if (await send(`void     ${tag}`, "voidExpired", [], m.market, MARKET_ABI)) {
+        // Kept from off-chain even though a fork measurement says redemption does not
+        // need them: the gas is the operator's here, and belt-and-braces is free. The
+        // on-chain sweep deliberately does not pay for these.
         await send(`sync     ${tag}`, "syncSettlement", [s.marketId], addresses.binaryModule as `0x${string}`, MODULE_ABI);
         await send(`final    ${tag}`, "finalizeMarket", [s.marketId], addresses.binaryModule as `0x${string}`, MODULE_ABI);
         if (await send(`settle   ${tag}`, "settle", [BigInt(i)])) active--;
+        stuck.delete(String(s.marketId));
+      } else {
+        // The hatch is open and still refusing. That is the shape that cost two days the
+        // last time: a loop that logs the same rejection every cycle and gets quieter the
+        // longer it runs, because nobody reads a line they have already read. Count it
+        // and escalate, so the log says how long rather than just what.
+        const key = String(s.marketId);
+        const n = (stuck.get(key) ?? 0) + 1;
+        stuck.set(key, n);
+        const mins = Math.round((Date.now() / 1000 - gate) / 60);
+        log(`STUCK    ${tag}  voidExpired refused ${n}x; hatch open ${mins} min; ${usd(s.basis)} behind it`);
       }
       continue;
     }

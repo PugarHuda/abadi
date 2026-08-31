@@ -83,10 +83,11 @@ Decoded from those two settle receipts:
 | 0 `…c08f` | 97.60 | 60.50 | 50.00 (100 YES at the voided 0.5) | **110.50** |
 | 2 `…c090` | 98.40 | 98.40 | 0.00 (held nothing) | **98.40** |
 
-208.90 back on 196.00 of basis. `idleAssets` went 4185.52 → 4215.52 and equals the vault's
-real tUSDC balance to the cent; the rest went straight back out as two new quotes in the
-same cycle. Slot 2 came back at exactly 100% of its basis — the escrow the frozen book
-would not hand over was returned by the pool on finalization anyway.
+208.90 back on 196.00 of basis. `idleAssets` was 4202.422338 at the block before the first
+void and 4411.322338 after both settles — the 208.90 exactly — then 4215.522338 once the
+rest went straight back out as two new quotes in the same cycle, which equals the vault's
+real tUSDC balance to the cent. Slot 2 came back at exactly 100% of its basis — the escrow
+the frozen book would not hand over was returned by the pool on finalization anyway.
 
 ## What this broke that nobody had noticed
 
@@ -111,11 +112,31 @@ Both are fixed in this commit. **Neither fix is live until the vault is redeploy
   refusal is survivable exactly when no fill is possible — when the market can no longer
   trade — and is survived by *keeping* the order id, never by clearing it. A slot is
   deleted only when nothing is resting and nothing is held.
-- `releaseSlot` takes the hatch: `voidExpired`, then `syncSettlement`, then
-  `finalizeMarket`, then `_settle`. Each wrapped, because a callback that reverts is lost.
+- `releaseSlot` takes the hatch: `voidExpired`, then `_settle`. Each wrapped, because a
+  callback that reverts is lost.
+
+  > **Corrected 2026-08-31.** This first shipped as `voidExpired` → `syncSettlement` →
+  > `finalizeMarket` → `_settle`, on the belief — stated in the docstring — that the two
+  > middle calls were not optional and that without them redemption would find an empty
+  > settlement. That was never measured, only inferred from the order the recovery below
+  > happened to be run in. Measured since, on a fork against the real module: after a bare
+  > `voidExpired`, `settle` redeemed 100.000000 of 100. The two calls cost 3.94M of gas
+  > between them, which the callback pays out of the balance that keeps it able to arm at
+  > all, so they are gone from the callback. The bot still makes both from off-chain,
+  > where the gas is the operator's.
 - `_release` no longer cancels at all. It merges a complete set if there is one and keeps
   the slot; only settlement can return what the pool still holds.
-- `SWEEP_GAS` 8,000,000 → 40,000,000. One slot through the hatch measured 5,314,308.
+- `SWEEP_GAS` 8,000,000 → 16,000,000. One slot through the hatch is `voidExpired`
+  694,993 + `settle` 679,349 = 1,374,342, so eight slots is 10,994,736.
+
+  > **Corrected 2026-08-31.** This first shipped as 40,000,000, sized on the same wrong
+  > premise: 5,314,308 per slot with the two extra calls included. That number did not
+  > even fit its own stated worst case — 8 × 5,314,308 is 42.5M — and it mattered, because
+  > only gas used is paid but it is paid from the handler's OWN balance. At the arm's
+  > 50 gwei cap a full 40M sweep costs 2 STT, against a measured headroom over
+  > `MIN_HANDLER_BALANCE` of 0.82 STT: one worst-case callback would have taken the vault
+  > under the floor, after which it could never arm again and the keeper-free claim would
+  > have quietly become false. A real callback has measured 291,526 gas, or 0.0047 STT.
 - The bot arms the wake-up at `expiry + settlementWindow + 15`, not `expiry + 45`. At +45
   the market is not resolved, not voidable, and its book is already frozen: the sweep
   arrived with nothing it could do.
@@ -131,11 +152,12 @@ the real pool refuses the cancel and the real market refuses the hatch, confirm
 `expiry + settlementWindow` and watch the vault void, sync, finalize, settle and free the
 slot with every cent of the escrow back. 5 fork tests pass.
 
-Unit: `test_sweepVoidsAWindowTheOracleAbandoned` and
-`test_sweepInTheGapKeepsTheSlotAndWhatIsOwedOnIt`. The mock pool now freezes its book at
+Unit: `test_sweepVoidsAWindowTheOracleAbandoned`,
+`test_sweepInTheGapKeepsTheSlotAndWhatIsOwedOnIt` and `test_aRefusedCancelKeepsTheOrderId`
+— the last of these exists because the `mayFail` guard above could be reverted with the
+whole suite still green. The mock pool now freezes its book at
 expiry the way the real one does, and the mock market has the hatch on the real clock gate
-— which is what turned the `flatten` defect from invisible into a failing test. 78 unit
-tests pass.
+— which is what turned the `flatten` defect from invisible into a failing test. 87 unit tests pass.
 
 ## Unrelated, same evening
 

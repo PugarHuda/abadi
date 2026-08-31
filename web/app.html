@@ -86,7 +86,13 @@
   .log a { margin-left: 6px; }
   #app[data-busy="true"] .actions { opacity: .7; }
 
+  /* A number that could not be read is still shown — it was true once — but never as if
+     it were true now: struck through, dimmed, with the heading saying when it was read. */
+  #app[data-stale="true"] .grid dd { color: var(--cotton-dim); text-decoration: line-through; text-decoration-color: var(--turmeric); }
+  #app[data-stale="true"] #freshness { color: var(--turmeric); }
+
   .note { color: var(--cotton-dim); max-width: 66ch; font-size: 15px; }
+  #contracts a { font-family: var(--mono); font-size: 13px; word-break: break-all; }
   .note b { color: var(--cotton); font-weight: 500; }
   #wake b { font-family: var(--mono); font-weight: 600; }
 
@@ -126,6 +132,11 @@
     or <a href="https://rabby.io/" target="_blank" rel="noopener">Rabby</a>, then reload this page. Everything below
     still reads live from the chain without one.
   </p>
+  <p class="note" id="contracts">
+    Vault <a id="vaultAddr" target="_blank" rel="noopener">…</a><br>
+    tUSDC <a id="usdcAddr" target="_blank" rel="noopener">…</a><br>
+    The only two contracts this page ever asks you to sign for. Both links go to the Shannon explorer.
+  </p>
   <p class="note">
     Deposits mint ERC-4626 shares of the vault. The operator key can quote and cancel and
     cannot move a token; <b>settle</b> is permissionless and pays the vault. Your shares are
@@ -133,7 +144,7 @@
   </p>
   <p class="note" id="wake">Self-wake reserve: <b data-wake="stt">…</b> of the 32 STT the chain requires before the vault may arm its own settlement. <span data-wake="verdict"></span></p>
 
-  <h2>Balances <span>read from the chain every 30 seconds</span></h2>
+  <h2>Balances <span id="freshness">read from the chain every 30 seconds</span></h2>
   <div class="panel">
     <dl class="grid">
       <div><dt>Your tUSDC</dt><dd><span id="usdc">—</span> <small>tUSDC</small></dd></div>
@@ -156,7 +167,7 @@
     </div>
     <div class="action">
       <h3>Deposit</h3>
-      <p>Approves the vault for the amount if needed, then deposits. Two signatures the first time, one after.</p>
+      <p>Approves the vault for exactly this amount, then deposits it. The deposit spends the whole approval, so every deposit signs twice.</p>
       <form class="row" id="depositForm">
         <div class="field">
           <label for="amount">Amount in tUSDC</label>

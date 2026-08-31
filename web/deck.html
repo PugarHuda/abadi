@@ -264,7 +264,7 @@ locked in           <b>+2.60</b></pre>
   <table>
     <tr><th>Actor</th><th>Can</th><th>Cannot</th></tr>
     <tr><td><code>operator</code></td><td>quote, cancel</td><td class="cross"><b>move any token</b></td></tr>
-    <tr><td><code>governor</code></td><td>set operator, risk params</td><td class="cross">touch assets</td></tr>
+    <tr><td><code>governor</code></td><td>set operator, risk params; <code>sweepNative</code> the vault's ~32.8 STT wake-up reserve</td><td class="cross">touch depositor collateral</td></tr>
     <tr><td>depositor</td><td>deposit, withdraw</td><td class="cross">steer quotes</td></tr>
   </table>
   <p class="dim"><code>settle()</code> is permissionless — proceeds go to the vault, never the caller, and a settled market leaves the live list so redemption has to be pulled. <code>flatten()</code> is operator-only while a market still trades, because cancelling a live quote destroys the spread; open to anyone once it can't.</p>
@@ -291,7 +291,7 @@ locked in           <b>+2.60</b></pre>
     <tr><td>Both legs filled into a complete set</td><td class="num tick">✓</td></tr>
     <tr><td><code>settle()</code> — redeemed 100.00 on a 97.60 basis</td><td class="num tick">✓</td></tr>
     <tr><td><code>flatten()</code> — merged early, 671s before expiry</td><td class="num tick">✓</td></tr>
-    <tr><td>78 tests, five stateful invariants</td><td class="num tick">✓</td></tr>
+    <tr><td>87 tests, five stateful invariants</td><td class="num tick">✓</td></tr>
     <tr><td>Keeper-free wake-up — the chain settled a window for us</td><td class="num tick">✓</td></tr>
   </table>
   <p><b>A handful of fills proves the mechanism, not the edge.</b> Adverse selection is the real risk a maker carries, and we met it twice in one afternoon — a leg taken while the market walked away from the other. NAV marks that leg at zero, so the loss lands on us and not on whoever deposits next. Measuring the frequency needs many quotes across many windows. The bot and the ledger exist so that number grows without anyone having to trust it.</p>

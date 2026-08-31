@@ -8,7 +8,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {LiquidityVault} from "../src/LiquidityVault.sol";
 import {MarketEngine} from "../src/MarketEngine.sol";
 import {IBinaryMarketsModule, MarketStatus} from "../src/interfaces/IBinaryMarketsModule.sol";
-import {IOutcomeToken6909, ORDER_KIND, ORDER_TYPE} from "../src/interfaces/IBinaryPool.sol";
+import {PoolOrder, IOutcomeToken6909, ORDER_KIND, ORDER_TYPE} from "../src/interfaces/IBinaryPool.sol";
 import {AbadiReactive} from "../src/AbadiReactive.sol";
 import {SomniaExtensions} from "@somnia-chain/reactivity-contracts/contracts/interfaces/SomniaExtensions.sol";
 
@@ -80,11 +80,33 @@ contract MockPool {
         paused = v;
     }
 
+    /// @dev Contracts still resting under an id. The real pool keeps this and it is the
+    ///      only authoritative answer to "how much of this leg has not filled" — a
+    ///      balance read cannot tell a fill from a merge or from a stranger's donation.
+    mapping(uint128 => uint256) public remainingOf;
+
+    error IncorrectOrder();
+
+    /// @dev Mirrors the venue: REVERTS for an id with no active order behind it, rather
+    ///      than returning a zeroed struct. Callers read that revert as "nothing resting".
+    ///      The freeze gates WRITES to the book, not reads: measured against the real
+    ///      pool on two expired-and-unresolved markets, `getOrder` answered normally
+    ///      while every cancel path reverted.
+    function getOrder(uint128 orderId) external view returns (PoolOrder memory o) {
+        if (orderId == 0 || remainingOf[orderId] == 0) revert IncorrectOrder();
+        o.orderId = orderId;
+        o.owner = address(this);
+        o.quantityRemaining = remainingOf[orderId];
+        o.fullQuantity = remainingOf[orderId];
+    }
+
     /// @dev Take `spent` of an order's escrow, as a fill does. An order whose escrow is
     ///      used up stops being a live order the vault owns.
     function fillPartial(uint128 orderId, uint256 spent) public {
+        uint256 had = escrowOf[orderId];
         escrowOf[orderId] -= spent;
-        if (escrowOf[orderId] == 0) filled[orderId] = true;
+        if (had > 0) remainingOf[orderId] = (remainingOf[orderId] * escrowOf[orderId]) / had;
+        if (escrowOf[orderId] == 0) { filled[orderId] = true; remainingOf[orderId] = 0; }
     }
 
     function fill(uint128 orderId) external {
@@ -126,6 +148,7 @@ contract MockPool {
         placed.push(Placed(kind, price, quantity, expireTimestampNs, orderType, userData));
         id = nextId++;
         escrowOf[id] = cost;
+        remainingOf[id] = quantity;
         success = true;
     }
 
@@ -140,6 +163,7 @@ contract MockPool {
         cancelled.push(orderId);
         uint256 back = escrowOf[orderId];
         escrowOf[orderId] = 0;
+        remainingOf[orderId] = 0;
         if (back > 0) collateral.transfer(msg.sender, back);
     }
 }
@@ -453,7 +477,9 @@ contract LiquidityVaultTest is Test {
 
         uint256 all = vault.balanceOf(alice);
         vm.prank(alice);
-        vm.expectRevert(abi.encodeWithSelector(LiquidityVault.LastShareWhileOpen.selector, 0));
+        // The guard is enforced twice over: `maxRedeem` reports the real ceiling, so
+        // ERC-4626 refuses before `_withdraw` is reached. Both are the same rule.
+        vm.expectRevert();
         vault.redeem(all, alice, alice);
 
         // Anyone who is not the last share is unaffected.
@@ -1062,8 +1088,12 @@ contract LiquidityVaultTest is Test {
         roller_onEvent(block.timestamp * 1000);
 
         assertTrue(market.isVoided(), "the sweep took the hatch");
-        assertEq(module.synced(MARKET), 1, "hub earmark released");
-        assertEq(module.finalizedCount(MARKET), 1, "backing moved to settlement");
+        // The callback deliberately does NOT drive syncSettlement/finalizeMarket. Measured
+        // on a fork against the real module, redemption after a bare voidExpired returns
+        // the full amount without them, and they cost 3.94M of gas the callback pays for
+        // out of the balance that keeps it able to arm at all. The bot still makes both.
+        assertEq(module.synced(MARKET), 0, "the sweep does not pay for the hub nudge");
+        assertEq(module.finalizedCount(MARKET), 0, "nor for finalize");
         assertFalse(vault.slots(0).active, "slot freed");
         assertEq(vault.totalEscrowed(), 0, "escrow no longer counted");
         assertEq(vault.idleAssets(), 500e6, "every cent of the escrow came back");
@@ -1106,6 +1136,163 @@ contract LiquidityVaultTest is Test {
         assertFalse(vault.slots(0).active, "settled by the sweep");
         assertEq(vault.idleAssets(), 500e6 - 97e6 + 100e6, "the 100 came back as cash");
         assertEq(vault.totalAssets(), 503e6);
+    }
+
+    // ------------------------------------------------- regressions for the 2026-08-30 audit
+
+    /// The escrow derivation inferred "how much of this leg is unfilled" from the vault's
+    /// ERC-6909 balance. `mergeCompleteSet` burns that balance, so a leg that had filled
+    /// in full read back as never filled and its escrow was added a second time, on top of
+    /// the cash the merge had just delivered. Reported assets 600 against 503 of real cash,
+    /// and a holder able to redeem the difference.
+    function test_flattenInTheFrozenGapDoesNotInventEscrow() public {
+        _deposit(alice, 500e6);
+        vm.prank(operator);
+        vault.quote(0, MARKET, uint256(500_000), uint256(15_000), 100e6);
+
+        pool.fill(1);
+        pool.fill(2);
+        outcome.setBalance(address(vault), YES_ID, 100e6);
+        outcome.setBalance(address(vault), NO_ID, 100e6);
+
+        vm.warp(expiry + 1);
+        assertTrue(pool.frozen(), "the venue freezes the book at expiry");
+
+        vm.prank(operator);
+        vault.flatten(0);
+
+        uint256 cash = usdc.balanceOf(address(vault));
+        assertEq(cash, 503e6, "the merge delivered the set");
+        assertEq(vault.totalEscrowed(), _poolLedger(), "escrow matches what the pool holds");
+        assertEq(vault.totalAssets(), cash, "nothing invented on top of the cash");
+        assertLe(vault.convertToAssets(vault.balanceOf(alice)), cash, "cannot redeem more than exists");
+    }
+
+    /// The pool's own ledger, summed exactly as invariant_restingEscrowMatchesThePoolsOwnLedger does.
+    function _poolLedger() internal view returns (uint256 total) {
+        for (uint256 i = 0; i < vault.MAX_SLOTS(); i++) {
+            LiquidityVault.Slot memory s = vault.slots(i);
+            if (!s.active) continue;
+            if (s.yesOrderId != 0) total += pool.escrowOf(s.yesOrderId);
+            if (s.noOrderId != 0) total += pool.escrowOf(s.noOrderId);
+        }
+    }
+
+    /// Settlement v3 stores a payout VECTOR, not a winner. Taking its argmax abandoned the
+    /// smaller side of a split, and on a tie picked index 0 and abandoned the other side
+    /// entirely — with the slot already deleted, so nothing could come back for it.
+    function test_aTiedPayoutVectorRedeemsBothSides() public {
+        _quotedAndFilled();
+        vm.warp(expiry + 1);
+        market.resolve(5_000_000, 5_000_000); // a tie, and NOT voided
+
+        uint256 before = vault.idleAssets();
+        vault.settle(0);
+
+        assertEq(vault.idleAssets() - before, 200e6, "both sides redeemed, not just one");
+        assertFalse(vault.slots(0).active, "slot closed");
+    }
+
+    function test_aSplitPayoutVectorRedeemsBothSides() public {
+        _quotedAndFilled();
+        vm.warp(expiry + 1);
+        market.resolve(7_000_000, 3_000_000);
+
+        uint256 before = vault.idleAssets();
+        vault.settle(0);
+        assertEq(vault.idleAssets() - before, 200e6, "the 30% side was not abandoned");
+    }
+
+    /// One wei left behind defeated the last-share guard: the holder was no longer "the
+    /// last share" and could exit in full at a NAV that marks the open leg at zero,
+    /// leaving the slot's proceeds to the dust.
+    function test_aDustHolderCannotBeLeftHoldingAnOpenSlot() public {
+        _deposit(alice, 500e6);
+        vm.prank(operator);
+        vault.quote(0, MARKET, uint256(500_000), uint256(15_000), 100e6);
+
+        // alice leaves a wei with someone else, then tries to take everything else.
+        vm.prank(alice);
+        vault.transfer(bob, 1);
+
+        uint256 rest = vault.balanceOf(alice);
+        vm.prank(alice);
+        vm.expectRevert();
+        vault.redeem(rest, alice, alice);
+
+        // And the ceiling it does report always leaves the floor standing.
+        uint256 max = vault.maxRedeem(alice);
+        assertLt(max, rest, "cannot take everything while a slot is open");
+        assertGe(vault.totalSupply() - max, vault.MIN_SUPPLY_WHILE_OPEN(), "the floor survives");
+        vm.prank(alice);
+        vault.redeem(max, alice, alice); // and what it reports must not revert
+    }
+
+    /// A first deposit of one wei plus a donation rounded the next depositor's shares to
+    /// zero. OpenZeppelin's virtual-share defence scales with the decimals offset, and the
+    /// default of 0 is not enough at six-decimal collateral.
+    function test_theFirstDepositorCannotBeInflatedOut() public {
+        usdc.mint(bob, 1_000e6);
+        vm.startPrank(bob);
+        usdc.approve(address(vault), type(uint256).max);
+        vault.deposit(1, bob); // one wei of shares
+        usdc.transfer(address(vault), 1_000e6); // donate, to move the mark
+        vm.stopPrank();
+
+        _deposit(alice, 500e6);
+        assertGt(vault.balanceOf(alice), 0, "the victim's deposit must mint something");
+        assertGt(vault.convertToAssets(vault.balanceOf(alice)), 499e6, "and be worth about what it cost");
+    }
+
+    /// ERC-4626 requires these to report an amount that does not revert. A withdrawal is
+    /// paid out of idle collateral, not NAV, and the app's Max button trusted the
+    /// inherited answer and sent transactions that could only fail.
+    function test_maxWithdrawIsCappedByIdleNotNav() public {
+        _quotedAndFilled();
+        assertLe(vault.maxWithdraw(alice), vault.idleAssets(), "never promises more than is there");
+        uint256 max = vault.maxWithdraw(alice);
+        vm.prank(alice);
+        vault.withdraw(max, alice, alice); // must not revert
+    }
+
+    /// Governance surface. Neither setter had any test at all, including for who may call.
+    function test_onlyGovernorCanSetRiskParams() public {
+        vm.prank(operator);
+        vm.expectRevert(abi.encodeWithSelector(LiquidityVault.NotGovernor.selector, operator));
+        vault.setRiskParams(2000, 1);
+        vm.prank(governor);
+        vault.setRiskParams(2000, 20_000);
+        assertEq(vault.headroomBps(), 2000);
+        assertEq(vault.minHalfSpread(), 20_000);
+    }
+
+    function test_onlyGovernorCanSetGrid() public {
+        vm.prank(operator);
+        vm.expectRevert(abi.encodeWithSelector(LiquidityVault.NotGovernor.selector, operator));
+        vault.setGrid(1e3, 1e3);
+        vm.prank(governor);
+        vault.setGrid(2e3, 2e3);
+        assertEq(vault.tickSize(), 2e3);
+        assertEq(vault.lotSize(), 2e3);
+    }
+
+    /// The guard that survives every other test: a cancel the pool refuses must leave the
+    /// order id in place. Clearing it is how a freed slot kept two live legs on Shannon and
+    /// 200 outcome tokens turned up under a slot that had quoted 100.
+    function test_aRefusedCancelKeepsTheOrderId() public {
+        _deposit(alice, 500e6);
+        vm.prank(operator);
+        vault.quote(0, MARKET, uint256(500_000), uint256(15_000), 100e6);
+        pool.fill(1);
+        outcome.setBalance(address(vault), YES_ID, 100e6);
+
+        vm.warp(expiry + 1); // book frozen: the resting NO leg cannot be cancelled
+        vm.prank(operator);
+        vault.cancelQuote(0);
+
+        assertTrue(vault.slots(0).active, "slot kept");
+        assertTrue(vault.slots(0).noOrderId != 0, "the pool is still holding this leg");
+        assertEq(vault.totalEscrowed(), _poolLedger(), "and the vault still says so");
     }
 
     /// The per-slot self-call is the sweep's isolation boundary. It must not be a door.

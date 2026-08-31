@@ -88,6 +88,9 @@
   .ledger-live { border: 1px solid var(--ink-line); background: var(--ink-raised); padding: 20px clamp(16px, 2.4vw, 26px); }
   .ledger-live[data-state="unreachable"] .live-err { display: block; }
   .ledger-live[data-state="unreachable"] .live-grid, .ledger-live[data-state="unreachable"] .tablewrap { display: none; }
+  /* Six figures, and the first two are the headline: per share and what it cost depositors. */
+  .ledger-live .live-grid { grid-template-columns: repeat(3, 1fr); }
+  @media (max-width: 620px) { .ledger-live .live-grid { grid-template-columns: repeat(2, 1fr); } }
   .ledger-live[data-state="loading"] [data-ledger] { color: var(--cotton-dim); }
   .tablewrap { overflow-x: auto; margin-top: 16px; }
   /* ---------- the one chart: a single series, so no legend; the caption names it ---------- */
@@ -402,15 +405,17 @@
   <div class="ledger-live" id="ledger" data-state="loading">
     <p class="live-err" data-ledger="error"></p>
     <dl class="live-grid">
+      <div><dt>Per share</dt><dd data-ledger="share">…</dd></div>
+      <div><dt>Depositors, vs. par</dt><dd><span data-ledger="depositors">…</span> <small>tUSDC</small></dd></div>
+      <div><dt>Realised, every closed episode</dt><dd><span data-ledger="pnl">…</span> <small>tUSDC</small></dd></div>
       <div><dt>Episodes</dt><dd data-ledger="episodes">…</dd></div>
       <div><dt>Complete sets</dt><dd data-ledger="complete">…</dd></div>
       <div><dt>One-sided</dt><dd data-ledger="onesided">…</dd></div>
-      <div><dt>Realised</dt><dd><span data-ledger="pnl">…</span> <small>tUSDC</small></dd></div>
     </dl>
     <figure class="chart" id="pnlChart" aria-labelledby="pnlTitle" data-state="loading">
-      <figcaption id="pnlTitle">Realised spread, cumulative, tUSDC <span data-ledger="last"></span></figcaption>
+      <figcaption id="pnlTitle">Realised, cumulative, every closed episode, tUSDC <span data-ledger="last"></span></figcaption>
       <div class="chart-plot">
-        <svg viewBox="0 0 720 220" preserveAspectRatio="none" role="img" aria-label="Cumulative realised spread over time"></svg>
+        <svg viewBox="0 0 720 220" preserveAspectRatio="none" role="img" aria-label="Cumulative realised profit and loss over time, losses included"></svg>
         <div class="xhair" hidden></div>
         <div class="tip" role="status" hidden></div>
       </div>
@@ -421,7 +426,14 @@
         <tbody data-ledger="rows"></tbody>
       </table>
     </div>
-    <p class="live-foot">read from the explorer’s log API in your browser and decoded with the vault’s ABI · <span data-ledger="count"></span></p>
+    <p class="live-foot">
+      Per share is what a depositor’s claim is worth right now, and it carries every loss the
+      vault has taken. Realised prices every closed episode against its full basis — the escrow
+      the pool released on a leg that never filled is read from the collateral transfers, so a
+      one-sided fill is worth what it actually returned rather than being left out.
+      Read from the explorer’s log API in your browser and decoded with the vault’s ABI ·
+      <span data-ledger="count"></span>
+    </p>
   </div>
 
   <!-- ============ the position ============ -->

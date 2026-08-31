@@ -6,7 +6,9 @@ Everything below cost us real debugging time and is reproducible.
 Issues 1–6 are from 2026-08-26 and are ordered by how much time each one cost. Everything
 after is appended in the order it was found rather than reordered, so numbering people
 have already read stays put: 7–8 from settling a real position, 9–10 from the first live
-reactivity callbacks, 11 from explorer verification, 12 from trying to fork the chain.
+reactivity callbacks, 11 from explorer verification, 12 from trying to fork the chain,
+13 from a cancel that reverted with nothing in it, 14–16 from two windows whose oracle
+never answered and the two days spent reading a contract that was not running.
 
 ---
 
@@ -220,8 +222,10 @@ The filled id is no longer a live order the caller owns, so the pool answers:
 0xf5e39c1f  IncorrectSender(0xbCAe987E…, 0x51fdca2e…)
 ```
 
-and the whole cleanup reverts. The result is that cancellation works on every slot except
-the one shape that actually needs cancelling — the one carrying directional risk with a
+and the whole cleanup reverts. (The second argument survives only in that truncated form
+in the record we kept, and no full value for it exists anywhere in this repository.
+`0x51fdca2e…` is unresolvable, not something a reader can look up.) The result is that
+cancellation works on every slot except the one shape that actually needs cancelling — the one carrying directional risk with a
 dead quote resting against it. Ours had no exit at all: cancel reverted on the filled id,
 merge refused for want of a complete set, and redemption refused because the side we held
 lost.
@@ -400,9 +404,13 @@ that had quoted 100. The vault now refuses to proceed on any cancel failure othe
 `IncorrectSender`; that part is ours.
 
 What is the venue's: a cancel of a live, unfilled, caller-owned order should not revert,
-and when it must, the reason should say why. The staticcall the pool makes first
-(`0x85C01B5e…`) is the likely gate — a market-state or oracle check — but from outside
-there is no way to know.
+and when it must, the reason should say why. The staticcall the pool makes first is not a
+gate at all, which took until the 30th to establish: a live BinaryPool is a 291-byte
+beacon proxy, and every call into it — reverting or not — first `staticcall`s
+`implementation()` (`0x5c60da1b`) on the beacon
+`0x85c01b5ef4f4ed59cac69749565e309f01b14dbc` to find the code to delegate to. The real
+reason this cancel reverted is the frozen book of issue 15. What the beacon does mean is
+issue 16.
 
 **Suggestions**
 
@@ -499,15 +507,18 @@ So the freeze begins at expiry, lasts through the settlement window, and lifts w
 market goes terminal. That is a coherent rule and probably the right one. What cost us
 the two days is that it is written down nowhere and cannot be read from the chain:
 
-`0x8afbce93` decodes to nothing. It is not in 4byte. The pool implementation
-(`0x82A1Fcda…`) is unverified on the Shannon explorer. And it is not among the 418
-entries in `contractErrorsAbi`, whose own header explains why — the table is generated
+`0x8afbce93` decodes to nothing. It is not in 4byte. The pool implementation is unverified
+on the Shannon explorer, and the address the SDK publishes for it (`0x82A1Fcda…`) is not
+the one the pool is running — see issue 16. And it is not among the 418 entries in
+`contractErrorsAbi`, whose own header explains why — the table is generated
 from `smart-contracts/src/**`, and `OrderBook` lives in the dex submodule under `lib/`.
 `readsAbi.ts` already hand-declares `IncorrectOrder()` and `orderBookBatchWriteAbi`
 already hand-declares `EmptyBatch()` for exactly this reason, so the gap is known; this
 is a third one, and it is the one that costs capital.
 
-This is also, we think, the unnamed staticcall gate behind issue 13.
+This is the revert behind issue 13. The `0x85C01B5e…` staticcall we suspected there is
+not a gate: it is the pool's beacon proxy resolving its implementation, which it does on
+every call it ever receives. See issue 16.
 
 **Suggestions**
 
@@ -528,6 +539,57 @@ This is also, we think, the unnamed staticcall gate behind issue 13.
 `docs/evidence/keeper-local.log`, then simulating all four cancel paths at the pool, then
 a fork test warping across the boundary. Full record in
 [`docs/evidence/dead-oracle-2026-08-30.md`](evidence/dead-oracle-2026-08-30.md).
+
+---
+
+## 16. BinaryPools are beacon-upgradeable, and nothing published says which code is live
+
+**Cost: it is the reason issue 15 took two days instead of an afternoon.**
+
+A BinaryPool address does not hold pool code. It holds 291 bytes of beacon proxy whose
+runtime hard-codes one address:
+
+```
+beacon           0x85c01b5ef4f4ed59cac69749565e309f01b14dbc
+                 staticcall implementation() (0x5c60da1b), every call, then delegatecall
+implementation   0x48e523c9f22f98548d263f0aD444D732e5202C0E   40,566 bytes   (today)
+```
+
+That staticcall is what appears in the internal trace of every pool call and is what we
+misread as an access gate in issue 13. The consequence is larger than the misreading:
+
+- **The code behind a live position can change with no address change and no signal.** An
+  integrator who has read a pool's source, pinned a commit, or written a test against its
+  behaviour has pinned nothing. There is no version to read and no event we can watch.
+  Issue 15 — a book that froze at expiry, undocumented and answering an undecodable error
+  — is exactly the shape of thing that is undiagnosable from outside when you cannot tell
+  what code you are talking to. We spent two days assuming the contract we could read was
+  the contract that was running.
+- **The SDK points at the wrong bytecode.** `SOMNIA_TESTNET_ADDRESSES.binaryPoolImpl` is
+  `0x82A1FcdaA2daC2fC7D5f9909D43E68021eE966FD`, 37,936 bytes. The beacon resolves to
+  `0x48e523c9…`, 40,566 bytes. They are different contracts. For a beacon-backed pool a
+  fixed `binaryPoolImpl` constant cannot be right for long, and is not right now.
+- **The generated error table is pinned to code that is no longer deployed.** The 418
+  entries in `contractErrorsAbi` come from a DEX commit that predates the implementation
+  the beacon serves, which is a second reason — beyond the submodule gap in issue 15 —
+  that a live revert can decode to nothing.
+
+**Suggestions**
+
+- Publish the beacon address next to the pool addresses, and an implementation version
+  with a changelog. "The pool was upgraded on the 29th" is information an integrator
+  holding escrow needs and currently cannot get.
+- Expose a version read on the pool (`version()`, or an `Upgraded` event on the beacon
+  that is documented as the thing to watch), and regenerate `contractErrorsAbi` against
+  the deployed implementation rather than a source tree. An error table that does not
+  match the running code is worse than no table, because it is trusted.
+- Either drop `binaryPoolImpl` from `SOMNIA_TESTNET_ADDRESSES` or rename it to the beacon
+  it should have been. As written it invites exactly the mistake we made: reading source
+  at that address and believing it explains a live revert.
+
+**How we found it:** `cast code` on a live pool while chasing the `0x85C01B5e…` staticcall
+from issue 13 — 291 bytes is not a market venue — then `implementation()` on the beacon
+and `cast code` on both implementations to size them.
 
 ---
 
@@ -565,4 +627,8 @@ Everything above is backed by recorded output in `docs/evidence/`:
 | `stale-deployment-2026-08-27.md` | issue 7 — the isolation that produced `InsufficientPermission` |
 | `one-sided-fill-2026-08-27.md` | issue 8 — all three exits reverting on a live slot |
 | `first-settle-2026-08-27.md` | `settle` and `flatten` succeeding once both were fixed |
+| `reactivity-live-2026-08-27.md` | issues 9 and 10 — the callback that ran out of gas, and the 60 ms of jitter |
 | `dead-oracle-2026-08-30.md` | issues 14 and 15 — the frozen book, the hatch, and 208.90 recovered |
+
+Issue 16 has no file behind it. It is `cast code` on a live pool, `implementation()` on the
+beacon, and `cast code` on what that returns; the addresses and sizes are in the issue.
