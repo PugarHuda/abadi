@@ -2620,3 +2620,16 @@
 2026-08-31 16:12:27 fv       BTC-0-31AUG26-2000/tUSDC  fair 0.569  spot 78735.75 strike 78565.49 (feed tick at tradingStart+0s)  sigma 58.0% on 239 M1 returns (half-life 120m, lambda 0.9942)  13653s left  d2 0.173  feed 0s old  book mid 0.635  edge 0.067
 2026-08-31 16:12:27 skip     BTC-0-31AUG26-2000/tUSDC  mid moved 18 ticks in 20s — trending, not quoting
 2026-08-31 16:12:31 cycle 1  NAV 9566.37  idle 9566.37  resting 0.00  share 1.000000
+2026-08-31 16:26:09 vault    0xFd9c93581ADD42B9B13ba5550542Fc7315775cD9
+2026-08-31 16:26:09 operator 0x39D2bae5EAedA9283535dDC98F1991c81eD5Cd7E
+2026-08-31 16:26:09 interval 30s  active 3  size 100 (x0.5 on 900s)  dead 6 ticks  momentum 3 ticks/20s  gas floor 0.5 STT  1 cycles
+2026-08-31 16:26:09 fv       ON  refuse over 0.1 of edge, skew up to 3 ticks toward fair; no model means book-only and a log line saying so
+2026-08-31 16:27:07 tiers    quoting 14400s, 900s only — 3600s and 86400s are left alone on the ledger's record
+2026-08-31 16:27:07 sampled  2 books in 0.3s; second look in 20s
+2026-08-31 16:27:29 fv       ETH-0-31AUG26-2000/tUSDC  fair 0.450  spot 2463.38 strike 2467.21 (feed tick at tradingStart+0s)  sigma 64.4% on 239 M1 returns (half-life 120m, lambda 0.9942)  12752s left  d2 -0.127  feed -1s old  book mid 0.427  edge 0.022
+2026-08-31 16:27:29 skip     ETH-0-31AUG26-2000/tUSDC  mid moved 6 ticks in 20s — trending, not quoting
+2026-08-31 16:27:30 fv       BTC-0-31AUG26-2000/tUSDC  fair 0.506  spot 78583.10 strike 78565.49 (feed tick at tradingStart+0s)  sigma 56.5% on 239 M1 returns (half-life 120m, lambda 0.9942)  12750s left  d2 0.014  feed 0s old  book mid 0.512  edge 0.006
+2026-08-31 16:27:30 quote    slot 0 BTC-0-31AUG26-2000/tUSDC  theirs 0.497/0.526  ours 0.496/0.520  size 100  escrow 97.60  (mid still, 1 ticks)  skew -3 ticks toward fair
+2026-08-31 16:27:33 quote    slot 0 f1df  worked  0x9c15ebc140d0a12e7814847f5916d19e19cecb696f60ae7ebf6866630b08d7d9  gas 2995846
+2026-08-31 16:27:37 arm      20:05:15Z  worked  0x0bd6d240edc791761755735025960a8d7487c4272b55dfe5e6ffd402a89f2faa  gas 467072
+2026-08-31 16:27:40 cycle 1  NAV 9566.37  idle 9468.77  resting 97.60  share 1.000000

@@ -22,7 +22,9 @@
     padding-bottom: 8px; border-bottom: 2px solid var(--ink);
     font-size: 20px; font-weight: 600; letter-spacing: -0.012em;
   }
-  main h2 span { font-size: 14px; font-weight: 400; color: var(--pencil); }
+  /* Same reason: an aside in pencil beside a heading sits on the bare ground, and the
+     ground is striped. The band's own paper keeps it on one colour. */
+  main h2 span { font-size: 14px; font-weight: 400; color: var(--pencil); background: var(--stock); padding: 0 4px 0 0; }
 
   .panel {
     background: var(--stock-sunk);
@@ -88,7 +90,16 @@
   .nowallet { color: var(--alarm); }
   .nowallet a { color: var(--alarm); }
 
-  .log { list-style: none; margin: 0; padding: 0; }
+  /* Small secondary text was sitting straight on the printed grid, so its background
+     alternated between paper and a rule row by row. The detector reads that as contrast
+     drifting between 3.0 and 4.1 depending on which pixels it samples, and it is right
+     that the ground is not one colour. Every other block on this page already has its
+     own bed; the activity list gets one too. */
+  .log {
+    list-style: none; margin: 0; padding: 6px 20px;
+    background: var(--stock-sunk);
+    border-top: 1px solid var(--rule-major); border-bottom: 1px solid var(--rule-major);
+  }
   .log li {
     padding: 11px 0; border-bottom: 1px solid var(--rule);
     font-family: var(--mono); font-size: 12.5px;
