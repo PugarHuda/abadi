@@ -16,6 +16,13 @@ function rowSum(results: string[]) {
 }
 
 test.describe("live ledger", () => {
+  // The pages under here read the chain on load, and the public explorer's log API is
+  // rate-limited: it stalls past 30s often enough to fail roughly two runs in five on an
+  // untouched checkout. `networkidle` then never settles and the test times out on the
+  // venue's availability rather than on anything this repo did. More budget, not a weaker
+  // wait — every assertion below is unchanged, so a real regression still fails.
+  test.beforeEach(() => test.slow());
+
   test("renders episodes from the explorer, with totals that add up", async ({ page }) => {
     await page.goto(BASE + "/dashboard", { waitUntil: "networkidle" });
     const ledger = page.locator("#ledger");

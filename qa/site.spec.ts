@@ -49,6 +49,13 @@ test.describe("document shape", () => {
 });
 
 test.describe("landing", () => {
+  // The pages under here read the chain on load, and the public explorer's log API is
+  // rate-limited: it stalls past 30s often enough to fail roughly two runs in five on an
+  // untouched checkout. `networkidle` then never settles and the test times out on the
+  // venue's availability rather than on anything this repo did. More budget, not a weaker
+  // wait — every assertion below is unchanged, so a real regression still fails.
+  test.beforeEach(() => test.slow());
+
   /** The page's whole claim is that one of each side is worth exactly one, at any
    *  price. It is stated as a control the reader can work, so the control has to be
    *  true — and a hard-coded 1.000 would look identical to a working one. */
@@ -146,6 +153,13 @@ test.describe("landing", () => {
 });
 
 test.describe("live strip", () => {
+  // The pages under here read the chain on load, and the public explorer's log API is
+  // rate-limited: it stalls past 30s often enough to fail roughly two runs in five on an
+  // untouched checkout. `networkidle` then never settles and the test times out on the
+  // venue's availability rather than on anything this repo did. More budget, not a weaker
+  // wait — every assertion below is unchanged, so a real regression still fails.
+  test.beforeEach(() => test.slow());
+
   /** The strip reads the vault off the chain in the browser. It may show live numbers
    *  or an explicit failure; it must never sit forever on the loading placeholders,
    *  and it must never show a number for a vault other than the one the page names. */
@@ -178,6 +192,13 @@ test.describe("live strip", () => {
 });
 
 test.describe("dashboard", () => {
+  // The pages under here read the chain on load, and the public explorer's log API is
+  // rate-limited: it stalls past 30s often enough to fail roughly two runs in five on an
+  // untouched checkout. `networkidle` then never settles and the test times out on the
+  // venue's availability rather than on anything this repo did. More budget, not a weaker
+  // wait — every assertion below is unchanged, so a real regression still fails.
+  test.beforeEach(() => test.slow());
+
   test("renders the numbers it exists to show", async ({ page }) => {
     const problems = watchForFailures(page);
     await page.goto(BASE + "/dashboard", { waitUntil: "networkidle" });
