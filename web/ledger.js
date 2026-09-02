@@ -21,7 +21,11 @@
     "0xc45b59478953ba73f9754d36be911593276d3b368ecf15c35a4cb46ccfd235a1": "Quoted",
     "0x4fd20c1bd025107be37e523e1171bdc1c5a5f76d26ec9bff0d09aa53c637a3df": "Flattened",
     "0x23a327ca5a8ed82563c64164ff358b70fd7eb246d17852940bcdb3146cbd4a70": "Settled",
-    "0x04dde94bb87efaf575f3ce9227258b233abedab77b1ba7d9326410cc4f63207d": "Cancelled"
+    "0x04dde94bb87efaf575f3ce9227258b233abedab77b1ba7d9326410cc4f63207d": "Cancelled",
+    // Added 2026-09-02. A completion spends collateral to close a one-sided fill. Without
+    // it here the chart and the table read that spend as profit the vault never made --
+    // 538.20 of it, on six episodes, while the share price said the opposite.
+    "0x73d1d208039078e54dd7180afc14a282fe4725189200272b6b0784f6476e2831": "SetCompleted"
   };
 
   function word(hex, i) { return BigInt("0x" + hex.slice(2 + 64 * i, 66 + 64 * i)); }
@@ -166,6 +170,7 @@
         var bid = word(e.data, 0), ask = word(e.data, 1), size = word(e.data, 2);
         open[slot] = { vault: vault, slot: slot, marketId: marketId, at: e.at, lastAt: e.at, closedAt: null, bid: bid, ask: ask, size: size,
           basis: (size * bid) / ONE + (size * (ONE - ask)) / ONE,
+          completed: 0n,
           merged: 0n, returned: 0n, redeemed: 0n, cancelled: false, closedBy: "open", tx: e.tx,
           pool: "", quoteOrd: 0, refunded: 0n };
         return;
@@ -176,6 +181,9 @@
       if (e.name === "Flattened") { ep.merged += word(e.data, 0); ep.returned += word(e.data, 1); ep.closedBy = "flatten"; }
       else if (e.name === "Settled") { ep.redeemed += word(e.data, 0); ep.closedBy = "settle"; delete open[slot]; done.push(ep); }
       else if (e.name === "Cancelled") { ep.cancelled = true; if (ep.closedBy === "open") ep.closedBy = "cancel"; }
+      // The vault bought half a pair to stop holding a direction: that is what the
+      // episode cost, not what came back.
+      else if (e.name === "SetCompleted") { ep.completed += word(e.data, 1); ep.basis += word(e.data, 1); }
     });
     Object.keys(open).forEach(function (k) { done.push(open[k]); });
     return done;

@@ -322,16 +322,37 @@ bot skips arming and says so until then. `sweepNative` brings the reserve back o
   modelled or self-reported; which orders are ours is decided by the `owner` field the
   venue itself writes. `node scripts/impact.ts` ·
   [`docs/evidence/impact-2026-08-31.txt`](docs/evidence/impact-2026-08-31.txt)
-- **A one-sided fill is now closed, not carried.** Eighteen episodes in the ledger are the
-  same shape: one leg filled, the book left, and the vault held a direction it never
-  wanted, worth 1 or 0 at settlement. They cost between 6.83 and 76.00 on a basis under
-  100. `completeSet` crosses the book for the missing side with an IOC order, so the pair
-  becomes worth exactly 1 and the loss is the spread instead of the leg — measured at
-  **498.50 against 451.50 on the same staged fill**, and proven against the real pool in
-  `test_fork_completeSetClosesANakedLegOnTheRealPool`. It refuses above a price the
-  operator sets: its first live chance cost 0.179 over par and it declined, in the log,
-  with the arithmetic.
-- **`reduceQuote` trims a resting quote in place.** Cancel-and-replace surrenders
+- **A one-sided fill is now closed, not carried, and two days of it are measured.** One
+  leg fills, the book leaves, and the vault holds a direction worth 1 or 0 at settlement.
+  `completeSet` crosses the book for the missing side with an IOC order, so the pair
+  becomes worth exactly 1 and the loss is the spread instead of the leg. Across every
+  one-sided fill this project has taken:
+
+  | | episodes | mean result | worst |
+  |---|---|---|---|
+  | carried to settlement | 18 | **−25.98%** of basis | −100.00% |
+  | completed | 6 | **−3.98%** | −6.00% |
+
+  Twenty-two points per adverse episode, and completing cannot produce a −100 because a
+  pair is worth exactly one either way. It **refused 34 times against those 6** — at
+  1.239, 1.416, 1.490, 1.562 the pair, where booking a certain loss to avoid a coin flip
+  is worse than the coin flip. Proven against the real pool in
+  `test_fork_completeSetClosesANakedLegOnTheRealPool`.
+  [`docs/evidence/two-days-of-completing-2026-09-02.md`](docs/evidence/two-days-of-completing-2026-09-02.md)
+- **The ledger flattered itself again, and its own check caught it.** With completions
+  landing, realised read **+335.00** where it had read −196.40 — because an episode's cost
+  came from the `Quoted` event alone and `completeSet` spends collateral no `Quoted` knows
+  about. Six of them inflated the number by **538.20**. The reconciliation written in after
+  August's audit is what surfaced it: realised said +525.30 on the live vault while the
+  share price said −12.90, and a gap that size with one position open is a wrong number,
+  not slack. Both ledgers read `SetCompleted` now. Second time a new feature has flattered
+  this project's P&L; second time the share price was the thing that could not be fooled.
+- **`reduceQuote` trims a resting quote in place — and has not fired once in 1,262
+  cycles.** It is wired, tested, and proven on the real pool, and the logs say why it never
+  triggers: this book moves 29, 33, 49 ticks between two samples twenty seconds apart, so
+  a quote is either still where the market is or completely stale. There is no drifting
+  middle for a three-tick trim band to catch. The knob is not being widened to force a
+  firing; `reduceOrder`'s queue-priority argument needs a loop that resamples in seconds. Cancel-and-replace surrenders
   price-time priority; `reduceOrder` does not, and the SDK has shipped it the whole time
   with no path from an operator key to reach it. The venue's own docs warn an id can be
   "replaced by a reduce", so the contract reads the leg back and reverts unless the same

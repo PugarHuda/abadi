@@ -52,10 +52,16 @@ const ABI = parseAbi([
   "event Flattened(uint256 indexed slot, bytes32 indexed marketId, uint256 pairs, uint256 returned)",
   "event Settled(uint256 indexed slot, bytes32 indexed marketId, uint256 redeemed, bool voided)",
   "event Cancelled(uint256 indexed slot, bytes32 indexed marketId)",
+  // Added 2026-09-02. Without it a completed episode reads as a pair that cost only what
+  // the original quote escrowed, and the collateral the completion actually spent shows
+  // up nowhere: six completions inflated the realised column by 538.20 while the share
+  // price, which cannot be fooled, said the vault was down. The ledger's own
+  // realised-vs-share-price check is what caught it.
+  "event SetCompleted(uint256 indexed slot, bytes32 indexed marketId, uint256 quantity, uint256 spent)",
 ]);
 
 type Ev = {
-  name: "Quoted" | "Flattened" | "Settled" | "Cancelled";
+  name: "Quoted" | "Flattened" | "Settled" | "Cancelled" | "SetCompleted";
   args: any;
   block: number;
   at: string;
@@ -71,6 +77,8 @@ type Episode = {
   ask: bigint;
   size: bigint;
   basis: bigint;
+  /** Collateral spent crossing the book to close a one-sided fill. Part of the basis. */
+  completed: bigint;
   pairsMerged: bigint;
   returned: bigint;
   redeemed: bigint;
@@ -139,6 +147,7 @@ function episodesOf(vault: string, evs: Ev[]): Episode[] {
       open.set(slot, {
         vault, slot, marketId: e.args.marketId, quotedAt: e.at, bid, ask, size,
         basis: (size * bid) / PRICE_ONE + (size * (PRICE_ONE - ask)) / PRICE_ONE,
+        completed: 0n,
         pairsMerged: 0n, returned: 0n, redeemed: 0n, voided: false, cancelled: false,
         closedBy: "open", txs: [e.tx], pool: "", quoteOrd: 0, refunded: 0n,
       });
@@ -160,6 +169,11 @@ function episodesOf(vault: string, evs: Ev[]): Episode[] {
     } else if (e.name === "Cancelled") {
       ep.cancelled = true;
       if (ep.closedBy === "open") ep.closedBy = "cancel";
+    } else if (e.name === "SetCompleted") {
+      // The vault paid this to stop holding a direction. It bought half a pair, so it
+      // belongs in what the episode cost, not in what came back.
+      ep.completed += e.args.spent as bigint;
+      ep.basis += e.args.spent as bigint;
     }
   }
   for (const ep of open.values()) {
