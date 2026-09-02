@@ -33,8 +33,29 @@
   function px(v) { return (Number(v) / 1e6).toFixed(3); }
   function qty(v) { return (Number(v) / 1e6).toLocaleString("en-US", { maximumFractionDigits: 0 }); }
 
+  /* A host that hangs never rejects. `fetch` only fails on a refused connection or a
+     response; against an endpoint that accepts the socket and then says nothing, the
+     promise stays pending until the browser's own timeout, which is minutes.
+
+     That is how the ledger came to sit on "loading" with an empty error message while
+     the Shannon explorer was unreachable for twenty seconds a request — the catch below
+     was correct and simply never ran. This turns a hang into a rejection, so the failure
+     state that already exists is the one the reader sees. */
+  function fetchIn(url, opts, ms) {
+    var ctl = new AbortController();
+    var timer = setTimeout(function () { ctl.abort(); }, ms || 12000);
+    var o = {};
+    if (opts) Object.keys(opts).forEach(function (k) { o[k] = opts[k]; });
+    o.signal = ctl.signal;
+    return fetch(url, o)
+      .catch(function (e) {
+        throw new Error(ctl.signal.aborted ? "no answer in " + ((ms || 12000) / 1000) + "s" : e.message);
+      })
+      .then(function (r) { clearTimeout(timer); return r; }, function (e) { clearTimeout(timer); throw e; });
+  }
+
   function call(data) {
-    return fetch(RPC, {
+    return fetchIn(RPC, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "eth_call", params: [{ to: VAULT, data: data }, "latest"] })
@@ -71,7 +92,7 @@
     var query =
       "query B($m: String!) { Order(where: {market_id: {_eq: $m}, status: {_eq: \"Open\"}}) " +
       "{ isBid price quantityRemaining owner } }";
-    return fetch(INDEXER, {
+    return fetchIn(INDEXER, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ query: query, variables: { m: marketId } })

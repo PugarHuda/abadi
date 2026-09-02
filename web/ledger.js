@@ -35,11 +35,32 @@
   function q(sel) { return root.querySelector(sel); }
   function set(sel, text) { var el = q(sel); if (el) el.textContent = text; }
 
+  /* A host that hangs never rejects. `fetch` only fails on a refused connection or a
+     response; against an endpoint that accepts the socket and then says nothing, the
+     promise stays pending until the browser's own timeout, which is minutes.
+
+     That is how the ledger came to sit on "loading" with an empty error message while
+     the Shannon explorer was unreachable for twenty seconds a request — the catch below
+     was correct and simply never ran. This turns a hang into a rejection, so the failure
+     state that already exists is the one the reader sees. */
+  function fetchIn(url, opts, ms) {
+    var ctl = new AbortController();
+    var timer = setTimeout(function () { ctl.abort(); }, ms || 12000);
+    var o = {};
+    if (opts) Object.keys(opts).forEach(function (k) { o[k] = opts[k]; });
+    o.signal = ctl.signal;
+    return fetch(url, o)
+      .catch(function (e) {
+        throw new Error(ctl.signal.aborted ? "no answer in " + ((ms || 12000) / 1000) + "s" : e.message);
+      })
+      .then(function (r) { clearTimeout(timer); return r; }, function (e) { clearTimeout(timer); throw e; });
+  }
+
   function fetchLogs(address) {
     var out = [];
     function page(params) {
       var qs = params ? "?" + new URLSearchParams(params).toString() : "";
-      return fetch(API + "/addresses/" + address + "/logs" + qs).then(function (r) {
+      return fetchIn(API + "/addresses/" + address + "/logs" + qs).then(function (r) {
         if (!r.ok) throw new Error("explorer " + r.status);
         return r.json();
       }).then(function (j) {
@@ -64,7 +85,7 @@
     function page(params) {
       var p = new URLSearchParams(params || {});
       p.set("type", "ERC-20");
-      return fetch(API + "/addresses/" + address + "/token-transfers?" + p.toString()).then(function (r) {
+      return fetchIn(API + "/addresses/" + address + "/token-transfers?" + p.toString()).then(function (r) {
         if (!r.ok) throw new Error("explorer " + r.status);
         return r.json();
       }).then(function (j) {

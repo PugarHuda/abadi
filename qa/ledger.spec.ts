@@ -95,8 +95,13 @@ test.describe("live ledger", () => {
     expect(out.pts).toEqual([[10, 10], [-30, -40], [-30, 0]]);
   });
 
-  test("the chart is one turmeric line with an end label and a crosshair tooltip", async ({ page }) => {
+  test("the chart is one ink line with an end label and a crosshair tooltip", async ({ page }) => {
     await page.goto(BASE + "/dashboard", { waitUntil: "networkidle" });
+    // Same guard as the test above: with the explorer down there is no series to draw,
+    // and that is the venue's availability rather than anything this repository did.
+    // Without it this test spent thirty seconds polling and then failed on an outage.
+    const state = await page.locator("#ledger").getAttribute("data-state");
+    test.skip(state === "unreachable", "explorer unreachable from this runner");
     const fig = page.locator("#pnlChart");
     await expect.poll(async () => fig.getAttribute("data-state"), { timeout: 30000 }).toBe("live");
     // Two closes are needed before there is a line to draw; the shape of it is checked
