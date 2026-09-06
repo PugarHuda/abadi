@@ -15,7 +15,7 @@ exists so it takes ten minutes rather than an evening.
 Submit at: **https://dorahacks.io/hackathon/event-contracts/buidl** → *Submit BUIDL*.
 
 The hackathon requires a repo link **and a demo video**. The video is built:
-`video/out/abadi-demo.mp4`, 2:48, with `video/assets/abadi-demo.srt` alongside it. It
+`video/out/abadi-demo.mp4`, 2:56, with `video/assets/abadi-demo.srt` alongside it. It
 rebuilds from one script with `npm run video` — see `docs/DEMO-SCRIPT.md`. **The one step
 left is uploading it and pressing submit.**
 
@@ -60,7 +60,7 @@ https://abadi-wheat.vercel.app
 **Demo video**
 
 ```
-(upload video/out/abadi-demo.mp4 — 2:48, 1080p — and paste the link here)
+(upload video/out/abadi-demo.mp4 — 2:56, 1080p — and paste the link here)
 ```
 
 Subtitles: upload `video/assets/abadi-demo.srt` as the caption track. The film also burns

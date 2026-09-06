@@ -1,6 +1,6 @@
 # Demo video — how it is made, and the facts it states
 
-**Runtime 2:48. The submission allows 2–3 minutes.**
+**Runtime 2:56. The submission allows 2–3 minutes, so this is close to the ceiling: adding a sentence now means cutting one.**
 
 The film is not recorded by hand any more. It is built by a pipeline, from one script, and
 the whole thing rebuilds with:

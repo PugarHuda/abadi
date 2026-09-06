@@ -24,7 +24,7 @@ export const VOICE = "en-US-AndrewMultilingualNeural";
  * 121 words a minute and a four-minute-fifteen film, against a submission that allows
  * three. Pace came out of the word count instead, which is the right place to take it
  * from. +12% then came out at 166 wpm, which is hurried for numbers a judge has to catch;
- * this lands near 164 and a 2:48 film. */
+ * this lands near 162 and a 2:56 film — close enough to the three-minute ceiling that a new sentence has to displace an old one. */
 export const RATE = "+8%";
 export const FPS = 30;
 export const WIDTH = 1920;
