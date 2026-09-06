@@ -110,7 +110,12 @@
   .live-slots { list-style: none; margin: 16px 0 0; padding: 14px 0 0; border-top: 1px solid var(--rule-major); font-family: var(--mono); font-size: 12px; color: var(--pencil); }
   .live-foot { margin: 14px 0 0; font-size: 13px; color: var(--pencil); }
   .live-err { display: none; }
-  .live[data-state="error"] .live-err { display: block; }
+  /* Both spellings. `live.js` sets "unreachable"; this rule only knew "error", so the one
+     sentence explaining why the numbers are dashes was written into a hidden element and
+     the reader saw three dashes and no reason. The test passed too — `toContainText` reads
+     textContent, which a `display: none` element still has. */
+  .live[data-state="error"] .live-err,
+  .live[data-state="unreachable"] .live-err { display: block; }
 
   @media (max-width: 640px) {
     .leg, .sum { grid-template-columns: 5rem 4.5rem 1fr; gap: 10px; }
@@ -313,6 +318,7 @@
 
 </div>
 
+<script src="/fetchin.js" defer></script>
 <script src="/live.js" defer></script>
 <script>
 (function () {

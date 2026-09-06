@@ -61,8 +61,15 @@
   };
 
   // ---------------------------------------------------------------- chain reads
+  /* This page is where money moves, and it was the last one still calling `fetch` bare.
+     An RPC that accepted the socket and went quiet left NAV, Idle and Per share reading "…"
+     for minutes while the page went on saying "The numbers are still live" — `refresh()`
+     never resolved, so its own `.catch` never ran and `data-stale` was never set. Same
+     defect as the ledger's, on the worse page. See web/fetchin.js. */
+  var fetchIn = window.ABADI.fetchIn;
+
   function rpc(method, params) {
-    return fetch(RPC, { method: "POST", headers: { "content-type": "application/json" },
+    return fetchIn(RPC, { method: "POST", headers: { "content-type": "application/json" },
       body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: method, params: params }) })
       .then(function (r) { return r.json(); })
       .then(function (j) {
@@ -77,7 +84,10 @@
   // ---------------------------------------------------------------- state + view
   var state = {
     account: null, chainOk: false, busy: false, usdc: 0n, stt: 0n, shares: 0n, worth: 0n, idle: 0n,
-    confirmAll: null, confirmShares: 0n, confirmAt: 0, readAt: null
+    confirmAll: null, confirmShares: 0n, confirmAt: 0, readAt: null,
+    // Labels of the transactions that confirmed during the action now running. Emptied by
+    // run(); read by run()'s catch so a cancellation cannot claim nothing was sent.
+    landed: []
   };
   var els = {};
   ["app", "connect", "wallet", "network", "usdc", "stt", "shares", "worth", "nav", "share", "idle",
@@ -208,7 +218,13 @@
           ? "≈ " + usd(state.worth) + " tUSDC for " + usd(state.shares) + " shares"
             + (state.worth > state.idle ? " — only " + usd(state.idle) + " of that is available now" : "")
           : "";
-        if (!state.busy && state.account && state.chainOk) status("Ready. Balances refresh every 30 seconds.", "info");
+        /* Not over a failure. `run()` calls refresh() straight after its catch, so this
+           line used to replace "the deposit reverted" with "Ready." about two hundred
+           milliseconds later and the only surviving record was the log. A balance refresh
+           is not news; it must not be allowed to overwrite news. */
+        if (!state.busy && state.account && state.chainOk && els.status.dataset.tone !== "bad") {
+          status("Ready. Balances refresh every 30 seconds.", "info");
+        }
       });
   }
 
@@ -226,7 +242,7 @@
       els.app.setAttribute("data-stale", "true");
       els.freshness.textContent = when ? "stale — last read at " + when : "never read";
       status("Could not read the chain (" + e.message + "). Every number below is struck through because it is "
-        + (when ? "from " + when + ", not from now." : "not there: nothing has read yet."), "error");
+        + (when ? "from " + when + ", not from now." : "not there: nothing has read yet."), "bad");
     });
   }
 
@@ -355,15 +371,18 @@
   }
 
   function send(label, to, data) {
-    status(label + ": waiting for your signature in the wallet…", "busy");
+    status(label + ": waiting for your signature in the wallet…", "work");
     return provider().request({ method: "eth_sendTransaction", params: [{ from: state.account, to: to, data: data }] })
       .then(function (hash) {
-        say(label + " sent; waiting for the chain.", EXPLORER + "/tx/" + hash, "busy");
+        say(label + " sent; waiting for the chain.", EXPLORER + "/tx/" + hash, "work");
         return waitFor(hash).then(function (r) {
           if (r.status !== "0x1") {
             return whyReverted(to, data, r.blockNumber).then(function (why) { throw new Error(label + " reverted: " + why); });
           }
           say(label + " confirmed in block " + Number(BigInt(r.blockNumber)).toLocaleString("en-US") + ".", EXPLORER + "/tx/" + hash);
+          // What landed on chain during this action, so a later cancellation cannot be
+          // reported as "nothing was sent". See run().
+          state.landed.push(label);
           return r;
         });
       });
@@ -395,12 +414,22 @@
   function run(fn, button) {
     if (state.busy) return;
     setBusy(true, button);
+    state.landed = [];
     Promise.resolve().then(fn)
       .catch(function (e) {
         var m = e && e.message ? e.message : String(e);
-        if (/user rejected|denied|4001/i.test(m)) m = "You cancelled in the wallet. Nothing was sent.";
+        if (/user rejected|denied|4001/i.test(m)) {
+          /* A deposit asks for two signatures. Cancelling the second one used to print
+             "Nothing was sent." directly under a line saying the approval had confirmed in
+             a block — and it left the reader believing they had no standing allowance on
+             the vault when they did. Say what actually landed. */
+          m = state.landed.length
+            ? "You cancelled in the wallet, but " + state.landed.join(" and ") +
+              " already confirmed on chain. Press the button again and the wallet will only ask for what is left."
+            : "You cancelled in the wallet. Nothing was sent.";
+        }
         else if (/insufficient funds/i.test(m)) m = "The wallet has no STT to pay gas. Get some from the Somnia faucet (Gas panel), then try again.";
-        say(m, null, "error");
+        say(m, null, "bad");
       })
       .then(function () { setBusy(false); return refresh(); });
   }
@@ -470,14 +499,14 @@
     if (state.worth > state.idle) {
       cancelConfirm();
       say("Redeeming every share needs " + exact(state.worth) + " tUSDC and " + exact(state.idle) + " is available now — the rest is working in open quotes. "
-        + "Withdraw up to " + exact(state.idle) + " with the field above, or come back once the quotes close. Nothing was sent.", null, "error");
+        + "Withdraw up to " + exact(state.idle) + " with the field above, or come back once the quotes close. Nothing was sent.", null, "bad");
       return;
     }
     if (state.confirmAll === null) {
       state.confirmShares = state.shares;
       state.confirmAt = Date.now();
       els.withdrawAll.textContent = "Confirm: redeem " + exact(state.confirmShares) + " shares for ≈ " + exact(state.worth) + " tUSDC";
-      status("Press again within five seconds to redeem every share you hold.", "busy");
+      status("Press again within five seconds to redeem every share you hold.", "work");
       state.confirmAll = setTimeout(function () { cancelConfirm("Ready."); }, 5000);
       return;
     }

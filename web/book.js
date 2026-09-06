@@ -41,18 +41,9 @@
      the Shannon explorer was unreachable for twenty seconds a request — the catch below
      was correct and simply never ran. This turns a hang into a rejection, so the failure
      state that already exists is the one the reader sees. */
-  function fetchIn(url, opts, ms) {
-    var ctl = new AbortController();
-    var timer = setTimeout(function () { ctl.abort(); }, ms || 12000);
-    var o = {};
-    if (opts) Object.keys(opts).forEach(function (k) { o[k] = opts[k]; });
-    o.signal = ctl.signal;
-    return fetch(url, o)
-      .catch(function (e) {
-        throw new Error(ctl.signal.aborted ? "no answer in " + ((ms || 12000) / 1000) + "s" : e.message);
-      })
-      .then(function (r) { clearTimeout(timer); return r; }, function (e) { clearTimeout(timer); throw e; });
-  }
+  /* Shared with every other reader on this site — see web/fetchin.js for why it is one
+     function and not a copy per file. */
+  var fetchIn = window.ABADI.fetchIn;
 
   function call(data) {
     return fetchIn(RPC, {

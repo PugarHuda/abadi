@@ -43,18 +43,9 @@
      the Shannon explorer was unreachable for twenty seconds a request — the catch below
      was correct and simply never ran. This turns a hang into a rejection, so the failure
      state that already exists is the one the reader sees. */
-  function fetchIn(url, opts, ms) {
-    var ctl = new AbortController();
-    var timer = setTimeout(function () { ctl.abort(); }, ms || 12000);
-    var o = {};
-    if (opts) Object.keys(opts).forEach(function (k) { o[k] = opts[k]; });
-    o.signal = ctl.signal;
-    return fetch(url, o)
-      .catch(function (e) {
-        throw new Error(ctl.signal.aborted ? "no answer in " + ((ms || 12000) / 1000) + "s" : e.message);
-      })
-      .then(function (r) { clearTimeout(timer); return r; }, function (e) { clearTimeout(timer); throw e; });
-  }
+  /* Shared with every other reader on this site — see web/fetchin.js for why it is one
+     function and not a copy per file. */
+  var fetchIn = window.ABADI.fetchIn;
 
   function fetchLogs(address) {
     var out = [];
@@ -168,8 +159,12 @@
     return pts;
   }
 
+  /* The one read in this file that still called `fetch` bare, and it reproduced in full the
+     bug the rest of the file was rewritten to end: it is joined by `Promise.all` below, so
+     on a hung RPC the whole join never settles, the `.catch` never runs, and the panel sits
+     on "loading" for good — exactly what the explorer outage did on 2026-09-02. */
   function rpc(data) {
-    return fetch(window.ABADI.rpc, {
+    return fetchIn(window.ABADI.rpc, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "eth_call", params: [{ to: window.ABADI.vault, data: data }, "latest"] })
@@ -358,5 +353,10 @@
     .catch(function (err) {
       root.setAttribute("data-state", "unreachable");
       set("[data-ledger=error]", "Could not read the explorer (" + (err && err.message ? err.message : "no response") + "). Nothing is shown rather than something stale.");
+      /* The chart is drawn only from render(), which this path skips, so it used to keep
+         the word "loading" on screen for the rest of the session while the panel above it
+         said the read had failed. Say the same thing twice rather than contradict itself. */
+      var fig = document.getElementById("pnlChart");
+      if (fig) fig.setAttribute("data-state", "unreachable");
     });
 })();

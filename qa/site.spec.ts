@@ -157,13 +157,26 @@ test.describe("landing", () => {
     await page.goto(BASE + "/", { waitUntil: "networkidle" });
     const hrefs = await page.locator('a[href*="/tx/0x"]').evaluateAll((as) => as.map((a) => (a as HTMLAnchorElement).href));
     expect(hrefs.length, "the page cites transactions").toBeGreaterThan(0);
+    /* The explorer rate-limits, and this test asks it once per cited transaction while the
+       rest of the suite is hitting it too. A 429 is the explorer declining to answer, not
+       this page citing a transaction that does not exist, and failing the build on it makes
+       a green suite a matter of how busy somebody else's server is — it went red twice on
+       an unchanged checkout while this file was being edited. Every other explorer read in
+       the suite already tolerates a 429; this one asserted a bare 200.
+
+       Checked, not skipped: at least one hash still has to be confirmed on chain, so the
+       claim is verified even on a throttled run. */
+    let checked = 0, throttled = 0;
     for (const href of hrefs) {
       const hash = href.split("/tx/")[1];
       const res = await request.get(`https://shannon-explorer.somnia.network/api/v2/transactions/${hash}`);
+      if (res.status() === 429) { throttled++; continue; }
       expect(res.status(), `${hash} is not on the explorer`).toBe(200);
       const j = await res.json();
       expect(j.status ?? j.result, `${hash} did not succeed`).toBe("ok");
+      checked++;
     }
+    expect(checked, `the explorer throttled all ${throttled} reads; nothing was verified`).toBeGreaterThan(0);
   });
 
   test("sends the reader on to the working", async ({ page }) => {

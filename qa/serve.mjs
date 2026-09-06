@@ -35,9 +35,32 @@ async function resolve(url) {
   return null;
 }
 
+/** Send one file, with the length on it.
+ *
+ *  `content-length` is not decoration here. Without it Node falls back to chunked transfer,
+ *  and `qa/perf.spec.ts` builds its page-weight budget by summing `content-length` off each
+ *  response — so every byte counted as zero, the total came to 0, and `expect(0).toBeLessThan
+ *  (102400)` passed on any page of any size. A budget that cannot fail is not a budget. */
+async function send(res, status, file) {
+  const body = await readFile(file);
+  res.writeHead(status, {
+    "content-type": TYPES[extname(file)] ?? "application/octet-stream",
+    "content-length": body.length,
+  });
+  res.end(body);
+}
+
 createServer(async (req, res) => {
   const f = await resolve(req.url ?? "/");
-  if (!f) { res.writeHead(404); return res.end("not found"); }
-  res.writeHead(200, { "content-type": TYPES[extname(f)] ?? "application/octet-stream" });
-  res.end(await readFile(f));
+  if (f) return send(res, 200, f);
+
+  /* Vercel serves dist/404.html for an unknown path, with a 404 status. Answering "not
+     found" in plain text meant the site's own 404 page was only ever reached by asking for
+     it by name, so nothing checked that a genuine miss renders it. */
+  try {
+    return await send(res, 404, join(ROOT, "404.html"));
+  } catch {
+    res.writeHead(404, { "content-type": "text/plain; charset=utf-8" });
+    res.end("not found");
+  }
 }).listen(PORT, () => console.log(`serving ${ROOT} on http://localhost:${PORT}`));
