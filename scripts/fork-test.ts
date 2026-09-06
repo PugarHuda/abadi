@@ -84,7 +84,16 @@ async function main() {
   const all = Object.values(await retry("loadMarkets", () => ex.loadMarkets(true)));
   // Longest tier first: the fork is a snapshot, but the window must still be trading
   // at the snapshot's block, and a day-long window is not about to expire.
-  const cands = candidates(all).filter(hasHeadroom);
+  /* `.filter(hasHeadroom)` — without the arrow — passed the ARRAY INDEX as the function's
+     `now` argument, because that is what `Array.prototype.filter` hands its callback and
+     `hasHeadroom(c, now = Date.now() / 1000)` accepts a second number happily. With `now`
+     as 0, 1, 2, `left` came out around 1.7 billion seconds and both thresholds passed, so
+     this filter rejected nothing at all. It runs unattended every six hours and could hand
+     the fork suite a window seconds from expiry, which then fails inside the vault's own
+     `NoHeadroom` check and reads as a contract regression. Its two sibling call sites use
+     the arrow; only this one did not. TypeScript cannot catch it — the callback signature
+     is compatible — so the arrow is the guard. */
+  const cands = candidates(all).filter((c) => hasHeadroom(c));
 
   for (const c of cands) {
     const oc: any = await ex.client.getMarketOnchain(c.marketId).catch(() => null);

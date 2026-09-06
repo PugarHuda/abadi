@@ -43,7 +43,10 @@ async function main() {
     console.log("market :", m.symbol);
     console.log("up/down:", up, "|", down);
     console.log("book   :", bid.toFixed(3), "/", ask.toFixed(3));
-    console.log("mine   : buy at", (bid - 0.002).toFixed(3), "(1 tick inside, post-only)");
+    // Two ticks BELOW the best bid, not one, and behind the touch rather than inside it:
+    // this probe exists to find out whether the SDK's own path is accepted at all, so the
+    // order is placed where it cannot possibly cross and be rejected for that instead.
+    console.log("mine   : buy at", (bid - 0.002).toFixed(3), "(2 ticks behind the touch, post-only)");
     console.log("");
 
     try {

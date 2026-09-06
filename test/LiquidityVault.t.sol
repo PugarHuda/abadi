@@ -1404,6 +1404,52 @@ contract LiquidityVaultTest is Test {
 
     /// Cancel-and-replace loses the queue; reduceOrder keeps it. The escrow the pool no
     /// longer needs comes back the same way it would on a cancel.
+    /// The operator must not be able to move the share price, and this is the one way it
+    /// could. `totalAssets` caps the complete set a slot may mark at `s.size` — the line
+    /// that keeps a stranger's donated outcome tokens off the books — and `reduceQuote`
+    /// writes `s.size`. Lowering it under the pairs already held deleted NAV that no
+    /// capital had left the vault to create: measured at 502.40 -> 442.40 and a share
+    /// price of 1.004799 -> 0.884800, twelve percent, with `cancelledCount` still 0
+    /// because `_reduceLeg` never touched the pool. Deposit into the dip, wait out the
+    /// redeem delay, flatten, redeem.
+    function test_reduceQuoteCannotShrinkBelowWhatAlreadyFilled() public {
+        _deposit(alice, 500e6);
+        vm.prank(operator);
+        vault.quote(0, MARKET, uint256(500_000), uint256(15_000), 100e6);
+        uint128 yesId_ = vault.slots(0).yesOrderId;
+        uint128 noId_ = vault.slots(0).noOrderId;
+
+        // 80 of the 100 taken on both legs: a complete set of 80 held, 20 still resting.
+        pool.fillPartial(yesId_, 80e6);
+        pool.fillPartial(noId_, 80e6);
+        outcome.setBalance(address(vault), YES_ID, 80e6);
+        outcome.setBalance(address(vault), NO_ID, 80e6);
+
+        uint256 navBefore = vault.totalAssets();
+        uint256 priceBefore = vault.convertToAssets(1e6);
+
+        vm.prank(operator);
+        vm.expectRevert(abi.encodeWithSelector(LiquidityVault.SizeBelowFilled.selector, 20e6, 80e6));
+        vault.reduceQuote(0, 20e6);
+
+        assertEq(vault.totalAssets(), navBefore, "NAV unmoved");
+        assertEq(vault.convertToAssets(1e6), priceBefore, "and so is the share price");
+        assertEq(vault.slots(0).size, 100e6, "the slot kept its size");
+    }
+
+    /// Refusing the dangerous case must not refuse the useful one: a slot with nothing
+    /// filled still trims in place, keeping its order ids and its queue position.
+    function test_reduceQuoteStillTrimsAnUnfilledSlot() public {
+        _deposit(alice, 500e6);
+        vm.prank(operator);
+        vault.quote(0, MARKET, uint256(500_000), uint256(15_000), 100e6);
+
+        vm.prank(operator);
+        vault.reduceQuote(0, 40e6);
+
+        assertEq(vault.slots(0).size, 40e6, "trimmed");
+    }
+
     function test_reduceQuoteShrinksBothLegsInPlace() public {
         _deposit(alice, 500e6);
         vm.prank(operator);

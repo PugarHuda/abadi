@@ -60,6 +60,8 @@ async function main() {
   let open = 0;
   let markedValue = 0n;
   let paid = 0n;
+  /** Directional exposure still open. While this is non-zero the figure below understates. */
+  let nakedTotal = 0n;
 
   for (let i = 0n; i < maxSlots; i++) {
     const s = await read<any>("slots", [i]);
@@ -96,12 +98,20 @@ async function main() {
       book = bid !== undefined ? `${bid.toFixed(3)} / ${ask?.toFixed(3) ?? "--"}` : "no book";
     }
 
-    // A complete set is worth exactly 1 per pair at settlement, whichever side wins.
-    // A leg without a partner is directional and only settlement resolves it, so it is
-    // marked at cost rather than guessed at.
+    /* A complete set is worth exactly 1 per pair at settlement, whichever side wins. A leg
+       without a partner is directional and only settlement resolves it, so it is marked at
+       ZERO — the same convention `LiquidityVault.totalAssets` uses, and for the same
+       reason: marking it at what it cost is how the next depositor buys into a loss that
+       has already happened. NAV may understate, never overstate.
+
+       The comment here used to say "marked at cost", which the line below has never done.
+       `paid` carries the whole basis including the naked leg, `markedValue` carries only
+       the pairs, so the figure at the bottom is understated by exactly the naked leg's
+       cost — deliberately. That is now said where it prints. */
     const pairs = yes < no ? yes : no;
     paid += s.basis;
     const naked = (yes > no ? yes - no : no - yes);
+    nakedTotal += naked;
     markedValue += pairs;
 
     const secsLeft = expiry - Math.floor(Date.now() / 1000);
@@ -129,7 +139,17 @@ async function main() {
   console.log("--- marked ---");
   console.log(`complete sets held  ${usd(markedValue)}`);
   console.log(`paid for them       ${usd(paid)}`);
-  console.log(`locked in           ${usd(pnl)}  ${pnl > 0n ? "(spread captured, no directional exposure)" : ""}`);
+  /* "no directional exposure" used to print on any positive figure, including runs that
+     had just printed NAKED against a live one-sided fill three lines above. The pair is
+     what carries no exposure; the vault is only flat when nothing is naked. */
+  const flat = nakedTotal === 0n;
+  console.log(`locked in           ${usd(pnl)}  ${pnl > 0n && flat ? "(spread captured, no directional exposure)" : ""}`);
+  if (!flat) {
+    console.log("");
+    console.log(`open directional    ${usd(nakedTotal)} of legs with no partner, marked at zero here`);
+    console.log(`                    exactly as the vault marks them. This total is therefore`);
+    console.log(`                    understated by what those legs cost until they settle.`);
+  }
 }
 
 main()

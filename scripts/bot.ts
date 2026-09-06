@@ -581,8 +581,28 @@ async function cycle(n: number, bySymbol: Map<string, any>) {
     const { yes, no } = await held(s.yesId, s.noId);
     const pairs = yes < no ? yes : no;
 
+    /* Every exit this slot has — complete the set, trim, flatten, cancel — is decided from
+       the book below. A bare `.catch(() => null)` followed by a silent `continue` therefore
+       meant that on an indexer failure the slot got NO exit logic at all for the whole
+       15-minute keeper interval, and the log looked exactly like a healthy cycle with
+       nothing to do. The indexer drops about one call in five, which is why `retry` exists
+       and why `loadMarkets` already goes through it; this read did not.
+
+       Retried now, and when it still fails the cycle says so out loud rather than passing
+       over a live position in silence. */
     const mkt = bySymbol.get(String(s.marketId).toLowerCase());
-    const book: any = mkt ? await ex.fetchOrderBook(mkt.outcomes[0].symbol, 3).catch(() => null) : null;
+    let book: any = null;
+    if (mkt) {
+      try {
+        book = await retry(`${tag} book`, () => ex.fetchOrderBook(mkt.outcomes[0].symbol, 3));
+      } catch (e: any) {
+        log(`${tag}  book unreadable (${String(e?.message ?? e).slice(0, 60)}) — no exit considered this cycle`);
+        await alert(
+          `book-unreadable:${String(s.marketId)}`,
+          `${tag}: the book could not be read, so completeSet, trim, flatten and cancel were all skipped for a live position holding ${usd(s.basis)}`,
+        );
+      }
+    }
     const bid = book?.bids?.[0]?.[0], ask = book?.asks?.[0]?.[0];
     if (bid === undefined || ask === undefined) continue;
 

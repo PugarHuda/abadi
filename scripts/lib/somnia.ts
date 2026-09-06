@@ -45,13 +45,17 @@ export const PRICE_ONE = 1_000_000n;
 export const TICK = 1_000n;
 export const LOT = 1_000n;
 
-export function exchange(withSigner = false) {
+/** Read-only, always. Every write in this repo goes through viem with an explicit account.
+ *
+ *  This used to take `withSigner`, which no caller ever passed, whose only effect was to
+ *  hand the operator's private key to the SDK. A dead branch is worth deleting on its own;
+ *  a dead branch that loads a key is worth deleting first. */
+export function exchange() {
   return new SomniaMarkets({
     indexerUrl: INDEXER,
     chain: shannon,
     wsRpcUrl: WS,
     addresses: addresses as never,
-    ...(withSigner ? { privateKey: env().PRIVATE_KEY } : {}),
   } as never);
 }
 

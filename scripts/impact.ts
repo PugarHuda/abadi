@@ -155,17 +155,46 @@ async function ourOrders(): Promise<Pick<Row, "market_id" | "placedAtTimestamp">
   return out;
 }
 
-/** Every order that ever rested on one window, ours and theirs. */
+/** Every order that ever rested on one window, ours and theirs.
+ *
+ * Paged, with no `order_by`, and both halves of that are measured rather than assumed.
+ *
+ * Asked bare — no limit at all, which is how this was written — the busiest windows simply
+ * never answer. Market `…009a50` returns **HTTP 504, `upstream request timeout`, after 31
+ * seconds**, every time. It was therefore never scored: it went into `refused` and the
+ * published spread was computed from the windows whose books happened to be small enough
+ * to fetch. That is a selection effect on the project's headline claim and it is now said
+ * out loud in the report rather than hidden in a bucket.
+ *
+ * `order_by` is what costs, not the row count. Same market, same limit of 1000:
+ *
+ *     limit: 1000                                     200 in 2.5s
+ *     limit: 1000, offset: 0                          200 in 2.7s
+ *     order_by: {placedAtTimestamp: asc}, limit: 1000 504 in 30.9s
+ *
+ * So the sort is dropped. Nothing here needs it — `touch()` scans every row to find the
+ * best bid and ask, and `liveAt()` reads each row's own timestamps.
+ *
+ * Paging on `offset` without a sort is only safe if the backend's natural order is stable,
+ * so that was checked instead of hoped for: page 0 and page 1000 share **zero** rows, and
+ * page 0 fetched twice comes back in identical order. The rows are a settled window's
+ * history and do not change. `…009a50` has more than 8,000 of them. */
+const BOOK_PAGE = 1000;
+
 async function bookOf(marketId: string): Promise<Row[]> {
-  const { Order } = await gql<{ Order: Row[] }>(
-    `query B($m: String!) {
-       Order(where: {market_id: {_eq: $m}}) {
-         market_id isBid price fullQuantity owner status placedAtTimestamp lastUpdatedAtTimestamp
-       }
-     }`,
-    { m: marketId },
-  );
-  return Order;
+  const rows: Row[] = [];
+  for (let offset = 0; ; offset += BOOK_PAGE) {
+    const { Order } = await gql<{ Order: Row[] }>(
+      `query B($m: String!, $n: Int!, $k: Int!) {
+         Order(where: {market_id: {_eq: $m}}, limit: $n, offset: $k) {
+           market_id isBid price fullQuantity owner status placedAtTimestamp lastUpdatedAtTimestamp
+         }
+       }`,
+      { m: marketId, n: BOOK_PAGE, k: offset },
+    );
+    rows.push(...Order);
+    if (Order.length < BOOK_PAGE) return rows;
+  }
 }
 
 /** Was this order resting at `t`? Open orders have no end; closed ones end when they closed. */

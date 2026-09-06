@@ -116,7 +116,7 @@ Open Track
 > still. Depositors are down 2.03% while that plays out, and the ledger says so on the
 > front page.
 >
-> 115 unit tests, five stateful invariants, nine fork tests against the real venue, 77
+> 117 unit tests, five stateful invariants, nine fork tests against the real venue, 85
 > browser tests, 97.25% line coverage and 43/43 functions on the vault. Sixteen reproducible
 > SDK and venue defects reported with transaction hashes.
 

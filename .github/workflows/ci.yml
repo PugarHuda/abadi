@@ -117,6 +117,17 @@ jobs:
       - name: Typecheck
         run: npx tsc --noEmit
 
+      - name: The offline self-checks
+        # Two libraries decide what the vault quotes and what it thinks a window is worth.
+        # Both carry an offline `--self-check`, and until now nothing ran either of them:
+        # `fairvalue.ts` had one since August that was mentioned only in an evidence file,
+        # and `quoting.ts` — the file that prices every order the vault has ever placed —
+        # had no test of any kind. Neither touches the network, so a testnet outage cannot
+        # make this step red.
+        run: |
+          node scripts/lib/fairvalue.ts --self-check
+          node scripts/lib/quoting.ts --self-check
+
       - name: Build site
         run: node scripts/build-site.mjs
 

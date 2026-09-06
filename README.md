@@ -215,7 +215,7 @@ direction — `flatten` merges what it can and leaves the slot open for `settle(
 ```bash
 npm install
 forge install foundry-rs/forge-std   # forge-std is not vendored
-forge test                 # 115 tests, no network needed
+forge test                 # 117 tests, no network needed
 
 node scripts/probe.ts      # live markets and spreads
 node scripts/history.ts    # settled-market calibration
@@ -403,7 +403,7 @@ bot skips arming and says so until then. `sweepNative` brings the reserve back o
   crosshair readout, and as a heartbeat ("last activity 12 min ago") that would be the
   first thing to change if a keeper died — so the numbers above can be checked without
   trusting this file
-- 115 unit tests including two fuzzed properties and five stateful invariants, 9 fork tests against the venue, 77
+- 117 unit tests including two fuzzed properties and five stateful invariants, 9 fork tests against the venue, 85
   browser tests (axe-core WCAG 2.1 AA, Core Web Vitals, touch, the transactions cited on
   the landing page checked against the explorer); `scripts/attest.ts` compares the live
   address against this source and reports **MATCH**, and the address it names is verified

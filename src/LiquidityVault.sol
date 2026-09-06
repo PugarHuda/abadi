@@ -268,6 +268,7 @@ contract LiquidityVault is ERC4626, AbadiReactive, ReentrancyGuard {
     /// @dev The pool took `reduceOrder` but the id no longer rests at the new size.
     error ReduceNotHonoured(uint128 orderId);
     error SizeNotSmaller(uint256 newSize, uint256 size);
+    error SizeBelowFilled(uint256 newSize, uint256 pairsHeld);
     error DelayTooLong(uint64 requested, uint64 cap);
 
     // ------------------------------------------------------------ constructor
@@ -765,6 +766,30 @@ contract LiquidityVault is ERC4626, AbadiReactive, ReentrancyGuard {
         uint256 qty = MarketEngine.quantize(newSize, lotSize);
         if (qty == 0) revert SizeFlooredToZero();
         if (qty >= s.size) revert SizeNotSmaller(qty, s.size);
+
+        /* `s.size` is not only the resting size. `totalAssets` uses it as the cap on the
+         * complete set this slot is allowed to mark — the line that stops a stranger's
+         * donated outcome tokens being counted as ours. Lowering it under the pairs the
+         * slot is already holding therefore deletes NAV that no capital left the vault to
+         * create, and the operator can do it at will.
+         *
+         * Measured on the unit fixture: quote 100, both legs fill 80, `reduceQuote(0, 20)`.
+         * `_reduceLeg` leaves both legs alone — 20 is already all that rests, so the pool is
+         * not touched and `cancelledCount` stays 0 — but `s.size` becomes 20 and the mark on
+         * an 80-pair holding is capped at 20. NAV fell 502.40 to 442.40 and the share price
+         * 1.004799 to 0.884800, a twelve percent move, with nothing sent anywhere. Deposit
+         * into that, wait out `redeemDelay`, `flatten`, redeem: the operator key moves value
+         * without moving a token, which is the one thing this contract says it cannot do.
+         *
+         * A leg at or below the new size is left alone by `_reduceLeg` precisely because it
+         * has already filled that far and there is nothing to give back. This says the same
+         * thing about the slot as a whole, so nothing that used to work stops working: a
+         * reduce below the filled pairs was already a no-op at the pool and is now refused
+         * outright instead of being a no-op that repriced the vault. */
+        uint256 yesHeld = outcomeToken.balanceOf(address(this), s.yesId);
+        uint256 noHeld = outcomeToken.balanceOf(address(this), s.noId);
+        uint256 pairsHeld = yesHeld < noHeld ? yesHeld : noHeld;
+        if (qty < pairsHeld) revert SizeBelowFilled(qty, pairsHeld);
 
         IBinaryPool pool = IBinaryPool(s.pool);
         _reduceLeg(pool, s.yesOrderId, s.size, qty);
