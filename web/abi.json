@@ -41,6 +41,19 @@
   },
   {
     "type": "function",
+    "name": "MAX_HEADROOM_BPS",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint16",
+        "internalType": "uint16"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "MAX_REDEEM_DELAY",
     "inputs": [],
     "outputs": [
@@ -2020,8 +2033,45 @@
   },
   {
     "type": "error",
+    "name": "GridMustBePositive",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "HalfSpreadTooSmall",
+    "inputs": [
+      {
+        "name": "given",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "floor",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
     "name": "HandlerZeroAddress",
     "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "HeadroomTooLarge",
+    "inputs": [
+      {
+        "name": "given",
+        "type": "uint16",
+        "internalType": "uint16"
+      },
+      {
+        "name": "ceiling",
+        "type": "uint16",
+        "internalType": "uint16"
+      }
+    ]
   },
   {
     "type": "error",
