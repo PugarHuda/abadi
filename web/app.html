@@ -5,6 +5,18 @@
      Operate mode: the visitor is here to do something with their own money, so
      scanability and state beat expression. The instrument recedes. */
 
+  /* Secondary text is darker on this page than on the world sheet, and it is a measurement
+     rather than a preference. The design detector samples the rendered image, so what it
+     reads is the anti-aliased edge of a glyph — this colour blended into the paper — and at
+     the sizes used here (12.5–15px) the global `--pencil` sampled at 3.6:1, then 4.4:1 after
+     it was darkened once, against a 4.5:1 floor. Both were comfortably above the floor as
+     declared pairs; neither survived being measured.
+     `/app` is the one page where that trade is free: operate mode already says scanability
+     and state beat expression, and this is a depositor's own money on the screen. 9.1:1 on
+     the panel beds, so the margin survives the sampling. The world sheet keeps its lighter
+     pencil, where the type is larger and the hierarchy is doing work. */
+  main { --pencil: #333B39; }
+
   .masthead nav { display: flex; flex-wrap: wrap; gap: 4px; }
   .masthead nav a {
     font-size: 15px; font-weight: 500; padding: 8px 12px; text-decoration: none;
