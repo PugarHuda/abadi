@@ -103,6 +103,11 @@ async function fakeChain(page: Page, over: Partial<Chain> = {}): Promise<Chain> 
     const reply = (body: object) => route.fulfill({ json: { jsonrpc: "2.0", id: req.id, ...body } });
     if (c.down) return reply({ error: { code: -32000, message: "the node is unreachable" } });
     if (req.method === "eth_getBalance") return reply({ result: num(String(p).toLowerCase() === ACCOUNT ? c.stt : 40n * 10n ** 18n) });
+    // The wake panel reads the vault's live subscription from the node. Answered here so no
+    // test in this file reaches the real chain for it, and so `refresh()` is not waiting on
+    // somebody else's server before it loads a balance.
+    if (req.method === "somnia_reactivityGetSubscriptions") return reply({ result: [] });
+    if (req.method === "somnia_reactivityGetSubscriptionInfo") return reply({ result: [] });
     if (req.method === "eth_getTransactionReceipt") return reply({ result: { status: c.receipt, blockNumber: "0x1e240", transactionHash: p } });
     if (req.method !== "eth_call") return route.continue();
     const to = String(p.to).toLowerCase(), sel = String(p.data).slice(0, 10);
@@ -140,6 +145,62 @@ test.describe("app without a wallet", () => {
     await expect(page.locator("#faucet")).toBeDisabled();
     await expect.poll(async () => page.locator("#nav").textContent(), { timeout: 20000 }).toMatch(/^\d{1,3}(,\d{3})*\.\d{2}$/);
     await expect(page.locator("#slots tr")).not.toHaveCount(0);
+  });
+
+  /* The self-wake claim, checked against the precompile rather than against prose.
+   *
+   * Being funded to arm is not being armed, and this panel used to show only the STT
+   * balance. Somnia's node answers `somnia_reactivityGetSubscriptions(owner)` and
+   * `somnia_reactivityGetSubscriptionInfo(id)` with no key and no SDK, and the second
+   * carries the exact millisecond the vault's own alarm is set for, in `topics[1]`.
+   *
+   * Stubbed here so the assertion is about the page's decoding rather than about whatever
+   * the keeper armed this minute. The live path was checked separately against Shannon and
+   * read: subscription 0xfb127e, firing at 16:05:15 UTC, 16,000,000 gas.
+   */
+  test("shows the live reactivity subscription, not just the reserve", async ({ page }) => {
+    const fireAt = Date.now() + 5 * 60 * 1000;
+    const topic = "0x" + BigInt(fireAt).toString(16).padStart(64, "0");
+    await page.route("**/api.infra.testnet.somnia.network/**", async (route) => {
+      const raw = route.request().postData();
+      if (!raw) return route.continue();
+      const req = JSON.parse(raw);
+      const reply = (result: unknown) => route.fulfill({ json: { jsonrpc: "2.0", id: req.id, result } });
+      if (req.method === "somnia_reactivityGetSubscriptions") return reply(["0xfa6580"]);
+      if (req.method === "somnia_reactivityGetSubscriptionInfo") {
+        return reply([{
+          id: "0xfa6580",
+          topics: ["0x" + "11".repeat(32), topic, "0x" + "00".repeat(32), "0x" + "00".repeat(32)],
+          owner: "0xfd9c93581add42b9b13ba5550542fc7315775cd9",
+          handler_contract_address: "0xfd9c93581add42b9b13ba5550542fc7315775cd9",
+          handler_function_selector: "0x53edf33d",
+          gas_limit: "0xf42400",
+        }]);
+      }
+      return route.continue();
+    });
+    await page.goto(BASE + "/app", { waitUntil: "networkidle" });
+
+    const armed = page.locator("[data-wake=armed]");
+    await expect(armed).toContainText("0xfa6580", { timeout: 20000 });
+    // The gas budget is decoded from the hex the node returned, not written into the page.
+    await expect(armed).toContainText("16,000,000");
+    // And it counts down, which is the difference between a live read and a screenshot.
+    await expect(armed).toContainText(/in \d+m \d+s/);
+  });
+
+  test("says plainly when nothing is armed rather than implying it is", async ({ page }) => {
+    await page.route("**/api.infra.testnet.somnia.network/**", async (route) => {
+      const raw = route.request().postData();
+      if (!raw) return route.continue();
+      const req = JSON.parse(raw);
+      if (req.method === "somnia_reactivityGetSubscriptions") {
+        return route.fulfill({ json: { jsonrpc: "2.0", id: req.id, result: [] } });
+      }
+      return route.continue();
+    });
+    await page.goto(BASE + "/app", { waitUntil: "networkidle" });
+    await expect(page.locator("[data-wake=armed]")).toContainText(/nothing armed/i, { timeout: 20000 });
   });
 
   test("names both contracts it will ask you to sign for, and links them", async ({ page }) => {

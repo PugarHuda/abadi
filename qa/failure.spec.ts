@@ -145,6 +145,11 @@ async function chainFor(page: Page, allowance: bigint) {
     const p = req.params?.[0];
     const reply = (body: object) => route.fulfill({ json: { jsonrpc: "2.0", id: req.id, ...body } });
     if (req.method === "eth_getBalance") return reply({ result: word(10n ** 18n) });
+    // The page reads the vault's live reactivity subscription too. A double has to answer
+    // every method the page calls: letting these through to the real node made the balance
+    // read arrive after the test had already pressed Deposit.
+    if (req.method === "somnia_reactivityGetSubscriptions") return reply({ result: [] });
+    if (req.method === "somnia_reactivityGetSubscriptionInfo") return reply({ result: [] });
     if (req.method === "eth_getTransactionReceipt") {
       return reply({ result: { status: "0x1", blockNumber: "0x1e240", transactionHash: p } });
     }

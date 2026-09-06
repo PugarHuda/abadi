@@ -54,17 +54,34 @@ const force = process.argv.includes("--force");
 if (force) await rm(out, { recursive: true, force: true });
 await mkdir(out, { recursive: true });
 
-if (!existsSync(path.join(bundleDir, "index.html"))) {
-  console.log("bundling once");
-  remotion(["bundle", entry, "--out-dir", bundleDir, "--public-dir", assets]);
-}
-
 /* Skipping work already done is the point of this script; skipping work done against an
  * OLDER script is how it quietly ships the wrong film. `timing.json` is rewritten by every
  * `video:vo` run, so anything on disk older than it was rendered from words that have since
  * changed. Re-render those rather than keep them. */
 const timelineAt = statSync(path.join(assets, "timing.json")).mtimeMs;
 const current = (f) => existsSync(f) && statSync(f).mtimeMs >= timelineAt;
+
+/* The bundle is the one that matters most, and guarding the parts without guarding it was
+ * worse than guarding nothing.
+ *
+ * `remotion bundle` COPIES `timing.json` and every shot into `out/bundle/public/`. A bundle
+ * built before the last `video:vo` therefore serves the old timeline, and the composition
+ * inside it still declares the old `durationInFrames` — so twenty-one parts were rendered
+ * from the previous film while this script counted chunks against the new one, and the run
+ * ended on `frame range 5000-5249 is not inbetween 0-5038`. The error was the lucky part:
+ * had the new film been the shorter of the two, every part would have rendered "fine" and
+ * the join would have produced a finished film of the wrong words.
+ *
+ * So a stale bundle invalidates everything downstream of it, not just itself. */
+if (!current(path.join(bundleDir, "index.html"))) {
+  if (existsSync(bundleDir)) {
+    console.log("the bundle is older than the timeline — discarding it and every part built from it");
+    await rm(out, { recursive: true, force: true });
+    await mkdir(out, { recursive: true });
+  }
+  console.log("bundling");
+  remotion(["bundle", entry, "--out-dir", bundleDir, "--public-dir", assets]);
+}
 
 const parts = [];
 for (let from = 0, i = 0; from < total; from += CHUNK, i++) {

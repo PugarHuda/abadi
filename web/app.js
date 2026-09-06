@@ -87,7 +87,9 @@
     confirmAll: null, confirmShares: 0n, confirmAt: 0, readAt: null,
     // Labels of the transactions that confirmed during the action now running. Emptied by
     // run(); read by run()'s catch so a cancellation cannot claim nothing was sent.
-    landed: []
+    landed: [],
+    /** The live reactivity subscription, or null. Read from the node, not inferred. */
+    armed: null
   };
   var els = {};
   ["app", "connect", "wallet", "network", "usdc", "stt", "shares", "worth", "nav", "share", "idle",
@@ -97,6 +99,10 @@
     .forEach(function (id) { els[id] = document.getElementById(id); });
   var wakeStt = els.wake.querySelector("[data-wake=stt]");
   var wakeVerdict = els.wake.querySelector("[data-wake=verdict]");
+  // A sibling of #wake, not a child of it, so this is scoped to the document. Scoping a
+  // read to the wrong subtree is exactly how the book panel once left "Reading the
+  // book…" on screen for good.
+  var wakeArmed = document.querySelector("[data-wake=armed]");
   var STT_FAUCET = "https://cloud.google.com/application/web3/faucet/somnia/shannon";
 
   function usd(v) { return (Number(v) / 1e6).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
@@ -150,14 +156,65 @@
   }
 
   /** The product's claim, on the page where money changes hands: can the vault wake itself? */
+  /* The reserve is only half the claim. Being funded to arm is not being armed, and until
+     this read existed the page showed the balance and left the rest to prose.
+
+     Somnia's node answers two methods nothing else here uses — `somnia_reactivityGet
+     Subscriptions(owner)` and `somnia_reactivityGetSubscriptionInfo(id)` — with no key and
+     no SDK. The second returns the live subscription: its handler, its gas limit, and in
+     `topics[1]` the exact millisecond it is scheduled to fire. That is the vault's own
+     alarm clock, read from the chain in the reader's browser like every other number on
+     this site, counting down. */
   function loadWake() {
-    return Promise.all([rpc("eth_getBalance", [VAULT, "latest"]), call(VAULT, SEL.minHandlerBalance)]).then(function (r) {
-      var have = BigInt(r[0]), need = u256(r[1]);
+    return Promise.all([
+      rpc("eth_getBalance", [VAULT, "latest"]),
+      call(VAULT, SEL.minHandlerBalance),
+      rpc("somnia_reactivityGetSubscriptions", [VAULT]).catch(function () { return null; }),
+    ]).then(function (r) {
+      var have = BigInt(r[0]), need = u256(r[1]), ids = r[2];
       wakeStt.textContent = stt(have) + " STT";
       wakeVerdict.textContent = have >= need
         ? "Armed wake-ups will settle expired windows with nobody calling."
         : "Below the floor, so the scheduled keeper settles instead; the vault still never needs a trusted key.";
-    }).catch(function () { wakeStt.textContent = "unreadable"; wakeVerdict.textContent = ""; });
+      if (!ids || !ids.length) {
+        state.armed = null;
+        return showArmed(null);
+      }
+      return rpc("somnia_reactivityGetSubscriptionInfo", [ids[0]])
+        .then(function (info) { showArmed(Array.isArray(info) ? info[0] : info); })
+        .catch(function () { showArmed(null); });
+    }).catch(function () {
+      wakeStt.textContent = "unreadable";
+      wakeVerdict.textContent = "";
+      showArmed(null);
+    });
+  }
+
+  /** Render the live subscription, or say plainly that nothing is armed. */
+  function showArmed(sub) {
+    if (!wakeArmed) return;
+    if (!sub) {
+      state.armed = null;
+      wakeArmed.textContent = "Nothing armed on the precompile right now — the vault arms a wake-up when it takes a position.";
+      return;
+    }
+    // topics[1] is the scheduled instant, in milliseconds, as a 32-byte word.
+    var atMs = 0;
+    try { atMs = Number(BigInt(sub.topics[1])); } catch (e) { atMs = 0; }
+    state.armed = { id: sub.id, atMs: atMs, gas: Number(BigInt(sub.gas_limit || "0x0")) };
+    tickArmed();
+  }
+
+  /** Second by second, because a countdown that does not move is a screenshot. */
+  function tickArmed() {
+    if (!wakeArmed || !state.armed) return;
+    var a = state.armed;
+    var left = Math.round((a.atMs - Date.now()) / 1000);
+    var when = new Date(a.atMs).toISOString().slice(11, 19) + " UTC";
+    wakeArmed.textContent =
+      "Armed: subscription " + a.id + " fires at " + when +
+      (left > 0 ? " — in " + Math.floor(left / 60) + "m " + (left % 60) + "s" : " — due now") +
+      ", with a " + a.gas.toLocaleString("en-US") + " gas budget the vault pays for itself.";
   }
 
   function loadVault() {
@@ -546,4 +603,7 @@
   paintWallet();
   refresh();
   setInterval(refresh, 30000);
+  // The subscription is re-read every 30s with everything else; the countdown between
+  // those reads is arithmetic on a number already in hand, so it costs no request.
+  setInterval(tickArmed, 1000);
 })();

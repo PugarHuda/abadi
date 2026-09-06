@@ -167,6 +167,9 @@
     worth their slice of NAV at every moment, and NAV marks a naked leg at zero.
   </p>
   <p class="note" id="wake">Self-wake reserve: <b data-wake="stt">…</b> of the 32 STT the chain requires before the vault may arm its own settlement. <span data-wake="verdict"></span></p>
+  <!-- Funding is not arming. This line is the live subscription itself, read from the
+       node with somnia_reactivityGetSubscriptions, counting down to the second it fires. -->
+  <p class="note" data-wake="armed">Reading the precompile…</p>
 
   <h2>Balances <span id="freshness">read from the chain every 30 seconds</span></h2>
   <div class="panel">
