@@ -14,7 +14,12 @@
     "bot": "node scripts/bot.ts",
     "ledger": "node scripts/ledger.ts",
     "attest": "node scripts/attest.ts",
-    "backtest": "node scripts/backtest.ts"
+    "backtest": "node scripts/backtest.ts",
+    "video:vo": "node video/tts.mjs",
+    "video:shots": "node video/capture.mjs",
+    "video:render": "node video/render.mjs",
+    "video:studio": "remotion studio video/remotion/index.ts --public-dir=video/assets",
+    "video": "npm run video:vo && npm run video:shots && npm run video:render"
   },
   "dependencies": {
     "@somnia-chain/markets-sdk": "^0.28.1",
@@ -24,9 +29,22 @@
     "@axe-core/playwright": "^4.13.0",
     "@openzeppelin/contracts": "^5.6.1",
     "@playwright/test": "^1.62.1",
+    "@remotion/bundler": "^4.0.520",
+    "@remotion/cli": "^4.0.520",
+    "@remotion/google-fonts": "^4.0.520",
+    "@remotion/renderer": "^4.0.520",
     "@somnia-chain/reactivity-contracts": "^0.2.1",
     "@types/node": "^26.3.0",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.7",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "remotion": "^4.0.520",
     "tsx": "^4.19.0",
     "typescript": "^5.6.0"
+  },
+  "allowScripts": {
+    "esbuild@0.28.1": true,
+    "esbuild@0.28.2": true
   }
 }

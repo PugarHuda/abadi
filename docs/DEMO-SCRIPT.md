@@ -1,189 +1,119 @@
-# Demo video — shot list and script
+# Demo video — how it is made, and the facts it states
 
-Target **2:45**. The submission allows 2–3 minutes; 15 seconds of headroom means you never
-have to rush the ending, which is where the last impression forms.
+**Runtime 2:48. The submission allows 2–3 minutes.**
 
-**Rewritten 2026-09-02.** The version before this was written to the state of the 31st and
-led with the drawdown. That was the honest headline then. It is not the headline now: the
-vault is above par, the completion is measured, and there is a number about the venue's own
-book that no other submission in this hackathon can produce. The close also promoted a
-competitor by name — that is gone.
+The film is not recorded by hand any more. It is built by a pipeline, from one script, and
+the whole thing rebuilds with:
 
-**Record on the 7th at the latest.** Testnet is intermittent: the indexer returns
-`fetch failed` roughly one call in five — `scripts/ledger.ts` did exactly that on the 2nd
-and the fix is to run it again. A failed take is a retry, not a crisis, provided
-you are not recording the night before the deadline.
+```
+npm run video          # voice, then footage, then render
+```
 
-## What to have open before you start
+Output: `video/out/abadi-demo.mp4`, plus `video/assets/abadi-demo.srt` for the upload.
 
-1. `https://abadi-wheat.vercel.app/dashboard`, full screen, scrolled to top
-2. A terminal in the repo, cleared, ready for `forge test`
-3. The Shannon explorer on the vault, `0xFd9c93581ADD42B9B13ba5550542Fc7315775cD9`
-4. `docs/evidence/impact-2026-08-31.txt` in an editor
-5. `docs/evidence/ledger-2026-09-02.md` in a second tab, scrolled to the Summary
+**The script of record is `video/script.mjs`.** Every line of voice-over and the shot it
+plays over live there together. Nothing else decides a duration: the voice is synthesised
+first, its length measured, and the camera then films each shot for exactly that long. To
+retime the film, change the words.
 
-Turn off notifications. 1080p minimum. Speak slower than feels natural — this is about 400
-words, which is a comfortable 2:45 with pauses.
+## The four stages
 
----
+| Stage | Command | What it does |
+|---|---|---|
+| Voice | `npm run video:vo` | edge-tts speaks each scene. The same request returns a WordBoundary per word, so subtitles land on the word — there is no alignment step and no Whisper. Writes `timing.json` and the `.srt`. |
+| Footage | `npm run video:shots` | Playwright drives the live site and the Shannon explorer, films each shot at 1920×1080, and trims the page-load wait off the head. |
+| Render | `npm run video:render` | Remotion lays voice, footage and captions on one timeline. |
+| Studio | `npm run video:studio` | Opens the film in Remotion's editor for a look before rendering. |
 
-## 0:00 — 0:16 · The problem
+`node video/tts.mjs --self-check` exercises the caption logic offline — punctuation is
+re-attached to the synthesiser's bare words, and cards break on a full stop before they
+break on a length cap. Remotion is free for individuals and companies of three or fewer;
+this is a solo entry, which is the licence it ships under.
 
-**Screen:** dashboard, top of page. The wordmark and the thesis line.
+Four things in this pipeline are load-bearing and should not be simplified away:
 
-> Every prediction market on DreamDEX expires. Sixty seconds, fifteen minutes, a day —
-> twelve series running at once, and every one of them dies and respawns.
->
-> Liquidity that has to be rebuilt every window isn't liquidity. So we built a vault that
-> outlives the markets it quotes.
+- **A panel is checked before it is filmed.** The dashboard's own `data-state` has to read
+  `live`. The indexer fails about one call in five and the explorer went down entirely on
+  the 2nd; a shot of a panel reading `unreachable` is not footage of a live dashboard.
+- **The lead-in is cut.** Recording starts when the browser context does, so the wait for
+  the chain to answer sits at the head of the file — 10 seconds of it on the explorer. It
+  is trimmed in ffmpeg, or the camera move lands after the voice has stopped describing it.
+- **A keyframe every half second, and no scene-cut detection** (`-g 15 -keyint_min 15
+  -sc_threshold 0`). Left alone, x264 puts one every 250 frames and skips them entirely on
+  footage that barely moves — which is what a screen recording is. Two shots came out with
+  **two keyframes across their whole length**, and Remotion's compositor, which seeks these
+  files once per frame, failed outright on both: *"No frame found at position"*, once mid-
+  render and once on an audio-only pass. Every frame is present and ffprobe reads them all;
+  there is simply nothing near the requested time to decode from.
+- **Parts are rendered `--muted` and the voice is muxed on at the end.** The film is
+  rendered in chunks, and the chunks used to carry their own audio. AAC codes in blocks of
+  1024 samples, so a part holding 8.3333s of sound is written as 8.384s. `ffmpeg -f concat`
+  starts the next part after the *longest* stream of the previous one, so every boundary
+  inserted 50.7 ms of nothing: the picture froze on its last frame and the voice took a
+  breath it never took. Twenty boundaries, a film 1.07s long, drifting the whole way. The
+  render's own check now counts frames and looks for holes between them, and names which of
+  the two went wrong.
 
-*Hold on the thesis line for a beat before scrolling.*
+## What changed on each re-record, and why
 
----
+This file says to re-read every live figure before a render. It has changed the words every
+single time, which is the argument for the rule.
 
-## 0:16 — 0:44 · The claim nobody else here can make
+**On 2026-09-04**, against a shot list written on the 2nd: the vault had crossed back below
+par, six completions had become nine, thirty-four refusals had become sixty-four, and the
+book panel was empty — `data-state="idle"`, the guard refusing every spread on offer. The
+scene became what was on the screen rather than what had been written for it.
 
-**Screen:** scroll to the live order book on the dashboard. Abadi's own level, tagged.
+**On 2026-09-06**, two days later, two lines came out for being *false* rather than stale:
 
-> That's our quote, inside the venue's book, read live in your browser — ours because the
-> venue's own owner field says so.
->
-> Twelve other projects in this hackathon read this venue, score it, or wrap it. We are the
-> only one that puts capital into it. So we are the only one that can be asked whether the
-> book got better.
+- **"We're the only one putting capital in"**, and the line that followed from it, **"the
+  only one who can be asked whether the book got better."** True when 13 projects had
+  entered. By the 6th there were **31**, and HOUSE, DreamVault, TEMPO, HedgePulse and
+  Perennis all put capital into this venue — HOUSE on the same no-inventory mechanism,
+  described almost word for word. The measurement is still ours alone; being the only maker
+  is not. **Never restore a superlative about the field without re-reading the field.**
+- **The impact line said "every window we've ever quoted."** The measurement covers 70
+  windows and is dated 31 August; there are 193 episodes now. It says "seventy of the
+  windows we've quoted", which stays true however many there are.
+- The numbers moved hard: depositors from −0.51% to **−2.03%**, nine completions to
+  **fourteen**, and carrying a naked leg got *worse* rather than better.
+- **The `capital` scene no longer describes the panel's state at all.** Saying "not a cent
+  of it is quoting" was true for the run that filmed it and false for the next one, which
+  is a line that has to be rewritten on every record. It talks about the record instead,
+  and the picture shows whichever state the vault is in.
 
-**Cut to:** `docs/evidence/impact-2026-08-31.txt`.
+## Facts the film states, as of 2026-09-06
 
-> We rebuilt every window we've ever quoted, twice, from the venue's own order rows — once
-> with our orders in and once with them removed.
->
-> Seventy windows. The spread was two point four nine percent without us and one point nine
-> two percent with us. **Five point eight ticks tighter. Twenty-three percent narrower.**
-> Tighter on sixty-six of seventy, wider on none.
+Get these wrong and a judge who checks discounts everything else. **Re-read them before any
+re-render**, and re-run `npm run video:vo` for the scenes whose numbers moved.
 
-*Hold on the table.*
-
----
-
-## 0:44 — 1:12 · The part that is actually hard
-
-**Screen:** the custody table, then `src/LiquidityVault.sol` at `quote`.
-
-> Here's the problem nobody warns you about. BinaryPool has no operator gate — give a bot a
-> key that can trade and that key can also withdraw. Every market-making vault on this venue
-> has to solve that before it quotes once.
->
-> Ours solves it by owning its own orders. The vault holds the collateral and places the
-> orders itself. The operator key chooses a price and a size and can do nothing else. It
-> cannot move a token, and there is no function that would let it.
-
-**Run:** `forge test` — let the green line land on screen.
-
-> A hundred and fifteen tests, nine of them against the real venue on a fork. Ninety-seven
-> percent line coverage on the vault, and every one of its forty-three functions.
-
----
-
-## 1:12 — 1:40 · The chain closes the position
-
-**Screen:** the explorer, on transaction
-`0x2f75001ea73bd66cf62649841542a2d8b74cad22afa1513e5e6463730a009f50`.
-
-> A window expired at seventeen hundred UTC. No bot ran. Nobody called anything.
->
-> Somnia's reactivity precompile woke the vault at the second it was armed for, and the
-> vault settled its own position — `CallbackFired`, `Settled`, `Swept`. From the chain, for
-> the chain, with the operator key sitting idle.
-
-*Point at the three events in the log list.*
-
----
-
-## 1:40 — 2:12 · The loss we found, and what we did about it
-
-**Screen:** `docs/evidence/ledger-2026-09-02.md`, on the Summary block.
-
-> Now the uncomfortable part, which I'd rather show you than have you find.
->
-> This project once published a two-point-three-seven percent return. That number was
-> wrong — not invented, worse. The ledger summed the episodes that closed into a complete
-> set and silently dropped the ones that went one-sided. It could not produce a loss.
-> Neither could the chart. We found it by auditing ourselves and published the correction.
->
-> What it exposed was the real risk: one leg fills, the market walks away from the other,
-> and the vault is holding a direction worth one or nothing. Eighteen of those, averaging
-> **minus twenty-six percent**, one of them a total loss.
-
-*Beat.*
-
-> So the vault stopped carrying them. It crosses the book and buys the missing side, and
-> the pair is worth exactly one either way. Six of those so far: **minus four percent**
-> instead of minus twenty-six. And it refused thirty-four times, when the price to get flat
-> was worse than the risk of standing still.
-
----
-
-## 2:12 — 2:32 · What we found in the venue
-
-**Screen:** `docs/SDK-FEEDBACK.md`, scrolled through the issue headings.
-
-> Sixteen reproducible defects in DreamDEX and its SDK, each with a transaction hash.
->
-> A pool freezes its whole order book the moment a window expires — including the two calls
-> the SDK documents as the permissionless way to get your escrow out. Two windows sat frozen
-> for two days with a hundred and ninety-six dollars of ours behind them. The way out was
-> `voidExpired`, documented nowhere near where you'd look. The vault takes that hatch itself
-> now.
->
-> And the pools are beacon proxies: the implementation can change under a live position with
-> no address change and no version to pin.
-
----
-
-## 2:32 — 2:45 · Close
-
-**Screen:** back to the dashboard, live numbers ticking.
-
-> Abadi is a market maker that survives its own markets expiring, a vault that settles itself
-> when nobody is watching, and a measurably tighter book for everyone else trading it.
->
-> Every number you've seen is read from the chain, including the ones we'd rather not show
-> you.
-
-*End on the live dashboard, not on a slide.*
-
----
-
-## Facts to keep straight on camera
-
-Get these wrong and a judge who checks will discount everything else.
-**Re-read every live figure the morning you record.**
-
-| Claim | The number, as of 2026-09-02 |
+| Claim | The number |
 |---|---|
-| Unit tests | 115 — **run `forge test` and say what it prints** |
-| Fork tests against the real venue | 9 |
-| Browser tests | 77 |
-| Coverage | 97.25% of lines and 43/43 functions on `LiquidityVault.sol` |
-| Deployments | 13 vaults, 26 Aug – 31 Aug |
-| Per share | **1.003178**, read off the chain 2026-09-02 17:00 UTC — **re-read it** |
-| Depositors | **+30.40 tUSDC, +0.32%** at that same read. The 14:06 ledger file says −12.90; the vault moved between them, and that is what "re-read it" means |
-| Realised, every closed episode | −159.10 on 12,807.85 (−1.24%), from the 2026-09-02 ledger |
-| Episodes | 136; 19% of filled quotes adverse |
-| One-sided: carried vs completed | 18 at −25.98% · 6 at −3.98% |
-| Venue spread, with us vs without | 0.0192 vs 0.0249 over 70 windows, tighter on 66 |
-| Frozen escrow, recovered | 208.90 back on 196.00 of basis |
+| Unit tests | **115** passing (116 total; the fork suite skips without `FORK_RPC`) |
+| Fork tests against the real venue | **9**, all passing — `node scripts/fork-test.ts` |
+| Coverage | 97.25% of lines, 43/43 functions on `LiquidityVault.sol` |
+| Per share | **0.979700** |
+| Depositors, vs. par | **−194.20 tUSDC (−2.03%)** — below par |
+| Realised, every closed episode | −380.00 on 18,761.45 (−2.03%) |
+| Episodes | **193** across 13 vaults |
+| Fill shape | 149 complete · 40 one-sided · 2 no fill · 2 open — **21% adverse** |
+| One-sided: carried vs completed | 26 carried at −30.12%, worst −100% · **14 completed at −0.98%**, worst −3.47% — `docs/evidence/completing-2026-09-06.md` |
+| Completion refusals | **126** (median pair 1.209, cheapest refused 1.061) |
+| Venue spread, without us vs with | 0.0249 vs 0.0192 over **70 windows, measured 2026-08-31** — tighter on 66, wider on **none**. Not "every window"; there are 193 episodes now |
 | SDK issues filed | 16 |
-| `attest.ts` | **MATCH** — the live address runs this source, verified on the explorer |
+| Live vault | `0xFd9c93581ADD42B9B13ba5550542Fc7315775cD9` — `attest.ts` says **MATCH** |
+| Reactivity settle, on chain | `0x2f75001ea73bd66cf62649841542a2d8b74cad22afa1513e5e6463730a009f50` |
 
-**Do not say "profitable".** The vault is above par today at +0.32%; realised across every
-vault it has ever run is still negative at −1.24%, and 19% of filled quotes go adverse
-against the roughly 9% the spread needs. Say what the numbers say.
+**Do not say "profitable".** Per share is below par and realised across every vault is
+negative. One in five filled quotes goes adverse against the roughly one in eleven the
+spread needs. Say what the numbers say — the film does.
 
-**Do not name another submission.** The previous cut of this script closed by pointing at a
-competitor's project as the thing Abadi needed next. Abadi has had its own fair-value model
-since the 31st, backtested against 1,276 resolved windows, where it ties the book — which is
-a finding, not a gap.
+**Do not name another submission** *in the film*. The rivals are named above and in
+`SUBMISSION.md` because our own claims have to be checked against them; none of those names
+is spoken on screen, and the film makes no comparison at all now that it cannot honestly
+make the one it used to. Abadi has had its own fair-value model since the 31st, backtested
+against 1,276 resolved windows, where it *ties* the book. That is a finding, not a gap, and
+the film does not lead with it.
 
 ## The question you will get, and the answer
 

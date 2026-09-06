@@ -1,0 +1,275 @@
+1
+00:00:00,081 --> 00:00:02,743
+Every prediction market on DreamDEX expires —
+
+2
+00:00:02,951 --> 00:00:05,556
+sixty seconds, fifteen minutes, a day.
+
+3
+00:00:05,914 --> 00:00:09,699
+Liquidity you have to rebuild every window isn't liquidity.
+
+4
+00:00:10,069 --> 00:00:12,419
+So we built a vault that outlives the markets
+
+5
+00:00:12,431 --> 00:00:13,102
+it quotes.
+
+6
+00:00:14,233 --> 00:00:15,297
+This is the vault, live.
+
+7
+00:00:15,679 --> 00:00:18,827
+Nine and a half thousand tUSDC of depositor capital,
+
+8
+00:00:19,221 --> 00:00:21,999
+and a hundred and ninety-three quotes placed inside this
+
+9
+00:00:21,999 --> 00:00:23,098
+venue's own book —
+
+10
+00:00:23,631 --> 00:00:25,772
+real money, at prices it had to honour.
+
+11
+00:00:26,142 --> 00:00:27,149
+Not a reading of the venue.
+
+12
+00:00:27,508 --> 00:00:28,226
+A position in it.
+
+13
+00:00:29,157 --> 00:00:30,673
+Which means we can be asked whether the book
+
+14
+00:00:30,673 --> 00:00:31,298
+got better.
+
+15
+00:00:31,668 --> 00:00:34,839
+We rebuilt seventy of the windows we've quoted, twice,
+
+16
+00:00:34,990 --> 00:00:36,749
+from the venue's own order rows —
+
+17
+00:00:37,120 --> 00:00:39,029
+once with our orders in, once with them taken
+
+18
+00:00:39,041 --> 00:00:39,330
+out.
+
+19
+00:00:39,712 --> 00:00:41,923
+Twenty-three percent narrower with us in it.
+
+20
+00:00:42,293 --> 00:00:45,441
+Tighter on sixty-six of seventy, wider on none.
+
+21
+00:00:46,896 --> 00:00:50,079
+BinaryPool has no operator gate: a bot key that
+
+22
+00:00:50,079 --> 00:00:51,468
+can trade can also withdraw.
+
+23
+00:00:51,838 --> 00:00:53,725
+Ours owns its own orders instead.
+
+24
+00:00:54,084 --> 00:00:56,618
+The operator key picks a price and a size —
+
+25
+00:00:56,954 --> 00:00:59,026
+it cannot move a token, and there is no
+
+26
+00:00:59,037 --> 00:01:00,056
+function that would let it.
+
+27
+00:01:00,993 --> 00:01:03,504
+A hundred and fifteen tests, nine of them against
+
+28
+00:01:03,504 --> 00:01:05,229
+the real venue on a fork.
+
+29
+00:01:05,599 --> 00:01:08,840
+Ninety-seven percent line coverage on the vault, and
+
+30
+00:01:08,956 --> 00:01:10,912
+every one of its forty-three functions.
+
+31
+00:01:12,037 --> 00:01:14,930
+A window expired at seventeen hundred UTC.
+
+32
+00:01:15,289 --> 00:01:17,199
+No bot ran, nobody called anything.
+
+33
+00:01:17,569 --> 00:01:20,763
+Somnia's reactivity precompile woke the vault at the
+
+34
+00:01:20,775 --> 00:01:23,275
+second it was armed for, and it settled its
+
+35
+00:01:23,287 --> 00:01:23,958
+own position.
+
+36
+00:01:25,185 --> 00:01:26,493
+Now the uncomfortable part.
+
+37
+00:01:26,863 --> 00:01:30,081
+This project once published a two point three seven
+
+38
+00:01:30,081 --> 00:01:30,833
+percent return.
+
+39
+00:01:31,215 --> 00:01:33,785
+That number was wrong: the ledger summed the episodes
+
+40
+00:01:33,785 --> 00:01:36,041
+that closed into a complete set and dropped the
+
+41
+00:01:36,041 --> 00:01:38,565
+ones that went one-sided, so it could not produce
+
+42
+00:01:38,565 --> 00:01:39,155
+a loss.
+
+43
+00:01:39,525 --> 00:01:41,886
+We found it ourselves and published the correction.
+
+44
+00:01:43,109 --> 00:01:46,546
+Today, honestly: depositors are down two percent, and
+
+45
+00:01:46,558 --> 00:01:48,525
+one in five filled quotes goes adverse.
+
+46
+00:01:48,919 --> 00:01:50,157
+That's the real risk —
+
+47
+00:01:50,539 --> 00:01:53,328
+one leg fills, the market walks away from the
+
+48
+00:01:53,328 --> 00:01:55,713
+other, and the vault holds a direction worth one
+
+49
+00:01:55,713 --> 00:01:56,199
+or nothing.
+
+50
+00:01:56,581 --> 00:01:59,717
+Twenty-six of those, carried to settlement, averaged
+
+51
+00:01:59,729 --> 00:02:02,495
+minus thirty percent, with a minus one hundred in
+
+52
+00:02:02,507 --> 00:02:02,715
+them.
+
+53
+00:02:03,085 --> 00:02:05,342
+So the vault stopped carrying them: it buys the
+
+54
+00:02:05,342 --> 00:02:08,143
+missing side, and the pair is worth exactly one
+
+55
+00:02:08,143 --> 00:02:08,676
+either way.
+
+56
+00:02:09,092 --> 00:02:12,889
+Fourteen so far, averaging minus one percent, worst minus
+
+57
+00:02:12,900 --> 00:02:14,034
+three and a half.
+
+58
+00:02:15,253 --> 00:02:19,165
+Sixteen reproducible defects in DreamDEX and its SDK,
+
+59
+00:02:19,662 --> 00:02:21,445
+each one with a transaction hash.
+
+60
+00:02:21,815 --> 00:02:24,408
+A pool freezes its whole order book the moment
+
+61
+00:02:24,408 --> 00:02:25,588
+a window expires —
+
+62
+00:02:25,831 --> 00:02:28,551
+including the calls the SDK documents as the way
+
+63
+00:02:28,551 --> 00:02:29,558
+to get your escrow out.
+
+64
+00:02:30,577 --> 00:02:32,996
+Abadi is a market maker that survives its own
+
+65
+00:02:32,996 --> 00:02:37,070
+markets expiring, a vault that settles itself when nobody
+
+66
+00:02:37,082 --> 00:02:40,091
+is watching, and a measurably tighter book for everyone
+
+67
+00:02:40,091 --> 00:02:40,820
+else trading it.
+
+68
+00:02:41,190 --> 00:02:43,447
+Every number you've seen is read from the chain —
+
+69
+00:02:43,899 --> 00:02:45,924
+including the ones we'd rather not show you.

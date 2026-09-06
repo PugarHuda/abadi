@@ -23,3 +23,17 @@ playwright-report/
 # left no evidence anyone else could read. Every line in it carries a date now; commit it
 # with the ledger. The GitHub half of the keeper uploads its own log as a run artifact.
 keeper.log
+
+# The film's raw materials: synthesised voice, filmed shots, the render itself. All of it
+# is reproducible from video/script.mjs with `npm run video`, and none of it belongs in
+# git at a few hundred megabytes. The subtitle track and the timing map are text and are
+# kept — they are the record of what was said and when.
+video/assets/*.mp3
+video/assets/*.mp4
+# Per-word timings from the synthesiser. Only useful next to their .mp3, which is not
+# kept either; timing.json and the .srt are the readable record of the same thing.
+video/assets/vo-*.json
+video/assets/raw/
+video/assets/_*
+video/out/
+video/render.log

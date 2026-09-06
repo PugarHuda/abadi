@@ -1,0 +1,530 @@
+{
+  "fps": 30,
+  "durationInFrames": 5039,
+  "scenes": [
+    {
+      "id": "problem",
+      "chapter": "The problem",
+      "shot": {
+        "type": "deck",
+        "slide": 1
+      },
+      "audio": "vo-problem.mp3",
+      "speech": 13.44,
+      "pad": 0.7,
+      "durationInFrames": 425,
+      "captions": [
+        {
+          "text": "Every prediction market on DreamDEX expires —",
+          "start": 0.081,
+          "end": 2.743041
+        },
+        {
+          "text": "sixty seconds, fifteen minutes, a day.",
+          "start": 2.951375,
+          "end": 5.555541
+        },
+        {
+          "text": "Liquidity you have to rebuild every window isn't liquidity.",
+          "start": 5.914333,
+          "end": 9.699083
+        },
+        {
+          "text": "So we built a vault that outlives the markets",
+          "start": 10.069458,
+          "end": 12.419
+        },
+        {
+          "text": "it quotes.",
+          "start": 12.430541,
+          "end": 13.101832
+        }
+      ],
+      "words": 32
+    },
+    {
+      "id": "capital",
+      "chapter": "Real capital, on the venue",
+      "shot": {
+        "type": "page",
+        "path": "/dashboard",
+        "anchor": "#live",
+        "needs": "#live"
+      },
+      "audio": "vo-capital.mp3",
+      "speech": 14.424,
+      "pad": 0.5,
+      "durationInFrames": 448,
+      "captions": [
+        {
+          "text": "This is the vault, live.",
+          "start": 0.092583,
+          "end": 1.157416
+        },
+        {
+          "text": "Nine and a half thousand tUSDC of depositor capital,",
+          "start": 1.539333,
+          "end": 4.687499
+        },
+        {
+          "text": "and a hundred and ninety-three quotes placed inside this",
+          "start": 5.081,
+          "end": 7.858791
+        },
+        {
+          "text": "venue's own book —",
+          "start": 7.858791,
+          "end": 8.958333
+        },
+        {
+          "text": "real money, at prices it had to honour.",
+          "start": 9.49075,
+          "end": 11.631916
+        },
+        {
+          "text": "Not a reading of the venue.",
+          "start": 12.002333,
+          "end": 13.009249
+        },
+        {
+          "text": "A position in it.",
+          "start": 13.368041,
+          "end": 14.085624
+        }
+      ],
+      "words": 44
+    },
+    {
+      "id": "impact",
+      "chapter": "Seventy windows, rebuilt twice",
+      "shot": {
+        "type": "deck",
+        "slide": 5
+      },
+      "audio": "vo-impact.mp3",
+      "speech": 16.728,
+      "pad": 1,
+      "durationInFrames": 532,
+      "captions": [
+        {
+          "text": "Which means we can be asked whether the book",
+          "start": 0.092583,
+          "end": 1.608791
+        },
+        {
+          "text": "got better.",
+          "start": 1.608791,
+          "end": 2.233791
+        },
+        {
+          "text": "We rebuilt seventy of the windows we've quoted, twice,",
+          "start": 2.604166,
+          "end": 5.775458
+        },
+        {
+          "text": "from the venue's own order rows —",
+          "start": 5.925916,
+          "end": 7.685207
+        },
+        {
+          "text": "once with our orders in, once with them taken",
+          "start": 8.055541,
+          "end": 9.965291
+        },
+        {
+          "text": "out.",
+          "start": 9.976833,
+          "end": 10.266166
+        },
+        {
+          "text": "Twenty-three percent narrower with us in it.",
+          "start": 10.648166,
+          "end": 12.858791
+        },
+        {
+          "text": "Tighter on sixty-six of seventy, wider on none.",
+          "start": 13.229166,
+          "end": 16.377291
+        }
+      ],
+      "words": 51
+    },
+    {
+      "id": "custody",
+      "chapter": "What the operator key cannot do",
+      "shot": {
+        "type": "deck",
+        "slide": 7
+      },
+      "audio": "vo-custody.mp3",
+      "speech": 13.608,
+      "pad": 0.5,
+      "durationInFrames": 424,
+      "captions": [
+        {
+          "text": "BinaryPool has no operator gate: a bot key that",
+          "start": 0.104166,
+          "end": 3.287041
+        },
+        {
+          "text": "can trade can also withdraw.",
+          "start": 3.287041,
+          "end": 4.675916
+        },
+        {
+          "text": "Ours owns its own orders instead.",
+          "start": 5.046291,
+          "end": 6.932832
+        },
+        {
+          "text": "The operator key picks a price and a size —",
+          "start": 7.291666,
+          "end": 9.826374
+        },
+        {
+          "text": "it cannot move a token, and there is no",
+          "start": 10.162041,
+          "end": 12.233833
+        },
+        {
+          "text": "function that would let it.",
+          "start": 12.245375,
+          "end": 13.263916
+        }
+      ],
+      "words": 43
+    },
+    {
+      "id": "tests",
+      "chapter": "forge test",
+      "shot": {
+        "type": "terminal",
+        "src": "forge-test.txt",
+        "cmd": "forge test",
+        "lines": [
+          "$ forge test",
+          "Ran 1 test for test/fork/Venue.fork.t.sol:VenueForkTest",
+          "Suite result: ok. 0 passed; 0 failed; 1 skipped; finished in 1.36ms (0.00ns CPU time)",
+          "Ran 10 tests for test/AbadiReactive.t.sol:AbadiReactiveTest",
+          "Suite result: ok. 10 passed; 0 failed; 0 skipped; finished in 2.50ms (2.14ms CPU time)",
+          "Ran 15 tests for test/MarketEngine.t.sol:MarketEngineTest",
+          "Suite result: ok. 15 passed; 0 failed; 0 skipped; finished in 16.09ms (22.36ms CPU time)",
+          "Ran 89 tests for test/LiquidityVault.t.sol:LiquidityVaultTest",
+          "Suite result: ok. 89 passed; 0 failed; 0 skipped; finished in 16.61ms (64.78ms CPU time)",
+          "Ran 1 test for test/LiquidityVault.invariant.t.sol:LiquidityVaultInvariantTest",
+          "Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 27.50s (27.49s CPU time)",
+          "Ran 5 test suites in 27.51s (27.53s CPU time): 115 tests passed, 0 failed, 1 skipped (116 total tests)",
+          "",
+          "$ node scripts/fork-test.ts     # the same vault, against the live venue",
+          "Ran 9 tests for test/fork/Venue.fork.t.sol:VenueForkTest",
+          "[PASS] test_fork_completeSetClosesANakedLegOnTheRealPool() (gas: 2536773)",
+          "[PASS] test_fork_quoteEscrowsOneMinusTheSpread() (gas: 1189032)",
+          "[PASS] test_fork_reduceQuoteKeepsTheOrderIdOnTheRealPool() (gas: 1878219)",
+          "[PASS] test_fork_sweepFreesAWindowTheOracleAbandoned() (gas: 1989652)",
+          "Suite result: ok. 9 passed; 0 failed; 0 skipped; finished in 69.45s (353.16s CPU time)"
+        ]
+      },
+      "audio": "vo-tests.mp3",
+      "speech": 10.344,
+      "pad": 0.7,
+      "durationInFrames": 332,
+      "captions": [
+        {
+          "text": "A hundred and fifteen tests, nine of them against",
+          "start": 0.092583,
+          "end": 2.604166
+        },
+        {
+          "text": "the real venue on a fork.",
+          "start": 2.604166,
+          "end": 4.328708
+        },
+        {
+          "text": "Ninety-seven percent line coverage on the vault, and",
+          "start": 4.699083,
+          "end": 7.939791
+        },
+        {
+          "text": "every one of its forty-three functions.",
+          "start": 8.055541,
+          "end": 10.011583
+        }
+      ],
+      "words": 29
+    },
+    {
+      "id": "reactivity",
+      "chapter": "Nobody called this",
+      "shot": {
+        "type": "explorer",
+        "tx": "0x2f75001ea73bd66cf62649841542a2d8b74cad22afa1513e5e6463730a009f50"
+      },
+      "audio": "vo-reactivity.mp3",
+      "speech": 12.36,
+      "pad": 0.8,
+      "durationInFrames": 395,
+      "captions": [
+        {
+          "text": "A window expired at seventeen hundred UTC.",
+          "start": 0.092583,
+          "end": 2.986083
+        },
+        {
+          "text": "No bot ran, nobody called anything.",
+          "start": 3.344916,
+          "end": 5.254625
+        },
+        {
+          "text": "Somnia's reactivity precompile woke the vault at the",
+          "start": 5.625,
+          "end": 8.819458
+        },
+        {
+          "text": "second it was armed for, and it settled its",
+          "start": 8.831,
+          "end": 11.331041
+        },
+        {
+          "text": "own position.",
+          "start": 11.342583,
+          "end": 12.013875
+        }
+      ],
+      "words": 32
+    },
+    {
+      "id": "honest",
+      "chapter": "The number that was wrong",
+      "shot": {
+        "type": "page",
+        "path": "/dashboard",
+        "anchor": "#pnlChart",
+        "needs": "#ledger"
+      },
+      "audio": "vo-honest.mp3",
+      "speech": 17.112,
+      "pad": 0.8,
+      "durationInFrames": 538,
+      "captions": [
+        {
+          "text": "Now the uncomfortable part.",
+          "start": 0.081,
+          "end": 1.388875
+        },
+        {
+          "text": "This project once published a two point three seven",
+          "start": 1.75925,
+          "end": 4.976833
+        },
+        {
+          "text": "percent return.",
+          "start": 4.976833,
+          "end": 5.729166
+        },
+        {
+          "text": "That number was wrong: the ledger summed the episodes",
+          "start": 6.111125,
+          "end": 8.680541
+        },
+        {
+          "text": "that closed into a complete set and dropped the",
+          "start": 8.680541,
+          "end": 10.937499
+        },
+        {
+          "text": "ones that went one-sided, so it could not produce",
+          "start": 10.9375,
+          "end": 13.460624
+        },
+        {
+          "text": "a loss.",
+          "start": 13.460666,
+          "end": 14.050916
+        },
+        {
+          "text": "We found it ourselves and published the correction.",
+          "start": 14.421291,
+          "end": 16.782416
+        }
+      ],
+      "words": 52
+    },
+    {
+      "id": "completing",
+      "chapter": "Buying the missing side",
+      "shot": {
+        "type": "deck",
+        "slide": 6
+      },
+      "audio": "vo-completing.mp3",
+      "speech": 31.344,
+      "pad": 0.8,
+      "durationInFrames": 965,
+      "captions": [
+        {
+          "text": "Today, honestly: depositors are down two percent, and",
+          "start": 0.092583,
+          "end": 3.530083
+        },
+        {
+          "text": "one in five filled quotes goes adverse.",
+          "start": 3.541666,
+          "end": 5.509291
+        },
+        {
+          "text": "That's the real risk —",
+          "start": 5.902791,
+          "end": 7.141207
+        },
+        {
+          "text": "one leg fills, the market walks away from the",
+          "start": 7.523166,
+          "end": 10.3125
+        },
+        {
+          "text": "other, and the vault holds a direction worth one",
+          "start": 10.3125,
+          "end": 12.696749
+        },
+        {
+          "text": "or nothing.",
+          "start": 12.69675,
+          "end": 13.182874
+        },
+        {
+          "text": "Twenty-six of those, carried to settlement, averaged",
+          "start": 13.564833,
+          "end": 16.701374
+        },
+        {
+          "text": "minus thirty percent, with a minus one hundred in",
+          "start": 16.712958,
+          "end": 19.479166
+        },
+        {
+          "text": "them.",
+          "start": 19.49075,
+          "end": 19.699083
+        },
+        {
+          "text": "So the vault stopped carrying them: it buys the",
+          "start": 20.069458,
+          "end": 22.326375
+        },
+        {
+          "text": "missing side, and the pair is worth exactly one",
+          "start": 22.326375,
+          "end": 25.127291
+        },
+        {
+          "text": "either way.",
+          "start": 25.127333,
+          "end": 25.659707
+        },
+        {
+          "text": "Fourteen so far, averaging minus one percent, worst minus",
+          "start": 26.076375,
+          "end": 29.872666
+        },
+        {
+          "text": "three and a half.",
+          "start": 29.88425,
+          "end": 31.018499
+        }
+      ],
+      "words": 89
+    },
+    {
+      "id": "sdk",
+      "chapter": "Sixteen defects, each with a hash",
+      "shot": {
+        "type": "deck",
+        "slide": 8
+      },
+      "audio": "vo-sdk.mp3",
+      "speech": 14.736,
+      "pad": 0.6,
+      "durationInFrames": 461,
+      "captions": [
+        {
+          "text": "Sixteen reproducible defects in DreamDEX and its SDK,",
+          "start": 0.092583,
+          "end": 4.004625
+        },
+        {
+          "text": "each one with a transaction hash.",
+          "start": 4.502333,
+          "end": 6.284749
+        },
+        {
+          "text": "A pool freezes its whole order book the moment",
+          "start": 6.655083,
+          "end": 9.247666
+        },
+        {
+          "text": "a window expires —",
+          "start": 9.247666,
+          "end": 10.428208
+        },
+        {
+          "text": "including the calls the SDK documents as the way",
+          "start": 10.671291,
+          "end": 13.391207
+        },
+        {
+          "text": "to get your escrow out.",
+          "start": 13.391208,
+          "end": 14.398124
+        }
+      ],
+      "words": 40
+    },
+    {
+      "id": "close",
+      "chapter": null,
+      "shot": {
+        "type": "page",
+        "path": "/",
+        "anchor": "#live",
+        "needs": "#live"
+      },
+      "audio": "vo-close.mp3",
+      "speech": 15.768,
+      "pad": 1.5,
+      "durationInFrames": 519,
+      "captions": [
+        {
+          "text": "Abadi is a market maker that survives its own",
+          "start": 0.081,
+          "end": 2.5
+        },
+        {
+          "text": "markets expiring, a vault that settles itself when nobody",
+          "start": 2.5,
+          "end": 6.574041
+        },
+        {
+          "text": "is watching, and a measurably tighter book for everyone",
+          "start": 6.585666,
+          "end": 9.594916
+        },
+        {
+          "text": "else trading it.",
+          "start": 9.594916,
+          "end": 10.324082
+        },
+        {
+          "text": "Every number you've seen is read from the chain —",
+          "start": 10.694458,
+          "end": 12.951416
+        },
+        {
+          "text": "including the ones we'd rather not show you.",
+          "start": 13.402791,
+          "end": 15.428207
+        }
+      ],
+      "words": 47
+    }
+  ]
+}
