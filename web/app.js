@@ -89,7 +89,9 @@
     // run(); read by run()'s catch so a cancellation cannot claim nothing was sent.
     landed: [],
     /** The live reactivity subscription, or null. Read from the node, not inferred. */
-    armed: null
+    armed: null,
+    /** The EIP-6963 provider the visitor chose, when more than one announced itself. */
+    wallet: null
   };
   var els = {};
   ["app", "connect", "wallet", "network", "usdc", "stt", "shares", "worth", "nav", "share", "idle",
@@ -304,7 +306,61 @@
   }
 
   // ---------------------------------------------------------------- wallet
-  function provider() { return window.ethereum; }
+  /* EIP-6963, because `window.ethereum` is whoever won the injection race.
+   *
+   * With MetaMask and Rabby and a Solana wallet all installed — which is an ordinary judge's
+   * machine — `window.ethereum` is a coin toss, and the page can open the wrong extension or
+   * one that does not speak EIP-1193 at all. The standard fixes it by having each wallet
+   * ANNOUNCE itself: listen first, then ask, and every installed provider replies with its
+   * name, icon and uuid.
+   *
+   * The listener has to be registered before the request or the announcements are missed,
+   * which is why this runs at load rather than on the click. `window.ethereum` stays as the
+   * fallback for a wallet that has not adopted the standard. */
+  var announced = [];
+
+  window.addEventListener("eip6963:announceProvider", function (ev) {
+    var d = ev.detail;
+    if (!d || !d.provider || !d.info) return;
+    if (announced.some(function (w) { return w.info.uuid === d.info.uuid; })) return;
+    announced.push(d);
+    paintWallets();
+  });
+  window.dispatchEvent(new Event("eip6963:requestProvider"));
+
+  /** The wallet the visitor picked, else the only one announced, else the legacy injection. */
+  function provider() {
+    if (state.wallet) return state.wallet;
+    if (announced.length === 1) return announced[0].provider;
+    return window.ethereum;
+  }
+
+  /* A chooser is only shown when there is something to choose. One wallet, or none, and this
+     stays empty — an extra step in front of the money page has to earn itself. */
+  function paintWallets() {
+    var box = document.getElementById("wallets");
+    if (!box) return;
+    if (announced.length < 2 || state.account) { box.hidden = true; box.textContent = ""; return; }
+    box.hidden = false;
+    box.textContent = "";
+    announced.forEach(function (w) {
+      var b = document.createElement("button");
+      b.type = "button";
+      if (w.info.icon) {
+        var img = document.createElement("img");
+        img.src = w.info.icon;
+        img.alt = "";
+        b.appendChild(img);
+      }
+      b.appendChild(document.createTextNode(w.info.name));
+      b.addEventListener("click", function () {
+        state.wallet = w.provider;
+        paintWallets();
+        connect();
+      });
+      box.appendChild(b);
+    });
+  }
 
   /* Adding a chain is not switching to it, and some wallets return from a switch with
    * the user still on the old one. Only the wallet's own answer to eth_chainId, read
@@ -354,7 +410,7 @@
     if (!p) { say("No EIP-1193 wallet in this browser. Install one, then reload."); return; }
     p.request({ method: "eth_requestAccounts" })
       .then(function (accs) { state.account = accs[0]; return ensureChain(); })
-      .then(function () { state.chainOk = true; paintWallet(); say("Connected " + short(state.account) + " on Somnia Shannon."); return refresh(); })
+      .then(function () { state.chainOk = true; paintWallet(); paintWallets(); say("Connected " + short(state.account) + " on Somnia Shannon."); return refresh(); })
       .catch(function (e) { state.chainOk = false; paintWallet(); say("Wallet: " + (e && e.message ? e.message : String(e))); });
   }
 

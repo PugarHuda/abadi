@@ -88,6 +88,16 @@
   }
   .guard::before { content: ""; position: absolute; left: 0; top: 1.05em; width: 8px; height: 8px; background: var(--alarm); }
   .nowallet { color: var(--alarm); }
+  /* One button per announced wallet, in the same ink as every other control here. */
+  .wallets { display: flex; flex-wrap: wrap; gap: 10px; margin: 12px 0 0; }
+  .wallets button {
+    font: inherit; font-size: 14px; font-stretch: 80%; font-weight: 500;
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--stock); color: var(--ink);
+    border: 1px solid var(--ctl-line); padding: 8px 12px; cursor: pointer;
+  }
+  .wallets button:hover { border-color: var(--ink); }
+  .wallets img { width: 18px; height: 18px; }
   .nowallet a { color: var(--alarm); }
 
   /* Small secondary text was sitting straight on the printed grid, so its background
@@ -151,6 +161,9 @@
     </div>
     <button class="lead" id="connect" type="button">Connect wallet</button>
   </div>
+  <!-- EIP-6963. Only rendered when more than one wallet announces itself; with one or none
+       there is nothing to choose and this stays empty. -->
+  <div class="wallets" id="wallets" hidden role="group" aria-label="Choose a wallet"></div>
   <p class="note nowallet" id="nowallet" hidden>
     No wallet in this browser. Install <a href="https://metamask.io/download/" target="_blank" rel="noopener">MetaMask</a>
     or <a href="https://rabby.io/" target="_blank" rel="noopener">Rabby</a>, then reload this page. Everything below

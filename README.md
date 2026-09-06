@@ -404,7 +404,7 @@ bot skips arming and says so until then. `sweepNative` brings the reserve back o
   first thing to change if a keeper died — so the numbers above can be checked without
   trusting this file
 - 146 unit tests including two fuzzed properties, five stateful invariants and a16z's 26-property
-  ERC-4626 conformance suite (`test/LiquidityVault.conformance.t.sol`), 9 fork tests against the venue, 91
+  ERC-4626 conformance suite (`test/LiquidityVault.conformance.t.sol`), 9 fork tests against the venue, 93
   browser tests (axe-core WCAG 2.1 AA, Core Web Vitals, touch, the transactions cited on
   the landing page checked against the explorer); `scripts/attest.ts` compares the live
   address against this source and reports **MATCH**, and the address it names is verified

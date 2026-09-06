@@ -203,6 +203,72 @@ test.describe("app without a wallet", () => {
     await expect(page.locator("[data-wake=armed]")).toContainText(/nothing armed/i, { timeout: 20000 });
   });
 
+  /* EIP-6963: two wallets installed, which is an ordinary machine and the case that breaks.
+   *
+   * `window.ethereum` is whoever won the injection race, so a page that reads it can open the
+   * wrong extension in front of a judge. The standard has each wallet announce itself; the
+   * page listens, asks, and offers the choice.
+   *
+   * The double announces two providers and records which one was asked for accounts, so this
+   * asserts the visitor's pick is the wallet that gets used — not merely that a button was
+   * drawn.
+   */
+  const TWO_WALLETS = `
+    (() => {
+      const make = (name, uuid) => ({
+        info: { uuid, name, rdns: "test." + uuid, icon: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E" },
+        provider: {
+          isStub: true, name,
+          on() {},
+          async request({ method, params }) {
+            if (method === "eth_requestAccounts") { window.__asked = name; return ["${ACCOUNT}"]; }
+            if (method === "eth_chainId") return "0xc488";
+            if (method === "wallet_switchEthereumChain") return null;
+            throw new Error("stub: " + method);
+          }
+        }
+      });
+      const wallets = [make("Alpha Wallet", "aaa"), make("Beta Wallet", "bbb")];
+      // The legacy injection is one of them, chosen at random — exactly the race this fixes.
+      window.ethereum = wallets[1].provider;
+      window.addEventListener("eip6963:requestProvider", () => {
+        for (const w of wallets) {
+          window.dispatchEvent(new CustomEvent("eip6963:announceProvider", { detail: Object.freeze(w) }));
+        }
+      });
+    })();
+  `;
+
+  test("offers a choice when two wallets announce themselves, and uses the one picked", async ({ page }) => {
+    await page.addInitScript(TWO_WALLETS);
+    await fakeChain(page);
+    await page.goto(BASE + "/app", { waitUntil: "networkidle" });
+
+    const box = page.locator("#wallets");
+    await expect(box).toBeVisible();
+    await expect(box.locator("button")).toHaveCount(2);
+    await expect(box).toContainText("Alpha Wallet");
+    await expect(box).toContainText("Beta Wallet");
+
+    // Pick the one that did NOT win the injection race.
+    await box.locator("button", { hasText: "Alpha Wallet" }).click();
+    await expect(page.locator("#wallet")).toHaveText(/0x39d2…cd7e/i);
+    expect(await page.evaluate(() => (window as any).__asked)).toBe("Alpha Wallet");
+
+    // Once connected there is nothing left to choose, so the chooser goes away.
+    await expect(box).toBeHidden();
+  });
+
+  test("does not put a chooser in front of a visitor with one wallet", async ({ page }) => {
+    await page.addInitScript(STUB_PROVIDER);
+    await fakeChain(page);
+    await page.goto(BASE + "/app", { waitUntil: "networkidle" });
+    // An extra step in front of the money page has to earn itself, and with one wallet it
+    // does not: the legacy injection is unambiguous and Connect goes straight there.
+    await expect(page.locator("#wallets")).toBeHidden();
+    await expect(page.locator("#connect")).toBeEnabled();
+  });
+
   test("names both contracts it will ask you to sign for, and links them", async ({ page }) => {
     await page.goto(BASE + "/app", { waitUntil: "networkidle" });
     const vault = await page.evaluate(() => (window as any).ABADI.vault as string);
