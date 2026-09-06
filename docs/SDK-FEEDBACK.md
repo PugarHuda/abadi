@@ -3,6 +3,11 @@
 From building **Abadi**, a market-making vault on Event Contracts, on Shannon testnet.
 Everything below cost us real debugging time and is reproducible.
 
+**All sixteen are filed on the venue's own tracker**, one issue each, as
+[somnia-chain/dreamdex-bot-kit#26 … #41](https://github.com/somnia-chain/dreamdex-bot-kit/issues?q=is%3Aissue+Abadi).
+Each section below links to its issue. A report that lives only in the reporter's repository
+has not been reported; this file is the working, and the tracker is where it goes.
+
 Issues 1–6 are from 2026-08-26 and are ordered by how much time each one cost. Everything
 after is appended in the order it was found rather than reordered, so numbering people
 have already read stays put: 7–8 from settling a real position, 9–10 from the first live
@@ -13,6 +18,8 @@ never answered and the two days spent reading a contract that was not running.
 ---
 
 ## 1. Prices are scaled to the collateral's decimals, and the errors point elsewhere
+
+**Filed upstream: [somnia-chain/dreamdex-bot-kit#26](https://github.com/somnia-chain/dreamdex-bot-kit/issues/26)**
 
 **Cost: several hours.** The single worst one.
 
@@ -53,6 +60,8 @@ minutes; getting to the idea of doing it took hours.
 
 ## 2. The spot `placeOrder` ABI is present on a binary pool and always fails
 
+**Filed upstream: [somnia-chain/dreamdex-bot-kit#27](https://github.com/somnia-chain/dreamdex-bot-kit/issues/27)**
+
 **Cost: about an hour.**
 
 `binaryPoolWriteAbi` exports both `placeOrder(bool isBid, ...)` and
@@ -70,6 +79,8 @@ better absent than documented.
 ---
 
 ## 3. Reactivity fails identically for two unrelated reasons, both with empty revert data
+
+**Filed upstream: [somnia-chain/dreamdex-bot-kit#28](https://github.com/somnia-chain/dreamdex-bot-kit/issues/28)**
 
 **Cost: most of a day, plus a question to the dev channel.**
 
@@ -106,6 +117,8 @@ in the docs recommending an overridable address for tests.
 
 ## 4. The Event Contracts page understates what is listed
 
+**Filed upstream: [somnia-chain/dreamdex-bot-kit#29](https://github.com/somnia-chain/dreamdex-bot-kit/issues/29)**
+
 The trading page says *"BTC and ETH markets on 15-minute and 1-hour windows today"*.
 
 Measured live on 2026-08-26, the venue runs **six tiers**: 60s, 300s, 900s, 3600s,
@@ -124,6 +137,8 @@ tiers.
 
 ## 5. `winningOutcome()` was removed and now reverts
 
+**Filed upstream: [somnia-chain/dreamdex-bot-kit#30](https://github.com/somnia-chain/dreamdex-bot-kit/issues/30)**
+
 Settlement v3 stores a payout vector; the winner is the argmax of `payoutNumerators`.
 This is handled correctly inside the SDK and mentioned in a source comment, but a reader
 of the market ABI sees `winningOutcome` in indexer rows and reasonably assumes the
@@ -137,6 +152,8 @@ silently abandons half the position.
 ---
 
 ## 6. Smaller things
+
+**Filed upstream: [somnia-chain/dreamdex-bot-kit#31](https://github.com/somnia-chain/dreamdex-bot-kit/issues/31)**
 
 - **`getAutoPullRequirement` and `somiPaymentPerOrder` are spot-only.** Both are in the
   ABI surface and both revert on a binary pool. `getAutoPullRequirement` is exactly what
@@ -153,6 +170,8 @@ silently abandons half the position.
 ---
 
 ## 7. Redemption pulls through the **module**, and nothing says so until settlement
+
+**Filed upstream: [somnia-chain/dreamdex-bot-kit#32](https://github.com/somnia-chain/dreamdex-bot-kit/issues/32)**
 
 **Cost: a stranded position worth 100 tUSDC.** The most expensive one we hit.
 
@@ -206,6 +225,8 @@ custom error, and `isOperator(vault, module)` returned false.
 
 ## 8. `cancelOrder` reverts on an order that already filled
 
+**Filed upstream: [somnia-chain/dreamdex-bot-kit#33](https://github.com/somnia-chain/dreamdex-bot-kit/issues/33)**
+
 **Cost: one bricked slot and 43.80 tUSDC.**
 
 A two-sided quote stores two order ids. When the market takes one side and walks away
@@ -250,6 +271,8 @@ three exits against the resolved market. All three reverted.
 
 ## 9. A reactivity callback that runs out of gas vanishes without a trace
 
+**Filed upstream: [somnia-chain/dreamdex-bot-kit#34](https://github.com/somnia-chain/dreamdex-bot-kit/issues/34)**
+
 **Cost: one subscription, and the afternoon it took to find out where it went.**
 
 Subscription creation is permissionless and the 32 STT floor is documented in the
@@ -289,6 +312,8 @@ so a 500k limit was never going to work, and nothing on the way said so.
 
 ## 10. The `Schedule` topic is the fired millisecond, not the scheduled one
 
+**Filed upstream: [somnia-chain/dreamdex-bot-kit#35](https://github.com/somnia-chain/dreamdex-bot-kit/issues/35)**
+
 **Cost: a stale mapping entry and an hour of reading logs.**
 
 A handler that keys its own state by the instant it asked for — the natural thing to do,
@@ -319,6 +344,8 @@ passed to `armSweep`, after `armed[...]` was still set following a successful sw
 ---
 
 ## 11. The explorer's verifier advertises `osaka` and cannot verify it
+
+**Filed upstream: [somnia-chain/dreamdex-bot-kit#36](https://github.com/somnia-chain/dreamdex-bot-kit/issues/36)**
 
 **Cost: two days of an unverified live address, and every route tried twice.**
 
@@ -354,6 +381,8 @@ to have any other reason to fail.
 
 ## 12. The RPC rejects EIP-1898 block objects, so Foundry cannot fork Shannon
 
+**Filed upstream: [somnia-chain/dreamdex-bot-kit#37](https://github.com/somnia-chain/dreamdex-bot-kit/issues/37)**
+
 **Cost: the venue-integration test suite could not run at all until it was proxied.**
 
 Foundry's fork backend addresses state by block *hash* for every account read, in the
@@ -384,6 +413,8 @@ that rewrites the object into the number, and the fork suite runs through it.
 ---
 
 ## 13. `cancelOrder` can revert on a resting order the caller owns, with no reason
+
+**Filed upstream: [somnia-chain/dreamdex-bot-kit#38](https://github.com/somnia-chain/dreamdex-bot-kit/issues/38)**
 
 **Cost: two legs left live under a slot the vault had already freed.**
 
@@ -425,6 +456,8 @@ explorer's internal-transaction view of the cancel.
 ---
 
 ## 14. Windows can sit unresolved for hours, and the keeper entries do not resolve them
+
+**Filed upstream: [somnia-chain/dreamdex-bot-kit#39](https://github.com/somnia-chain/dreamdex-bot-kit/issues/39)**
 
 **Cost: two slots of capital parked for a night.**
 
@@ -473,6 +506,8 @@ that made this a five-minute problem.
 ---
 
 ## 15. A pool freezes its whole book at expiry, including the drains documented as the way out
+
+**Filed upstream: [somnia-chain/dreamdex-bot-kit#40](https://github.com/somnia-chain/dreamdex-bot-kit/issues/40)**
 
 **Cost: 196.00 tUSDC frozen for two days, plus every exit path in our vault silently
 bricked in the same window.**
@@ -543,6 +578,8 @@ a fork test warping across the boundary. Full record in
 ---
 
 ## 16. BinaryPools are beacon-upgradeable, and nothing published says which code is live
+
+**Filed upstream: [somnia-chain/dreamdex-bot-kit#41](https://github.com/somnia-chain/dreamdex-bot-kit/issues/41)**
 
 **Cost: it is the reason issue 15 took two days instead of an afternoon.**
 

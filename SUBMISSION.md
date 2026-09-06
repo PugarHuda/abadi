@@ -134,9 +134,10 @@ Open Track
 > browser tests, 97.28% line coverage and 43/43 functions on the vault. It also passes
 > **a16z's ERC-4626 property suite** — all 26 fuzzed properties, conformance defined by
 > somebody who has never seen this vault rather than by our own coverage number. Sixteen
-> reproducible SDK and venue defects reported with transaction hashes, and the venue's error
-> table uploaded to the public signature databases so its reverts decode for every team on
-> the chain, not just for us.
+> reproducible SDK and venue defects, each one filed on the venue's own tracker
+> ([dreamdex-bot-kit#26 … #41](https://github.com/somnia-chain/dreamdex-bot-kit/issues?q=is%3Aissue+Abadi)) with transaction hashes, and the venue's error table
+> uploaded to the public signature databases so its reverts decode for every team on the
+> chain, not just for us.
 
 ---
 
@@ -188,9 +189,9 @@ hackathon page. Paste this:
 > filled quotes adverse where the spread needs under ~9%. It's on the front page rather
 > than in a footnote.
 >
-> Also filed 16 reproducible SDK and venue defects with tx hashes, and uploaded the venue's
-> error table to the public signature databases — its reverts decode in `cast 4byte` for
-> everyone now, not just for us.
+> Also filed 16 reproducible SDK and venue defects on dreamdex-bot-kit (https://github.com/somnia-chain/dreamdex-bot-kit/issues?q=is%3Aissue+Abadi) with tx hashes,
+> and uploaded the venue's error table to the public signature databases — 637 signatures
+> newly registered, so its reverts decode in `cast 4byte` for everyone now, not just for us.
 >
 > https://abadi-wheat.vercel.app · https://github.com/PugarHuda/abadi
 

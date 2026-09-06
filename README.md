@@ -508,8 +508,10 @@ Four of our assumptions were killed by running things rather than reading about 
 the reactivity callback path (closed), and the price scale (collateral decimals, not
 1e18). None of those were visible from the documentation.
 
-[`docs/SDK-FEEDBACK.md`](docs/SDK-FEEDBACK.md) reports each of them back to the DreamDEX
-team, with reproduction steps.
+[`docs/SDK-FEEDBACK.md`](docs/SDK-FEEDBACK.md) records each of them with reproduction steps,
+and **all sixteen are filed on the venue's own tracker** as
+[somnia-chain/dreamdex-bot-kit#26 … #41](https://github.com/somnia-chain/dreamdex-bot-kit/issues?q=is%3Aissue+Abadi) — one issue each, so each can be closed on its
+own. A report that lives only in the reporter's repository has not been reported.
 
 ### What went back to the chain rather than into this repo
 
