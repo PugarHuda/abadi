@@ -121,7 +121,15 @@
 
   main table { font-family: var(--mono); font-size: 12.5px; }
 
-  [data-busy="true"] button:not([disabled]) { opacity: .6; }
+  /* Busy is shown with the palette the disabled state already uses, not with `opacity: .6`.
+     Opacity fades the text INTO whatever is behind it: on the primary button that landed at
+     2.3:1 against the 4.5:1 AA floor, and it failed CI intermittently because the detector
+     only sees it while a transaction is in flight. These two colours are the pair this
+     stylesheet already measured at 6.0:1. */
+  [data-busy="true"] button:not([disabled]) {
+    background: var(--stock-sunk); color: var(--pencil); border-color: var(--ctl-line);
+    cursor: progress;
+  }
 
   /* A number that was true once is kept and struck, never quietly served as current.
      Same rule as .struck in the world sheet; app.js flips data-stale. */

@@ -171,3 +171,24 @@ test("reduced motion is respected on the control", async ({ browser }) => {
   expect(transition, "knob must not animate under prefers-reduced-motion").toBe("0s");
   await ctx.close();
 });
+
+test("/app's buttons keep their contrast while a transaction is in flight", async ({ page }) => {
+  await withoutChainReads(page);
+  await page.goto(BASE + "/app", { waitUntil: "domcontentloaded" });
+
+  // The busy state only exists between a click and a receipt, so nothing that loads the
+  // page at rest can see it. It shipped as `opacity: .6`, which fades the label into the
+  // button under it: 2.3:1 against a 4.5:1 floor, and CI caught it only on the runs whose
+  // screenshot happened to land mid-transaction.
+  await page.evaluate(() => document.querySelector("#app")!.setAttribute("data-busy", "true"));
+  await expect(page.locator('#app[data-busy="true"]')).toBeVisible();
+
+  const faded = await page.evaluate(() =>
+    Array.from(document.querySelectorAll("#app button:not([disabled])"))
+      .filter((b) => Number(getComputedStyle(b).opacity) < 0.95)
+      .map((b) => `${b.id || b.textContent?.trim().slice(0, 20)} @ ${getComputedStyle(b).opacity}`),
+  );
+  expect(faded, "a busy button must change colour, not fade").toEqual([]);
+
+  await scan(page, "/app while busy");
+});

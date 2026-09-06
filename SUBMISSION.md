@@ -130,7 +130,7 @@ Open Track
 > still. Depositors are down 2.76% while that plays out, and the ledger says so on the
 > front page.
 >
-> 148 unit tests, five stateful invariants, nine fork tests against the real venue, 95
+> 148 unit tests, five stateful invariants, nine fork tests against the real venue, 96
 > browser tests, 97.28% line coverage and 43/43 functions on the vault. It also passes
 > **a16z's ERC-4626 property suite** — all 26 fuzzed properties, conformance defined by
 > somebody who has never seen this vault rather than by our own coverage number. Sixteen
