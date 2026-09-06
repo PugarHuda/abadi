@@ -179,6 +179,9 @@ test.describe("a cancelled signature", () => {
     await chainFor(page, 0n); // no allowance, so the deposit needs two signatures
     await page.goto(BASE + "/app", { waitUntil: "networkidle" });
     await page.locator("#connect").click();
+    // Same race as the test below: the button is enabled on connect, but the gas guard
+    // reads a balance that arrives with the refresh. Wait for the balance.
+    await expect(page.locator("#stt")).not.toHaveText("—", { timeout: 20_000 });
     await expect(page.locator("#deposit")).toBeEnabled();
 
     await page.locator("#amount").fill("100");
@@ -199,6 +202,17 @@ test.describe("a cancelled signature", () => {
     await chainFor(page, 0n);
     await page.goto(BASE + "/app", { waitUntil: "networkidle" });
     await page.locator("#connect").click();
+
+    /* Wait for the balance, not just for the button.
+     *
+     * `#deposit` is enabled as soon as a wallet is connected on the right chain, while the
+     * gas guard reads `state.stt`, which arrives with the balance refresh. Submitting in
+     * between produced "Your wallet holds no STT for gas" — green on a fast local server and
+     * red on CI, which is the worst kind of test. The STT field is the thing being waited on,
+     * so it is what the wait names. */
+    await expect(page.locator("#stt")).not.toHaveText("—", { timeout: 20_000 });
+    await expect(page.locator("#deposit")).toBeEnabled();
+
     await page.locator("#amount").fill("100");
     await page.locator("#depositForm").dispatchEvent("submit");
 
