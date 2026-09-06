@@ -127,9 +127,18 @@ Open Track
 ```bash
 node scripts/attest.ts     # must say MATCH
 node scripts/ledger.ts     # re-read per share and the episode count
-node scripts/impact.ts     # re-read the spread with/without
 forge test                 # the number the README claims
+node scripts/impact.ts     # slow — see below; the published figure stands without it
 ```
+
+**`impact.ts` is the slow one and it is not a blocker.** On 2026-09-06 it hung for thirty
+minutes on a single indexer request — `fetch` does not reject when a host accepts the socket
+and then says nothing — and it now carries a 20s timeout per question. Even fixed, the
+indexer was answering slowly enough that a full re-run took longer than the rest of this
+list put together. The spread claim quoted above is the measurement of **2026-08-31**, it is
+dated as such everywhere it appears, and `docs/evidence/impact-2026-08-31.txt` is the file
+behind it. Do not hold up the submission waiting for a fresher one, and do not describe the
+70 windows as "every window we have quoted" — there are 193 episodes now.
 
 The README, `web/deck.html` and `PRODUCT.md` all state test counts, and CI fails if any of
 them disagrees with `forge test`. If you add tests before submitting, update all three.
