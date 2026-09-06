@@ -1,0 +1,141 @@
+- generic [active] [ref=e1]:
+  - link "Skip to content" [ref=e2] [cursor=pointer]:
+    - /url: "#main"
+  - generic [ref=e3]:
+    - banner [ref=e4]:
+      - generic [ref=e5]:
+        - img "Abadi" [ref=e6]
+        - heading "abadi" [level=1] [ref=e9]
+      - navigation "Site" [ref=e10]:
+        - link "The working" [ref=e11] [cursor=pointer]:
+          - /url: /dashboard
+        - link "Deck" [ref=e12] [cursor=pointer]:
+          - /url: /deck
+        - link "Open the app" [ref=e13] [cursor=pointer]:
+          - /url: /app
+    - main [ref=e14]:
+      - heading [level=2] [ref=e15]:
+        - text: The price moves.
+        - emphasis [ref=e16]: The pair doesn’t.
+      - paragraph [ref=e17]: Abadi quotes both sides of a DreamDEX event market, keeps one of each when they fill, and collects the difference. It never needs an opinion about the outcome.
+      - generic [ref=e18]:
+        - generic [ref=e19]:
+          - generic [ref=e20]: Drag the pen, or use the arrow keys
+          - generic [ref=e21]:
+            - generic [ref=e22]: Up
+            - generic [ref=e24]: Down
+        - slider "Probability the market resolves up" [ref=e26]
+        - generic [ref=e28]:
+          - generic [ref=e29]: "0.000"
+          - generic [ref=e30]: "1.000"
+        - generic [ref=e31]:
+          - generic [ref=e32]:
+            - generic [ref=e33]: Up
+            - generic [ref=e34]: "0.620"
+          - generic [ref=e37]:
+            - generic [ref=e38]: Down
+            - generic [ref=e39]: "0.380"
+          - generic [ref=e42]:
+            - generic [ref=e43]: Pair
+            - generic [ref=e44]: "1.000"
+        - paragraph [ref=e48]: Put the price wherever you like. One Up and one Down redeems for exactly one at every price between zero and one, whichever way the market ends up resolving. That is not a hedge that mostly works — it is the settlement rule.
+      - heading "Live from the chain read in your browser, no server of ours" [level=2] [ref=e49]:
+        - text: Live from the chain
+        - generic [ref=e50]: read in your browser, no server of ours
+      - generic [ref=e51]:
+        - generic [ref=e52]:
+          - generic [ref=e53]:
+            - term [ref=e54]: NAV
+            - definition [ref=e55]: … tUSDC
+          - generic [ref=e56]:
+            - term [ref=e57]: Idle
+            - definition [ref=e58]: … tUSDC
+          - generic [ref=e59]:
+            - term [ref=e60]: Resting
+            - definition [ref=e61]: … tUSDC
+          - generic [ref=e62]:
+            - term [ref=e63]: Per share
+            - definition [ref=e64]: …
+        - list [ref=e65]
+        - paragraph [ref=e66]:
+          - text: block … ·
+          - link "vault on the explorer" [ref=e67] [cursor=pointer]:
+            - /url: "#"
+          - text: · refreshes every minute
+      - heading "Where the money comes from zero inventory" [level=2] [ref=e68]:
+        - text: Where the money comes from
+        - generic [ref=e69]: zero inventory
+      - region "The arithmetic of a pair" [ref=e70]:
+        - text: buy UP at p buy DOWN at p + s ← the venue quotes both sides Up-side, so this leg escrows 1 − (p + s)
+        - generic [ref=e71]: pair costs 1 − s · pair is worth 1 · the difference is s, the spread
+      - paragraph [ref=e72]: No inventory is needed to start. DreamDEX runs one order book, and a Buy Up crossing a Buy Down needs no seller at all — the pool mints a fresh pair out of the two buyers' collateral. So the vault can quote both sides holding nothing, and the spread it earns is the venue's own 2.9%, not a view about which way the price goes.
+      - heading "Who can touch what non-custodial" [level=2] [ref=e73]:
+        - text: Who can touch what
+        - generic [ref=e74]: non-custodial
+      - table [ref=e76]:
+        - rowgroup [ref=e77]:
+          - row [ref=e78]:
+            - columnheader "Actor" [ref=e79]
+            - columnheader "Can" [ref=e80]
+            - columnheader "Cannot" [ref=e81]
+          - row [ref=e82]:
+            - cell "operator" [ref=e83]
+            - cell "Quote and cancel" [ref=e84]
+            - cell "Move a single token. The bot key steers prices and has no path to the money" [ref=e85]
+          - row [ref=e86]:
+            - cell "governor" [ref=e87]
+            - cell [ref=e88]:
+              - text: Set the operator, risk limits, price grid. Sweep the vault's native STT with
+              - code [ref=e89]: sweepNative
+              - text: — ~32.8 STT today, the reserve that pays for the self-wake
+            - cell "Touch depositor collateral. Handover is two-step, so a mistyped address hands the seat to nobody" [ref=e90]
+          - row [ref=e91]:
+            - cell "depositor" [ref=e92]
+            - cell "Deposit and withdraw against ERC-4626 shares" [ref=e93]
+            - cell "Steer quotes" [ref=e94]
+          - row [ref=e95]:
+            - cell "anyone" [ref=e96]
+            - cell "Settle a resolved market, and merge a pair once the window can no longer trade" [ref=e97]
+            - cell "Redirect the proceeds — they go to the vault, never the caller" [ref=e98]
+      - heading "What has actually run Shannon testnet" [level=2] [ref=e99]:
+        - text: What has actually run
+        - generic [ref=e100]: Shannon testnet
+      - list [ref=e101]:
+        - listitem [ref=e102]:
+          - generic [ref=e103]: quote
+          - generic [ref=e104]: Bid became the best bid on the market, and the spread went from 0.030 to 0.025 — the incumbent tightened in response
+          - link "0x3a8b93bb" [ref=e106] [cursor=pointer]:
+            - /url: https://shannon-explorer.somnia.network/tx/0x3a8b93bba2a39a35102d44f8005143dafb9317033003befec7b4c5fbe095a6dd
+        - listitem [ref=e107]:
+          - generic [ref=e108]: fill
+          - generic [ref=e109]: Both legs taken. 97.40 paid for 100 Up and 100 Down — a complete set, worth 100.00 either way
+          - generic [ref=e110]: on chain
+        - listitem [ref=e111]:
+          - generic [ref=e112]: settle
+          - generic [ref=e113]: Window resolved, position redeemed. +100.00 against a 97.60 basis, and NAV did not move a unit across settlement
+          - link "0x60f880ac" [ref=e115] [cursor=pointer]:
+            - /url: https://shannon-explorer.somnia.network/tx/0x60f880ac7c64ecd70da253a2d410476ad78052c066bfc8c8e620196dbed2a044
+        - listitem [ref=e116]:
+          - generic [ref=e117]: flatten
+          - generic [ref=e118]: Quote went dead with 11 minutes left, so the pair was merged back to collateral early — no oracle involved
+          - link "0xf2f62521" [ref=e120] [cursor=pointer]:
+            - /url: https://shannon-explorer.somnia.network/tx/0xf2f625213296406a2bfb3ed99a65290917097948259069f2662db73a39027b3c
+      - heading "What this is not yet" [level=2] [ref=e121]:
+        - text: What this is not
+        - generic [ref=e122]: yet
+      - paragraph [ref=e123]: A handful of fills proves the mechanism, not an edge. The real risk a maker carries is adverse selection — being filled on one side while the market walks away from the other. It happened to us twice in one afternoon. When it does, the vault is holding a direction, and NAV marks that leg at zero rather than at what it cost, so the loss lands on the people already in and not on whoever deposits next.
+      - paragraph [ref=e124]: Measuring how often it happens needs many quotes across many windows. That is the next thing, not a thing we are claiming. The dashboard has the working, including what went wrong and what it cost.
+      - generic [ref=e125]:
+        - link "Open the app →" [ref=e126] [cursor=pointer]:
+          - /url: /app
+        - link "Read the evidence" [ref=e127] [cursor=pointer]:
+          - /url: /dashboard
+        - link "Deck" [ref=e128] [cursor=pointer]:
+          - /url: /deck
+        - link "Source" [ref=e129] [cursor=pointer]:
+          - /url: https://github.com/PugarHuda/abadi
+        - link "Vault on the explorer" [ref=e130] [cursor=pointer]:
+          - /url: https://shannon-explorer.somnia.network/address/0xFd9c93581ADD42B9B13ba5550542Fc7315775cD9
+    - contentinfo [ref=e131]:
+      - generic [ref=e132]: vault 0xFd9c9358…5cD9
+      - generic [ref=e133]: abadi · everlasting

@@ -533,6 +533,43 @@ issue #16.
 
 ---
 
+## Use it from your own code
+
+The vault is a plain ERC-4626, so anything that already speaks that standard speaks to this
+without knowing what it does. The two files an integrator needs are served, versioned with the
+site, and were the only machine-readable thing here that nothing pointed at until now:
+
+| | |
+|---|---|
+| [`/deployments.json`](https://abadi-wheat.vercel.app/deployments.json) | live address, `eip155:50312`, the asset, and every retired deployment so an old address in a transaction reads as retired rather than as a mystery |
+| [`/abi.json`](https://abadi-wheat.vercel.app/abi.json) | the vault's ABI, generated from the compiled artifact and gated in CI against it |
+
+```bash
+# What a share is worth, from nothing but the standard
+cast call 0xFd9c93581ADD42B9B13ba5550542Fc7315775cD9 \
+  "convertToAssets(uint256)(uint256)" 1000000 \
+  --rpc-url https://api.infra.testnet.somnia.network
+```
+
+```solidity
+IERC20(asset).approve(vault, amount);       // tUSDC, 6 decimals, and it has no `permit`
+IERC4626(vault).deposit(amount, receiver);  // shares are abLIQ, also 6 decimals
+```
+
+Three things that will bite an integrator, all of them deliberate:
+
+- **`redeemDelay` is 300 seconds.** A deposit cannot redeem inside that window. It replaced a
+  one-block guard because the share price moves when a slot settles, and a deposit timed
+  against that is free money taken from everyone already in.
+- **`maxWithdraw`/`maxRedeem` are capped by idle collateral**, not by your balance. Collateral
+  resting in a live quote is not withdrawable until that window settles, and the ERC-4626
+  `max*` views say so rather than letting a `withdraw` revert.
+- **Reverts decode.** Every error this vault and the venue can raise is published to OpenChain
+  and 4byte.directory, so `cast 4byte` and Foundry traces name them instead of printing four
+  bytes. That was not true of the venue's errors before this project uploaded them.
+
+---
+
 ## License
 
 MIT
