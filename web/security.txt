@@ -1,0 +1,15 @@
+# https://abadi-wheat.vercel.app/.well-known/security.txt   (RFC 9116)
+#
+# Abadi is a testnet project. The vault holds test collateral on Somnia Shannon
+# (chain 50312) and nothing here is worth money. Report anyway: the contract source
+# is the same source a mainnet deployment would use, and a finding against it is a
+# finding against that.
+
+Contact: https://github.com/PugarHuda/abadi/security/advisories/new
+Expires: 2027-09-06T00:00:00.000Z
+Preferred-Languages: en, id
+Canonical: https://abadi-wheat.vercel.app/.well-known/security.txt
+
+# In scope: src/*.sol, the deployed vault named in /deployments.json, and this site.
+# Out of scope: the DreamDEX venue and the Somnia RPC — report those to Somnia.
+# The operator key steers quotes and cannot transfer collateral out; see README.

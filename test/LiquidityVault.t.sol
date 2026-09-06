@@ -1726,6 +1726,44 @@ contract LiquidityVaultTest is Test {
         assertEq(vault.lotSize(), 2e3);
     }
 
+    /// Who may call was tested; what they may pass was not. A governor setter with no
+    /// ceiling is a way to brick the vault by typing, and the two settings here are the
+    /// ones the quoting argument rests on.
+    function test_riskParamsAreBounded() public {
+        uint256 floor = vault.priceOne() / 10_000;
+
+        // No floor at all means quoting inside the spread the floor exists to protect.
+        vm.prank(governor);
+        vm.expectRevert(abi.encodeWithSelector(LiquidityVault.HalfSpreadTooSmall.selector, 0, floor));
+        vault.setRiskParams(1000, 0);
+
+        // Past half a tier's life `hasHeadroom` refuses every window, and the vault stops
+        // quoting without reverting anywhere a reader would look.
+        vm.prank(governor);
+        vm.expectRevert(
+            abi.encodeWithSelector(LiquidityVault.HeadroomTooLarge.selector, uint16(5001), uint16(5000))
+        );
+        vault.setRiskParams(5001, floor);
+
+        // Both limits themselves are legal values.
+        vm.prank(governor);
+        vault.setRiskParams(5000, floor);
+        assertEq(vault.headroomBps(), 5000);
+        assertEq(vault.minHalfSpread(), floor);
+    }
+
+    function test_gridMustBePositive() public {
+        // Zero on either side makes every quote revert on a division, naming arithmetic
+        // instead of the setting that caused it.
+        vm.prank(governor);
+        vm.expectRevert(LiquidityVault.GridMustBePositive.selector);
+        vault.setGrid(0, 1e3);
+
+        vm.prank(governor);
+        vm.expectRevert(LiquidityVault.GridMustBePositive.selector);
+        vault.setGrid(1e3, 0);
+    }
+
     /// The guard that survives every other test: a cancel the pool refuses must leave the
     /// order id in place. Clearing it is how a freed slot kept two live legs on Shannon and
     /// 200 outcome tokens turned up under a slot that had quoted 100.

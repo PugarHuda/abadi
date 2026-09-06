@@ -2,10 +2,29 @@
  *  QA has to run against the same routing production uses, or it proves nothing. */
 import { createServer } from "node:http";
 import { readFile, stat } from "node:fs/promises";
+import { readFileSync } from "node:fs";
 import { join, extname } from "node:path";
 
 const ROOT = "dist";
 const PORT = Number(process.env.PORT ?? 4321);
+
+/* The security headers, read from `vercel.json` rather than copied.
+ *
+ * This server exists to mirror production, and a hand-copied header table is a mirror that
+ * drifts the first time somebody edits one side. So there is one source: the same file
+ * Vercel reads. If the CSP here and the CSP in production ever disagree, it is because the
+ * file changed, and both changed together.
+ *
+ * It matters because `frame-ancestors 'none'` is a real fix, not decoration — `/app` was
+ * demonstrably loadable inside a cross-origin iframe with every transaction button live, and
+ * the test that holds that closed has to run against the same policy production serves. */
+const VERCEL = JSON.parse(readFileSync("vercel.json", "utf8"));
+const SECURITY_HEADERS = Object.fromEntries(
+  (VERCEL.headers ?? [])
+    .filter((h) => h.source === "/(.*)")
+    .flatMap((h) => h.headers)
+    .map((h) => [h.key, h.value]),
+);
 /** Browsers enforce the stylesheet MIME type strictly: served as octet-stream, a .css
  *  file is fetched, ignored, and reported nowhere. This table had .html/.json/.svg only,
  *  so the first shared stylesheet the site ever had rendered as an unstyled page in QA
@@ -26,7 +45,9 @@ const TYPES = {
 };
 
 async function resolve(url) {
-  const clean = decodeURIComponent(url.split("?")[0]);
+  let clean = decodeURIComponent(url.split("?")[0]);
+  // The one rewrite production has. Kept here for the same reason as the headers.
+  for (const r of VERCEL.rewrites ?? []) if (clean === r.source) clean = r.destination;
   for (const p of [clean, clean + ".html", join(clean, "index.html")]) {
     const f = join(ROOT, p);
     try {
@@ -47,6 +68,7 @@ async function send(res, status, file) {
   res.writeHead(status, {
     "content-type": TYPES[extname(file)] ?? "application/octet-stream",
     "content-length": body.length,
+    ...SECURITY_HEADERS,
   });
   res.end(body);
 }

@@ -85,6 +85,9 @@ contract LiquidityVault is ERC4626, AbadiReactive, ReentrancyGuard {
     ///      seconds threshold is wrong here: the venue runs 60s through 86400s tiers.
     uint16 public headroomBps = 1000; // 10%
 
+    /// @notice Ceiling on `headroomBps`. Past half a tier's life nothing would ever qualify.
+    uint16 public constant MAX_HEADROOM_BPS = 5000;
+
     /// @notice Most collateral one quote may commit, in asset units. 0 disables the cap.
     /// @dev The custody claim — "the operator key can steer quotes and cannot move a
     ///      token" — is true and was the wrong thing to be reassured by. The operator
@@ -269,6 +272,9 @@ contract LiquidityVault is ERC4626, AbadiReactive, ReentrancyGuard {
     error ReduceNotHonoured(uint128 orderId);
     error SizeNotSmaller(uint256 newSize, uint256 size);
     error SizeBelowFilled(uint256 newSize, uint256 pairsHeld);
+    error HalfSpreadTooSmall(uint256 given, uint256 floor);
+    error HeadroomTooLarge(uint16 given, uint16 ceiling);
+    error GridMustBePositive();
     error DelayTooLong(uint64 requested, uint64 cap);
 
     // ------------------------------------------------------------ constructor
@@ -1134,6 +1140,20 @@ contract LiquidityVault is ERC4626, AbadiReactive, ReentrancyGuard {
     }
 
     function setRiskParams(uint16 headroomBps_, uint256 minHalfSpread_) external onlyGovernor {
+        /* Bounded, for the same reason `setRedeemDelay` is bounded a few lines up: a
+         * governor setter with no ceiling is a way to brick the vault by typing, and this
+         * contract already decided that argument once and then left its two neighbours open.
+         *
+         * `minHalfSpread` at 0 removes the floor entirely, and quoting inside the floor is
+         * how a maker turns an edge into free adverse selection — the thing the comment on
+         * that variable exists to say. A tenth of a tick is the smallest floor that is still
+         * a floor.
+         *
+         * `headroomBps` above half makes `hasHeadroom` refuse every window on the venue's
+         * shorter tiers, which stops the vault quoting at all without reverting anywhere a
+         * reader would look. */
+        if (minHalfSpread_ < priceOne / 10_000) revert HalfSpreadTooSmall(minHalfSpread_, priceOne / 10_000);
+        if (headroomBps_ > MAX_HEADROOM_BPS) revert HeadroomTooLarge(headroomBps_, MAX_HEADROOM_BPS);
         headroomBps = headroomBps_;
         minHalfSpread = minHalfSpread_;
         emit RiskParamsSet(headroomBps_, minHalfSpread_);
@@ -1164,6 +1184,10 @@ contract LiquidityVault is ERC4626, AbadiReactive, ReentrancyGuard {
     }
 
     function setGrid(uint256 tickSize_, uint256 lotSize_) external onlyGovernor {
+        // Zero on either side makes `floorToTick`/`quantize` revert on division, so every
+        // quote fails and the failure names arithmetic rather than the setting that caused
+        // it. The venue's grid is a positive number or the vault cannot price at all.
+        if (tickSize_ == 0 || lotSize_ == 0) revert GridMustBePositive();
         tickSize = tickSize_;
         lotSize = lotSize_;
         emit GridSet(tickSize_, lotSize_);

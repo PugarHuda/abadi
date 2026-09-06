@@ -69,6 +69,31 @@ test.describe("document shape", () => {
   }
 });
 
+test.describe("response headers", () => {
+  /** `/app` builds and sends transactions from the visitor's wallet. Without
+   *  `frame-ancestors`, any site could load it in an invisible iframe over its own
+   *  buttons and the wallet prompt would name this origin. It was demonstrably
+   *  framable before the policy went in, so the policy is what holds it closed and
+   *  the header is worth asserting rather than assuming. */
+  test("/app cannot be framed and the policy is served with it", async ({ page }) => {
+    const res = await page.goto(BASE + "/app", { waitUntil: "domcontentloaded" });
+    const csp = res?.headers()["content-security-policy"] ?? "";
+    expect(csp, "no Content-Security-Policy on /app").toContain("frame-ancestors 'none'");
+    expect(csp).toContain("object-src 'none'");
+    expect(res?.headers()["x-content-type-options"]).toBe("nosniff");
+  });
+
+  /** RFC 9116 says a reporter looks here first. A rewrite pointing at a file that
+   *  does not exist reads exactly like having no contact at all. */
+  test("/.well-known/security.txt answers", async ({ request }) => {
+    const res = await request.get(BASE + "/.well-known/security.txt");
+    expect(res.status()).toBe(200);
+    const body = await res.text();
+    expect(body).toContain("Contact:");
+    expect(body, "RFC 9116 requires Expires").toContain("Expires:");
+  });
+});
+
 test.describe("landing", () => {
   // The pages under here read the chain on load, and the public explorer's log API is
   // rate-limited: it stalls past 30s often enough to fail roughly two runs in five on an
