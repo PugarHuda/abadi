@@ -1,13 +1,25 @@
 # Submission — everything DoraHacks asks for, ready to paste
 
-**Abadi is not submitted yet.** Checked again 2026-09-06: **thirty-one BUIDLs are in**, and
-none of them is this one. **The deadline is 2026-09-09 01:00 UTC — two days.**
+**Abadi is not submitted yet.** Checked again 2026-09-06 15:30 UTC: **thirty-four BUIDLs are
+in**, and none of them is this one.
 
-**The field tripled between the 2nd and the 6th, from 13 to 31, and the late arrivals landed
-on Abadi's own ground.** HOUSE rests both sides from a wallet on the same no-inventory
-mechanism, almost word for word. DreamVault is the depositor half. TEMPO, HedgePulse and
-Perennis all put capital into the book. Anything below that counts or ranks the field has to
-be re-checked against the live list before it is pasted — see the note under **Vision**.
+**The deadline is 2026-09-08 18:00 UTC.** That is `timeline_end` on the hackathon's own
+record, and it is 01:00 on the 9th in Jakarta — this file said "2026-09-09 01:00 UTC" until
+now, which is the local hour mislabelled as UTC and seven hours of runway that does not
+exist.
+
+**The field tripled between the 2nd and the 6th, from 13 to 34, and the late arrivals landed
+on Abadi's own ground.** Five came in on the 6th alone. **Ballast** is the closest: a pooled
+counterparty quoting both sides of every window, opening on a measurement of its own — "83.5%
+of 5,000 DreamDEX markets never saw a single trade" — which is this project's move as well as
+its thesis. HOUSE rests both sides from a wallet on the same no-inventory mechanism, almost
+word for word. DreamVault is the depositor half. TEMPO, HedgePulse and Perennis all put
+capital into the book. Anything below that counts or ranks the field has to be re-checked
+against the live list before it is pasted — see the note under **Vision**.
+
+The list is at `https://dorahacks.io/api/v1/hub/hackathons/2358/buidls?page=1&page_size=60`,
+which answers 405 to a plain fetcher and needs a **headed** browser; fetch it from inside the
+page context once Cloudflare clears.
 
 Submitting needs the DoraHacks account, so it is the one step nobody else can do. This file
 exists so it takes ten minutes rather than an evening.
@@ -83,7 +95,9 @@ Open Track
    tagged inside it, the equity curve that is allowed to go down, and every episode the
    vault has ever run, decoded from the explorer in the reader's browser.
 2. **`https://shannon-explorer.somnia.network/address/0xFd9c93581ADD42B9B13ba5550542Fc7315775cD9`**
-   — the live vault, verified source. `node scripts/attest.ts` says MATCH.
+   — the live vault, verified source. `node scripts/attest.ts` says MISMATCH and prints
+   why: `src/` is two guards ahead of this deployment, deliberately, two days from the
+   deadline. README → "The source is ahead of the chain".
 3. **`docs/evidence/`** — one file per thing that happened, including the things that went
    wrong and what they cost.
 
@@ -113,7 +127,7 @@ Open Track
 > an average of −30% of basis with a −100% in them. The vault now crosses the book to buy
 > the missing side, so the pair is worth exactly 1: fourteen of those have cost −1% on
 > average, worst −3.5%, and it refused 126 times when getting flat was worse than standing
-> still. Depositors are down 2.03% while that plays out, and the ledger says so on the
+> still. Depositors are down 2.76% while that plays out, and the ledger says so on the
 > front page.
 >
 > 148 unit tests, five stateful invariants, nine fork tests against the real venue, 95
@@ -129,7 +143,7 @@ Open Track
 ## Before you submit, re-run these
 
 ```bash
-node scripts/attest.ts     # must say MATCH
+node scripts/attest.ts     # MISMATCH is expected — it must name only MAX_HEADROOM_BPS()
 node scripts/ledger.ts     # re-read per share and the episode count
 forge test                 # the number the README claims
 node scripts/impact.ts     # slow — see below; the published figure stands without it
@@ -144,7 +158,44 @@ was no way to tell work from a hang.
 The spread claim quoted above is the measurement of **2026-08-31**, dated as such everywhere
 it appears, with `docs/evidence/impact-2026-08-31.txt` behind it. Do not hold up the
 submission waiting for a fresher one, and do not describe the 70 windows as "every window we
-have quoted" — there are 193 episodes now.
+have quoted" — there are 203 episodes now.
 
 The README, `web/deck.html` and `PRODUCT.md` all state test counts, and CI fails if any of
 them disagrees with `forge test`. If you add tests before submitting, update all three.
+
+---
+
+## After you submit: the twenty minutes that are worth more than another test
+
+The rubric gives **20% to Business & Ecosystem Impact** and **15% to Presentation**, and
+this project currently has no presence outside its own repository at all: searching for it
+by name returns nothing, and no human on the Somnia side has ever seen it. Every other
+number here is already earned. This is the part that is not.
+
+**1. The hackathon's own Telegram** — `https://t.me/+XHq0F0JXMyhmMzM0`, linked from the
+hackathon page. Paste this:
+
+> Submitted Abadi — an ERC-4626 vault that market-makes DreamDEX Event Contracts holding
+> no inventory. Two opposite-side buys cross with no seller, the pool mints the pair, and a
+> complete set is worth exactly 1 either way the window resolves.
+>
+> The part I'd point at: I rebuilt 70 of the windows the vault quoted from the venue's own
+> order rows, twice — with our orders and without. Spread 0.0249 without, 0.0192 with.
+> Tighter on 66 of 70, wider on none. The book measurably improved because something was
+> resting in it.
+>
+> The ledger publishes the losses too: per share 0.972372, depositors down 2.76%, 21% of
+> filled quotes adverse where the spread needs under ~9%. It's on the front page rather
+> than in a footnote.
+>
+> Also filed 16 reproducible SDK and venue defects with tx hashes, and uploaded the venue's
+> error table to the public signature databases — its reverts decode in `cast 4byte` for
+> everyone now, not just for us.
+>
+> https://abadi-wheat.vercel.app · https://github.com/PugarHuda/abadi
+
+**2. The same, shorter, wherever you post publicly.** Lead with the spread measurement. It
+is the one claim in this field that no other submission makes.
+
+**3. Do not lead with "the only one".** Thirty-four BUIDLs are in and at least six put
+capital into this book. Lead with the measurement, which is still uncontested.

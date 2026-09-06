@@ -5,7 +5,7 @@
   "scripts": {
     "build": "node scripts/build-site.mjs",
     "serve": "node qa/serve.mjs",
-    "qa": "node scripts/build-site.mjs && node qa/serve.mjs & npx wait-on http://localhost:4321/ && BASE=http://localhost:4321 npx playwright test",
+    "qa": "npx playwright test",
     "typecheck": "tsc --noEmit",
     "probe": "node scripts/probe.ts",
     "history": "node scripts/history.ts",
@@ -24,7 +24,8 @@
     "video:shots": "node video/capture.mjs",
     "video:render": "node video/render.mjs",
     "video:studio": "remotion studio video/remotion/index.ts --public-dir=video/assets",
-    "video": "npm run video:vo && npm run video:shots && npm run video:render"
+    "video": "npm run video:vo && npm run video:shots && npm run video:render",
+    "selectors": "node scripts/selectors.mjs"
   },
   "dependencies": {
     "@somnia-chain/markets-sdk": "^0.28.1",

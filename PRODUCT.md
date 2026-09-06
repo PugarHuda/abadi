@@ -51,9 +51,10 @@ cost, and what was fixed is part of the positioning, not an apology for it.
 - Contracts: `LiquidityVault` (ERC-4626, quote/cancel/flatten/settle, per-slot sweep,
   `sweepNative`, `LastShareWhileOpen`, `MarketAlreadyQuoted`), `AbadiReactive`,
   `MarketEngine`. 148 unit tests, five stateful invariants, nine fork tests against the
-  real venue. `attest.ts` reports MATCH against the live address and that address is
-  verified on the explorer; coverage is 97.28% of lines and 100% of the vault's 43
-  functions.
+  real venue. `attest.ts` reports MISMATCH against the live address on purpose — `src/`
+  carries two guards that are not deployed, and the README's "The source is ahead of the
+  chain" says which and why — and that address is verified on the explorer; coverage is
+  97.28% of lines and 100% of the vault's 43 functions.
 - Scripts: `bot.ts` (requote loop), `ledger.ts` (episodes from chain events),
   `attest.ts` (live bytecode vs. artifact), `fork-test.ts`, `operator.ts`, `verify.ts`.
 - Site: three static pages plus 404, built by `scripts/build-site.mjs` into `dist/`,
@@ -90,8 +91,9 @@ cost, and what was fixed is part of the positioning, not an apology for it.
 
 1. A number on screen is read from the chain in the reader's browser, or it is not shown.
 2. State the failure before the fix; the fix is only credible next to what it cost.
-3. The live address is the source — `attest.ts` and the explorer both say so, or it ships
-   as bytecode.
+3. The live address is the source — `attest.ts` and the explorer both say so, or the
+   difference is written down where the claim is made. It is written down right now: the
+   source is two guards ahead of the deployed vault, and `attest.ts` names them.
 4. Nothing waits for a human: settle is permissionless, the sweep is armed, the keeper is
    scheduled.
 5. Every claim has a transaction hash a judge can click.

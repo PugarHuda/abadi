@@ -27,7 +27,8 @@ matter which way the market resolves.
 **Live on Shannon testnet:** `0xFd9c93581ADD42B9B13ba5550542Fc7315775cD9`
 ([source on the explorer](https://shannon-explorer.somnia.network/address/0xFd9c93581ADD42B9B13ba5550542Fc7315775cD9?tab=contract) ·
 `node scripts/attest.ts` checks that address is running this source — see below for
-why that is a thing we check now)
+why that is a thing we check now, and for
+[why it says MISMATCH today](#the-source-is-ahead-of-the-chain))
 
 ---
 
@@ -103,8 +104,37 @@ works today is a contract that owns its own orders. That is exactly what Abadi i
 | depositor | deposit, withdraw against shares | steer quotes |
 
 `sweepNative(address,uint256)` moves the vault's entire native balance anywhere the
-governor names — today ~32.8 STT, and that is the same reserve the vault spends to wake
+governor names — today ~32.9 STT, and that is the same reserve the vault spends to wake
 itself up. Depositor collateral is reachable from no governor entry point at all.
+
+**"Cannot move a token" was true and was the wrong thing to be reassured by.** The operator
+cannot *transfer* the money; it can trade it away. It picks the market, the mid, the
+half-spread and the size, and the only structural bound on that is what the vault refuses.
+So the two caps that bound it are now set on chain — 500 tUSDC of escrow per quote,
+2,500 bps of NAV across the whole book — in tx
+[`0x106cd277…c5c6`](https://shannon-explorer.somnia.network/tx/0x106cd2779f9b4781df4d339007deec39f3a9b7c32f53506b87c78cc81535c5c6),
+block 481333400. They had defaulted to 0, which disables them, since the vault was deployed.
+A quote the bot actually places escrows about 98, and measured book-wide utilisation has run
+0–6% of NAV, so neither cap constrains how this vault trades; they constrain how far it could
+be pushed in one direction. `npm run risk` reads them back off the chain, and **they reset to
+0 on every redeploy**, so that command is part of the redeploy list.
+
+### The source is ahead of the chain
+
+`node scripts/attest.ts` says **MISMATCH** today, and that is a statement rather than a
+defect. `src/` carries two changes the deployed vault does not:
+
+- **`SizeBelowFilled`** — `reduceQuote` could mark a partially filled slot below the pairs it
+  holds and move the share price 12% with nothing sent anywhere. Found by reading, fixed with
+  two regression tests, never fired in 1,262 live cycles. Commit `8cd803e`.
+- **Bounded `setRiskParams` and `setGrid`** — `minHalfSpread` at 0, `headroomBps` past half a
+  tier, or a zero tick each brick quoting by typing. Commit `366db43`.
+
+Both are governor-or-operator-only, and the operator, governor and deployer are the same key,
+so nothing is at risk that this project does not already control. Redeploying to close them
+moves the address that the film, the site, the evidence files and the submission all cite,
+two days before the deadline — so the source stayed ahead and this paragraph exists instead.
+`attest.ts` prints which functions the deployed code is missing rather than a bare verdict.
 
 ---
 
@@ -257,16 +287,21 @@ bot skips arming and says so until then. `sweepNative` brings the reserve back o
 **Run against the venue, on Shannon**
 
 - Quoting inside the incumbent's spread, top of book, both legs filling into complete sets
-- **The vault is down, and the number that says so is the one to read.** The vault
-  running today was deployed on 2026-08-31 and its share price is **1.000000**, because a
-  new ERC-4626 starts at par. **That is not a return; it is a new contract.** The record
-  the price forgot is the one to read: across 95 episodes on 10 vaults, 72 closed into a
-  complete set, 18 one-sided, 1 with neither leg filled, and **−217.90 realised on
-  8,280.95 of basis**. The vault it replaced ended at per share **0.951368** against
-  shares issued at par — **−6.84%** at its worst reading on the 31st, for anyone who had
-  deposited. `scripts/ledger.ts` reads every figure back off the chain across all ten
-  addresses, so the redeploy does not clear the history; it only resets the denominator
-  of one of them.
+- **The vault is down, and the number that says so is the one to read.** Per share is
+  **0.972372** — 9,302.07 of assets on 9,566.37 of shares, so anyone who deposited at par
+  is down **264.30 tUSDC, −2.76%**. Across **203 episodes on 13 vaults**: 156 closed into a
+  complete set, 41 one-sided, 2 with neither leg filled, 4 still open, and **−403.50
+  realised on 19,544.25 of basis**. 21% of filled quotes were adverse; the strategy needs
+  under about 9%. The vault before this one ended at per share **0.951368** — **−6.84%** at
+  its worst reading on the 31st, for anyone who had deposited. `scripts/ledger.ts` reads
+  every figure back off the chain across all thirteen addresses, so a redeploy does not
+  clear the history; it only resets the denominator of one of them.
+
+  *Read 2026-09-06 15:20 UTC, `docs/evidence/ledger-2026-09-06.md`. This file carried the
+  numbers of 2026-08-31 for six days after they stopped being true — including a share price
+  of 1.000000, which is what a new ERC-4626 reads on the day it is deployed and is not a
+  return. A section called Honest status showing par while the vault was down 2.76% is the
+  exact failure this project claims to have fixed, so: re-run the ledger before quoting it.*
 
   This replaces "+133.85 on 5,641.15 of basis (2.37%)", which this file carried until
   2026-08-31. That figure was not invented: it was the realised spread on the winning
@@ -277,7 +312,7 @@ bot skips arming and says so until then. `sweepNative` brings the reserve back o
   the sign of the answer changed.
 - The record is not uniform by window length, and that is where the loss lives: a
   complete set earns about 2.19 and an adverse fill costs about 22, so the strategy needs
-  an adverse rate under roughly 9% and is running at 20%. The 4h tier is the only one
+  an adverse rate under roughly 9% and is running at 21%. The 15m tier is the only one
   measurably above water
 - **The vault wakes itself up.** A 900s window was quoted, expired, resolved, and the
   reactivity precompile called the vault at the armed second; the vault redeemed its own
@@ -407,8 +442,9 @@ bot skips arming and says so until then. `sweepNative` brings the reserve back o
   ERC-4626 conformance suite (`test/LiquidityVault.conformance.t.sol`), 9 fork tests against the venue, 95
   browser tests (axe-core WCAG 2.1 AA, Core Web Vitals, touch, the transactions cited on
   the landing page checked against the explorer); `scripts/attest.ts` compares the live
-  address against this source and reports **MATCH**, and the address it names is verified
-  on the explorer. Coverage on the contracts, measured with
+  address against this source and today reports **MISMATCH, on purpose** — see
+  [The source is ahead of the chain](#the-source-is-ahead-of-the-chain) — and the address it
+  names is verified on the explorer. Coverage on the contracts, measured with
   `forge coverage --ir-minimum`: **`LiquidityVault.sol` 97.28% of lines and 100% of its 43
   functions**, `MarketEngine.sol` 100% of lines
 - The site passes [Impeccable](https://impeccable.style)'s 59-rule design detector on
@@ -474,6 +510,26 @@ the reactivity callback path (closed), and the price scale (collateral decimals,
 
 [`docs/SDK-FEEDBACK.md`](docs/SDK-FEEDBACK.md) reports each of them back to the DreamDEX
 team, with reproduction steps.
+
+### What went back to the chain rather than into this repo
+
+Several of those defects are identifiable *only* by a bare four-byte selector, because the
+venue's pools are unverified beacon proxies and their errors are in no public database. That
+is fixable by anybody, once, for everybody — so `npm run selectors -- --send` reads this
+vault's ABI plus every ABI the venue's SDK ships, and publishes the lot:
+
+```
+804 functions and errors, 74 events
+newly registered 637   already known 241   refused 0     (4byte.directory)
+forge selectors upload --all                             (OpenChain / Sourcify)
+```
+
+A revert from a DreamDEX pool now decodes in `cast 4byte`, Foundry traces and Blockscout for
+every team on Somnia, not just for this one. `0xcfb9cfb3` was nothing this morning and is
+`AccountNotFlat()` tonight. Two selectors still decode to nothing and that is documented too
+— they are missing from the venue's own generated error table, which is
+[`docs/evidence/selectors-2026-09-06.md`](docs/evidence/selectors-2026-09-06.md) and SDK
+issue #16.
 
 ---
 

@@ -188,3 +188,25 @@ writeFileSync(
   ),
 );
 console.log("wrote deployments.json");
+
+/* A sitemap and a robots.txt, both generated from `PAGES` so neither can list a page that
+ * does not exist or miss one that does.
+ *
+ * This is not SEO theatre. Searching for this project by name returns nothing at all: it is
+ * a three-week-old site nobody links to, and the one thing that costs nothing is telling a
+ * crawler the five URLs exist and that it may read them. `llms.txt` is already here for the
+ * other kind of reader; this is the same courtesy for the older kind. */
+const URLS = Object.values(PAGES)
+  .map((m) => m.path)
+  .filter((p) => p !== "/404");
+writeFileSync(
+  join(OUT, "sitemap.xml"),
+  `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n` +
+    URLS.map((p) => `  <url><loc>${ORIGIN}${p}</loc></url>\n`).join("") +
+    `</urlset>\n`,
+);
+writeFileSync(
+  join(OUT, "robots.txt"),
+  `User-agent: *\nAllow: /\n\nSitemap: ${ORIGIN}/sitemap.xml\n`,
+);
+console.log(`wrote sitemap.xml (${URLS.length} urls) and robots.txt`);

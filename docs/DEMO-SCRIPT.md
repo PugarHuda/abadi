@@ -68,12 +68,12 @@ scene became what was on the screen rather than what had been written for it.
 
 - **"We're the only one putting capital in"**, and the line that followed from it, **"the
   only one who can be asked whether the book got better."** True when 13 projects had
-  entered. By the 6th there were **31**, and HOUSE, DreamVault, TEMPO, HedgePulse and
+  entered. By the 6th there were **34**, and HOUSE, DreamVault, TEMPO, HedgePulse and
   Perennis all put capital into this venue — HOUSE on the same no-inventory mechanism,
   described almost word for word. The measurement is still ours alone; being the only maker
   is not. **Never restore a superlative about the field without re-reading the field.**
 - **The impact line said "every window we've ever quoted."** The measurement covers 70
-  windows and is dated 31 August; there are 193 episodes now. It says "seventy of the
+  windows and is dated 31 August; there are 203 episodes now. It says "seventy of the
   windows we've quoted", which stays true however many there are.
 - The numbers moved hard: depositors from −0.51% to **−2.03%**, nine completions to
   **fourteen**, and carrying a naked leg got *worse* rather than better.
@@ -87,22 +87,26 @@ scene became what was on the screen rather than what had been written for it.
 Get these wrong and a judge who checks discounts everything else. **Re-read them before any
 re-render**, and re-run `npm run video:vo` for the scenes whose numbers moved.
 
+**These are the current readings, not the film's.** The rendered cut carries the 2026-09-06
+morning ledger; where a row differs it says so. A film is a recording of a run and is allowed
+to be a day old — this table is the checklist for the next one, so it tracks the chain.
+
 | Claim | The number |
 |---|---|
 | Unit tests | **148** passing (149 total; the fork suite skips without `FORK_RPC`). The rendered film says **146** and its terminal shot shows 146 — true at render time, two governor-setter tests behind now. A re-render for that reason alone is not worth 2:56 of pipeline; a re-render for any other reason must re-run `npm run video:vo` for that line. |
 | Third-party conformance | a16z `ERC4626Test`, **26/26** fuzzed properties — `test/LiquidityVault.conformance.t.sol` |
 | Fork tests against the real venue | **9**, all passing — `node scripts/fork-test.ts` |
 | Coverage | 97.28% of lines, 43/43 functions on `LiquidityVault.sol` |
-| Per share | **0.979700** |
-| Depositors, vs. par | **−194.20 tUSDC (−2.03%)** — below par |
-| Realised, every closed episode | −380.00 on 18,761.45 (−2.03%) |
-| Episodes | **193** across 13 vaults |
-| Fill shape | 149 complete · 40 one-sided · 2 no fill · 2 open — **21% adverse** |
+| Per share | **0.972372** (film: 0.979700) |
+| Depositors, vs. par | **−264.30 tUSDC (−2.76%)** — below par (film: −194.20, −2.03%) |
+| Realised, every closed episode | −403.50 on 19,544.25 (−2.06%) |
+| Episodes | **203** across 13 vaults (film: 193) |
+| Fill shape | 156 complete · 41 one-sided · 2 no fill · 4 open — **21% adverse** |
 | One-sided: carried vs completed | 26 carried at −30.12%, worst −100% · **14 completed at −0.98%**, worst −3.47% — `docs/evidence/completing-2026-09-06.md` |
 | Completion refusals | **126** (median pair 1.209, cheapest refused 1.061) |
-| Venue spread, without us vs with | 0.0249 vs 0.0192 over **70 windows, measured 2026-08-31** — tighter on 66, wider on **none**. Not "every window"; there are 193 episodes now |
+| Venue spread, without us vs with | 0.0249 vs 0.0192 over **70 windows, measured 2026-08-31** — tighter on 66, wider on **none**. Not "every window"; there are 203 episodes now |
 | SDK issues filed | 16 |
-| Live vault | `0xFd9c93581ADD42B9B13ba5550542Fc7315775cD9` — `attest.ts` says **MATCH** |
+| Live vault | `0xFd9c93581ADD42B9B13ba5550542Fc7315775cD9` — `attest.ts` says **MISMATCH** since `8cd803e`: the source is ahead of the chain by two guards, on purpose. The film does not state this either way, so nothing in it is wrong. |
 | Reactivity settle, on chain | `0x2f75001ea73bd66cf62649841542a2d8b74cad22afa1513e5e6463730a009f50` |
 
 **Do not say "profitable".** Per share is below par and realised across every vault is
