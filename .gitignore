@@ -37,3 +37,4 @@ video/assets/raw/
 video/assets/_*
 video/out/
 video/render.log
+.playwright-mcp/
