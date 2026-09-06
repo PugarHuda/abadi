@@ -1,6 +1,6 @@
 {
   "fps": 30,
-  "durationInFrames": 5271,
+  "durationInFrames": 5268,
   "scenes": [
     {
       "id": "problem",
@@ -204,18 +204,18 @@
         "lines": [
           "$ forge test",
           "Ran 1 test for test/fork/Venue.fork.t.sol:VenueForkTest",
-          "Suite result: ok. 0 passed; 0 failed; 1 skipped; finished in 1.07ms (0.00ns CPU time)",
-          "Ran 10 tests for test/AbadiReactive.t.sol:AbadiReactiveTest",
-          "Suite result: ok. 10 passed; 0 failed; 0 skipped; finished in 2.04ms (1.67ms CPU time)",
+          "Suite result: ok. 0 passed; 0 failed; 1 skipped; finished in 1.80ms (0.00ns CPU time)",
           "Ran 15 tests for test/MarketEngine.t.sol:MarketEngineTest",
-          "Suite result: ok. 15 passed; 0 failed; 0 skipped; finished in 27.97ms (27.32ms CPU time)",
-          "Ran 91 tests for test/LiquidityVault.t.sol:LiquidityVaultTest",
-          "Suite result: ok. 91 passed; 0 failed; 0 skipped; finished in 81.23ms (77.29ms CPU time)",
+          "Suite result: ok. 15 passed; 0 failed; 0 skipped; finished in 14.93ms (23.25ms CPU time)",
+          "Ran 94 tests for test/LiquidityVault.t.sol:LiquidityVaultTest",
+          "Suite result: ok. 94 passed; 0 failed; 0 skipped; finished in 67.10ms (64.28ms CPU time)",
+          "Ran 10 tests for test/AbadiReactive.t.sol:AbadiReactiveTest",
+          "Suite result: ok. 10 passed; 0 failed; 0 skipped; finished in 2.18s (1.01ms CPU time)",
           "Ran 26 tests for test/LiquidityVault.conformance.t.sol:LiquidityVaultConformanceTest",
-          "Suite result: ok. 26 passed; 0 failed; 0 skipped; finished in 2.95s (19.44s CPU time)",
+          "Suite result: ok. 26 passed; 0 failed; 0 skipped; finished in 2.18s (15.15s CPU time)",
           "Ran 1 test for test/LiquidityVault.invariant.t.sol:LiquidityVaultInvariantTest",
-          "Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 22.64s (22.63s CPU time)",
-          "Ran 6 test suites in 22.65s (25.70s CPU time): 143 tests passed, 0 failed, 1 skipped (144 total tests)",
+          "Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 17.28s (17.28s CPU time)",
+          "Ran 6 test suites in 17.29s (21.72s CPU time): 146 tests passed, 0 failed, 1 skipped (147 total tests)",
           "",
           "$ node scripts/fork-test.ts     # the same vault, against the live venue",
           "Ran 9 tests for test/fork/Venue.fork.t.sol:VenueForkTest",
@@ -227,44 +227,44 @@
         ]
       },
       "audio": "vo-tests.mp3",
-      "speech": 18.096,
+      "speech": 18,
       "pad": 0.7,
-      "durationInFrames": 564,
+      "durationInFrames": 561,
       "captions": [
         {
-          "text": "A hundred and forty-three tests, nine against the real",
+          "text": "A hundred and forty-six tests, nine against the real",
           "start": 0.092583,
-          "end": 2.824083
+          "end": 3.043999
         },
         {
           "text": "venue on a fork, and every one of the",
-          "start": 2.824083,
-          "end": 4.965291
+          "start": 3.044,
+          "end": 5.127333
         },
         {
           "text": "twenty-six properties in an independent ERC-4626 conformance",
-          "start": 4.965291,
-          "end": 9.907374
+          "start": 5.127333,
+          "end": 9.930541
         },
         {
           "text": "suite —",
-          "start": 9.907416,
-          "end": 10.266207
+          "start": 9.930541,
+          "end": 10.312499
         },
         {
           "text": "the standard's rules, not ours.",
-          "start": 10.682875,
-          "end": 12.592625
+          "start": 10.706,
+          "end": 12.731458
         },
         {
           "text": "Ninety-seven percent line coverage on the vault, and",
-          "start": 12.974541,
-          "end": 15.995374
+          "start": 13.101833,
+          "end": 15.972208
         },
         {
           "text": "all forty-three of its functions.",
-          "start": 16.006958,
-          "end": 17.754624
+          "start": 15.983791,
+          "end": 17.662041
         }
       ],
       "words": 44

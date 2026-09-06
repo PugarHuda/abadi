@@ -103,185 +103,185 @@ it cannot move a token, and there is no
 function that would let it.
 
 27
-00:01:00,993 --> 00:01:03,724
-A hundred and forty-three tests, nine against the real
+00:01:00,993 --> 00:01:03,944
+A hundred and forty-six tests, nine against the real
 
 28
-00:01:03,724 --> 00:01:05,865
+00:01:03,944 --> 00:01:06,027
 venue on a fork, and every one of the
 
 29
-00:01:05,865 --> 00:01:10,807
+00:01:06,027 --> 00:01:10,831
 twenty-six properties in an independent ERC-4626 conformance
 
 30
-00:01:10,807 --> 00:01:11,166
+00:01:10,831 --> 00:01:11,212
 suite —
 
 31
-00:01:11,583 --> 00:01:13,493
+00:01:11,606 --> 00:01:13,631
 the standard's rules, not ours.
 
 32
-00:01:13,875 --> 00:01:16,895
+00:01:14,002 --> 00:01:16,872
 Ninety-seven percent line coverage on the vault, and
 
 33
-00:01:16,907 --> 00:01:18,655
+00:01:16,884 --> 00:01:18,562
 all forty-three of its functions.
 
 34
-00:01:19,789 --> 00:01:22,682
+00:01:19,693 --> 00:01:22,586
 A window expired at seventeen hundred UTC.
 
 35
-00:01:23,041 --> 00:01:24,951
+00:01:22,945 --> 00:01:24,855
 No bot ran, nobody called anything.
 
 36
-00:01:25,321 --> 00:01:28,515
+00:01:25,225 --> 00:01:28,419
 Somnia's reactivity precompile woke the vault at the
 
 37
-00:01:28,527 --> 00:01:31,027
+00:01:28,431 --> 00:01:30,931
 second it was armed for, and it settled its
 
 38
-00:01:31,039 --> 00:01:31,710
+00:01:30,943 --> 00:01:31,614
 own position.
 
 39
-00:01:32,937 --> 00:01:34,245
+00:01:32,841 --> 00:01:34,149
 Now the uncomfortable part.
 
 40
-00:01:34,615 --> 00:01:37,833
+00:01:34,519 --> 00:01:37,737
 This project once published a two point three seven
 
 41
-00:01:37,833 --> 00:01:38,585
+00:01:37,737 --> 00:01:38,489
 percent return.
 
 42
-00:01:38,967 --> 00:01:41,537
+00:01:38,871 --> 00:01:41,441
 That number was wrong: the ledger summed the episodes
 
 43
-00:01:41,537 --> 00:01:43,793
+00:01:41,441 --> 00:01:43,697
 that closed into a complete set and dropped the
 
 44
-00:01:43,793 --> 00:01:46,317
+00:01:43,698 --> 00:01:46,221
 ones that went one-sided, so it could not produce
 
 45
-00:01:46,317 --> 00:01:46,907
+00:01:46,221 --> 00:01:46,811
 a loss.
 
 46
-00:01:47,277 --> 00:01:49,638
+00:01:47,181 --> 00:01:49,542
 We found it ourselves and published the correction.
 
 47
-00:01:50,861 --> 00:01:54,298
+00:01:50,765 --> 00:01:54,202
 Today, honestly: depositors are down two percent, and
 
 48
-00:01:54,310 --> 00:01:56,277
+00:01:54,214 --> 00:01:56,181
 one in five filled quotes goes adverse.
 
 49
-00:01:56,671 --> 00:01:57,909
+00:01:56,575 --> 00:01:57,813
 That's the real risk —
 
 50
-00:01:58,291 --> 00:02:01,081
+00:01:58,195 --> 00:02:00,984
 one leg fills, the market walks away from the
 
 51
-00:02:01,081 --> 00:02:03,465
+00:02:00,984 --> 00:02:03,369
 other, and the vault holds a direction worth one
 
 52
-00:02:03,465 --> 00:02:03,951
+00:02:03,369 --> 00:02:03,855
 or nothing.
 
 53
-00:02:04,333 --> 00:02:07,469
+00:02:04,237 --> 00:02:07,373
 Twenty-six of those, carried to settlement, averaged
 
 54
-00:02:07,481 --> 00:02:10,247
+00:02:07,385 --> 00:02:10,151
 minus thirty percent, with a minus one hundred in
 
 55
-00:02:10,259 --> 00:02:10,467
+00:02:10,163 --> 00:02:10,371
 them.
 
 56
-00:02:10,837 --> 00:02:13,094
+00:02:10,741 --> 00:02:12,998
 So the vault stopped carrying them: it buys the
 
 57
-00:02:13,094 --> 00:02:15,895
+00:02:12,998 --> 00:02:15,799
 missing side, and the pair is worth exactly one
 
 58
-00:02:15,895 --> 00:02:16,428
+00:02:15,799 --> 00:02:16,332
 either way.
 
 59
-00:02:16,844 --> 00:02:20,641
+00:02:16,748 --> 00:02:20,545
 Fourteen so far, averaging minus one percent, worst minus
 
 60
-00:02:20,652 --> 00:02:21,786
+00:02:20,556 --> 00:02:21,690
 three and a half.
 
 61
-00:02:23,005 --> 00:02:26,917
+00:02:22,909 --> 00:02:26,821
 Sixteen reproducible defects in DreamDEX and its SDK,
 
 62
-00:02:27,414 --> 00:02:29,197
+00:02:27,318 --> 00:02:29,101
 each one with a transaction hash.
 
 63
-00:02:29,567 --> 00:02:32,160
+00:02:29,471 --> 00:02:32,064
 A pool freezes its whole order book the moment
 
 64
-00:02:32,160 --> 00:02:33,340
+00:02:32,064 --> 00:02:33,244
 a window expires —
 
 65
-00:02:33,583 --> 00:02:36,303
+00:02:33,487 --> 00:02:36,207
 including the calls the SDK documents as the way
 
 66
-00:02:36,303 --> 00:02:37,310
+00:02:36,207 --> 00:02:37,214
 to get your escrow out.
 
 67
-00:02:38,329 --> 00:02:40,748
+00:02:38,233 --> 00:02:40,652
 Abadi is a market maker that survives its own
 
 68
-00:02:40,748 --> 00:02:44,822
+00:02:40,652 --> 00:02:44,726
 markets expiring, a vault that settles itself when nobody
 
 69
-00:02:44,834 --> 00:02:47,843
+00:02:44,738 --> 00:02:47,747
 is watching, and a measurably tighter book for everyone
 
 70
-00:02:47,843 --> 00:02:48,572
+00:02:47,747 --> 00:02:48,476
 else trading it.
 
 71
-00:02:48,942 --> 00:02:51,199
+00:02:48,846 --> 00:02:51,103
 Every number you've seen is read from the chain —
 
 72
-00:02:51,651 --> 00:02:53,676
+00:02:51,555 --> 00:02:53,580
 including the ones we'd rather not show you.

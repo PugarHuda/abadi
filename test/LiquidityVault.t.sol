@@ -3,6 +3,7 @@ pragma solidity ^0.8.24;
 
 import {Test} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {ERC4626} from "@openzeppelin/contracts/token/ERC20/extensions/ERC4626.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
@@ -1287,6 +1288,95 @@ contract LiquidityVaultTest is Test {
         pool.fill(1); // the YES leg is taken
         outcome.setBalance(address(vault), YES_ID, 100e6);
         pool.setOutcome(outcome, YES_ID, NO_ID);
+    }
+
+    /// Which refusal, by name.
+    ///
+    /// Several tests around the redeem delay and the last-share floor use a bare
+    /// `vm.expectRevert()`, and their comments are honest about why: the guard is enforced
+    /// twice over, `maxRedeem` reports 0 first, so ERC-4626 refuses before the inner check is
+    /// reached. But a bare expectation passes on whatever comes out, and would go on passing
+    /// if the `max*` overrides were deleted — the inner guard would simply answer instead.
+    ///
+    /// This pins it. `ERC4626ExceededMaxRedeem` is proof the override is doing the reporting,
+    /// which is the property ERC-4626 integrators actually depend on: a `max*` that reflects
+    /// every restriction. a16z's conformance suite leans on the same thing from the outside.
+    function test_theMaxOverridesAreWhatRefuses_notTheInnerGuard() public {
+        uint256 mintedAt = block.timestamp;
+        usdc.mint(bob, 500e6);
+        vm.startPrank(bob);
+        usdc.approve(address(vault), 500e6);
+        uint256 shares = vault.deposit(200e6, bob);
+
+        assertEq(vault.maxRedeem(bob), 0, "a fresh deposit may redeem nothing");
+        assertEq(vault.maxWithdraw(bob), 0, "and may withdraw nothing");
+
+        vm.expectRevert(
+            abi.encodeWithSelector(ERC4626.ERC4626ExceededMaxRedeem.selector, bob, shares, 0)
+        );
+        vault.redeem(shares, bob, bob);
+
+        vm.expectRevert(
+            abi.encodeWithSelector(ERC4626.ERC4626ExceededMaxWithdraw.selector, bob, 1e6, 0)
+        );
+        vault.withdraw(1e6, bob, bob);
+        vm.stopPrank();
+
+        // Past the delay the ceiling is real again, and it is the idle cap that sets it.
+        vm.warp(mintedAt + vault.redeemDelay() + 1);
+        // Read the ceiling BEFORE the prank. `vm.prank` applies to the next call, and a
+        // `vault.maxRedeem(bob)` sitting inside the argument list is that call — the redeem
+        // then runs as the test contract, which holds no allowance over bob's shares.
+        uint256 ceiling = vault.maxRedeem(bob);
+        assertGt(ceiling, 0, "the delay expires");
+        vm.prank(bob);
+        vault.redeem(ceiling, bob, bob);
+    }
+
+    /// The mirror of `_oneSided`: the DOWN leg is the one that filled, so the vault has to
+    /// buy UP. Every test and every fork test staged the other direction, which left the
+    /// `needNo == false` branch of `completeSet` — and the `price` vs `mirror(price)` choice
+    /// inside `_cross` — with no execution anywhere. That branch is where a YES/NO price-side
+    /// confusion would live, and it moves real collateral.
+    function _oneSidedDown() internal {
+        _deposit(alice, 500e6);
+        vm.prank(operator);
+        vault.quote(0, MARKET, uint256(500_000), uint256(15_000), 100e6);
+        pool.fill(2); // the NO leg is taken this time
+        outcome.setBalance(address(vault), NO_ID, 100e6);
+        pool.setOutcome(outcome, YES_ID, NO_ID);
+    }
+
+    function test_completeSetBuysTheUpSideWhenTheDownLegFilled() public {
+        _oneSidedDown();
+        pool.setCrossable(100e6);
+
+        vm.prank(operator);
+        (uint256 filled, uint256 spent) = vault.completeSet(0, uint256(470_000), 60e6);
+
+        assertEq(filled, 100e6, "the missing side was bought in full");
+        // A BUY_YES quoted YES-side at 0.470 pays 0.470 per contract — NOT the mirror.
+        // Sending 1 - 0.470 here would be the confusion this test exists to catch.
+        assertEq(spent, 47e6, "a BUY_YES pays the quoted price, not its mirror");
+        assertEq(outcome.balanceOf(address(vault), YES_ID), 100e6, "the vault now holds both sides");
+        assertEq(vault.slots(0).basis, 97e6 + 47e6, "the completion is part of what the episode cost");
+    }
+
+    /// An IOC that crosses nothing is not an error: it books no spend, adds no basis, and
+    /// leaves the leg naked for the next cycle to try again. The bot reads the return value
+    /// to decide, so a revert here would turn a quiet no-op into a failed cycle.
+    function test_completeSetCrossingNothingIsANoOp() public {
+        _oneSided();
+        pool.setCrossable(0);
+        uint256 basisBefore = vault.slots(0).basis;
+
+        vm.prank(operator);
+        (uint256 filled, uint256 spent) = vault.completeSet(0, uint256(470_000), 60e6);
+
+        assertEq(filled, 0, "nothing crossed");
+        assertEq(spent, 0, "so nothing was spent");
+        assertEq(vault.slots(0).basis, basisBefore, "and the basis is untouched");
+        assertTrue(vault.slots(0).active, "the slot is still open for the next attempt");
     }
 
     /// The number this exists to change. Holding the naked leg to settlement risks the
