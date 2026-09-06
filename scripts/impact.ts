@@ -95,22 +95,62 @@ async function gql<T>(query: string, variables: Record<string, unknown>, tries =
   }
 }
 
-/** Every order this project has ever rested, newest first. */
-async function ourOrders(): Promise<Pick<Row, "market_id" | "placedAtTimestamp">[]> {
-  // One owner at a time. An `_in` over all twelve vault addresses answers `upstream
-  // request timeout` every time; the same rows come back fine asked one address at a
-  // time, and most of those addresses never rested an order at all.
-  const out: Pick<Row, "market_id" | "placedAtTimestamp">[] = [];
-  for (const owner of OURS) {
+/** This run takes tens of minutes and used to print nothing at all until it was done.
+ *
+ * Progress goes to stderr on purpose: stdout is the markdown report and gets redirected
+ * into `docs/evidence/`, so anything chatty on stdout would end up quoted as evidence. */
+const note = (s: string) => process.stderr.write(s + "\n");
+
+/** Owners whose history could not be read, kept rather than swallowed.
+ *
+ * This used to be `.catch(() => ({ Order: [] }))`, which cannot tell "this vault never
+ * rested an order" from "this query failed". The two produce the same measurement and only
+ * one of them is true. This project has published a flattering number twice already for
+ * exactly this reason, so a failed owner now makes it to the report and to the exit code. */
+const unread: { owner: string; why: string }[] = [];
+
+/** Every order one owner ever rested, paged rather than truncated.
+ *
+ * The single `limit: 400` this used to send came back with EXACTLY 400 rows, which is what
+ * a truncated history looks like from the outside: the number is the cap, not a count.
+ * Pages until a short page arrives, so the total is the real one. `offset` rather than a
+ * timestamp cursor because several orders share a second here — both legs of a quote are
+ * placed together — and a `_lt` cursor on the last timestamp would silently drop the rest
+ * of that second. */
+async function ordersOf(owner: string): Promise<Pick<Row, "market_id" | "placedAtTimestamp">[]> {
+  const rows: Pick<Row, "market_id" | "placedAtTimestamp">[] = [];
+  for (let offset = 0; ; offset += LIMIT) {
     const { Order } = await gql<{ Order: Pick<Row, "market_id" | "placedAtTimestamp">[] }>(
-      `query O($o: String!, $n: Int!) {
-         Order(where: {owner: {_eq: $o}}, order_by: {placedAtTimestamp: desc}, limit: $n) {
+      `query O($o: String!, $n: Int!, $k: Int!) {
+         Order(where: {owner: {_eq: $o}}, order_by: {placedAtTimestamp: desc}, limit: $n, offset: $k) {
            market_id placedAtTimestamp
          }
        }`,
-      { o: owner, n: LIMIT },
-    ).catch(() => ({ Order: [] as Pick<Row, "market_id" | "placedAtTimestamp">[] }));
-    out.push(...Order);
+      { o: owner, n: LIMIT, k: offset },
+    );
+    rows.push(...Order);
+    if (Order.length < LIMIT) return rows;
+  }
+}
+
+/** Every order this project has ever rested, newest first. */
+async function ourOrders(): Promise<Pick<Row, "market_id" | "placedAtTimestamp">[]> {
+  // One owner at a time. An `_in` over all twelve vault addresses answers `upstream
+  // request timeout` every time; the same rows come back fine asked one address at a time.
+  const out: Pick<Row, "market_id" | "placedAtTimestamp">[] = [];
+  let i = 0;
+  for (const owner of OURS) {
+    i++;
+    const tag = `owner ${String(i).padStart(2)}/${OURS.size}  ${owner.slice(0, 10)}…`;
+    try {
+      const rows = await ordersOf(owner);
+      out.push(...rows);
+      note(`${tag}  ${rows.length} orders`);
+    } catch (e: any) {
+      const why = String(e?.message ?? e).split("\n")[0];
+      unread.push({ owner, why });
+      note(`${tag}  UNREAD — ${why}`);
+    }
   }
   return out;
 }
@@ -168,10 +208,24 @@ async function main() {
   console.log(`${ours.length} orders this project has rested, across ${firstOn.size} windows.`);
   console.log("");
 
+  /* A vault whose history did not load is not a vault that never quoted, and the spread
+   * number below is the headline claim of this whole project. Say it in the report, not
+   * just on the terminal, and fail the run. */
+  if (unread.length) {
+    console.log(`> ⚠ **${unread.length} of ${OURS.size} owners could not be read, so this is`);
+    console.log("> a slice of the record and not the record.** Do not publish it.");
+    console.log(">");
+    for (const u of unread) console.log(`> - \`${u.owner}\` — ${u.why}`);
+    console.log("");
+    process.exitCode = 1;
+  }
+
   const scored: { market: string; with_: number; without: number; t: number }[] = [];
   const refused = new Map<string, number>();
 
+  let done = 0;
   for (const [market, t] of firstOn) {
+    note(`window ${++done}/${firstOn.size}  …${market.slice(-6)}`);
     try {
       const rows = await bookOf(market);
       // A moment AFTER ours landed, so our own order is in the book being measured.
