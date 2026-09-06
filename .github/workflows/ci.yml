@@ -84,6 +84,13 @@ jobs:
           done
           exit $bad
 
+      - name: The published ABI must be the compiled one
+        # web/abi.json is served at /abi.json for other projects to call this vault with.
+        # It is committed, because Vercel builds the site with no Foundry and generating it
+        # there took production down. Committed means it can go stale, so it is gated here
+        # where the compiler exists rather than trusted.
+        run: node scripts/abi.mjs --check
+
       - name: Fail on any remaining TODO in contracts
         run: |
           if grep -rnE "TODO|FIXME|XXX" src/ ; then

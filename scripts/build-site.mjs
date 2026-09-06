@@ -152,18 +152,14 @@ for (const f of readdirSync(SRC)) {
   console.log(`copied ${f}`);
 }
 
-/* The vault's ABI, at a stable URL.
+/* `web/abi.json` is copied by the loop above like any other .json, and it is COMMITTED
+ * rather than generated here. This build runs on Vercel with an empty `installCommand` and
+ * no Foundry, so reading `out/LiquidityVault.sol/LiquidityVault.json` at this point took
+ * production down the moment it was tried. `scripts/abi.mjs` writes it where the compiler
+ * exists, and `--check` gates it in the contracts CI job so it cannot go stale.
  *
- * Five other entries in this hackathon put capital into the same order book. Until now the
- * only way any of them could call this vault was to clone the repo and run `forge build`,
- * which is a strange thing to ask of somebody who just wants to read `totalAssets`. It is
- * generated rather than committed so it cannot drift from the source that is deployed.
- *
- * `deployments.json` names the chain in CAIP-2 form, because that is what tooling reads. */
-const artifact = JSON.parse(readFileSync("out/LiquidityVault.sol/LiquidityVault.json", "utf8"));
-writeFileSync(join(OUT, "abi.json"), JSON.stringify(artifact.abi, null, 2));
-console.log(`wrote abi.json  (${artifact.abi.length} entries)`);
-
+ * `deployments.json` needs no artifact, so it is still generated here. It names the chain in
+ * CAIP-2 form, because that is what tooling reads. */
 writeFileSync(
   join(OUT, "deployments.json"),
   JSON.stringify(

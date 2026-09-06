@@ -17,6 +17,7 @@
     "backtest": "node scripts/backtest.ts",
     "impact": "node scripts/impact.ts",
     "recover": "node scripts/recover.ts",
+    "abi": "node scripts/abi.mjs",
     "selfcheck": "node scripts/lib/fairvalue.ts --self-check && node scripts/lib/quoting.ts --self-check",
     "video:vo": "node video/tts.mjs",
     "video:shots": "node video/capture.mjs",
