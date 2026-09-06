@@ -89,9 +89,10 @@ re-render**, and re-run `npm run video:vo` for the scenes whose numbers moved.
 
 | Claim | The number |
 |---|---|
-| Unit tests | **115** passing (116 total; the fork suite skips without `FORK_RPC`) |
+| Unit tests | **143** passing (144 total; the fork suite skips without `FORK_RPC`) |
+| Third-party conformance | a16z `ERC4626Test`, **26/26** fuzzed properties — `test/LiquidityVault.conformance.t.sol` |
 | Fork tests against the real venue | **9**, all passing — `node scripts/fork-test.ts` |
-| Coverage | 97.25% of lines, 43/43 functions on `LiquidityVault.sol` |
+| Coverage | 97.28% of lines, 43/43 functions on `LiquidityVault.sol` |
 | Per share | **0.979700** |
 | Depositors, vs. par | **−194.20 tUSDC (−2.03%)** — below par |
 | Realised, every closed episode | −380.00 on 18,761.45 (−2.03%) |

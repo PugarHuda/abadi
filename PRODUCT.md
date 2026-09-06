@@ -50,9 +50,9 @@ cost, and what was fixed is part of the positioning, not an apology for it.
 
 - Contracts: `LiquidityVault` (ERC-4626, quote/cancel/flatten/settle, per-slot sweep,
   `sweepNative`, `LastShareWhileOpen`, `MarketAlreadyQuoted`), `AbadiReactive`,
-  `MarketEngine`. 117 unit tests, five stateful invariants, nine fork tests against the
+  `MarketEngine`. 143 unit tests, five stateful invariants, nine fork tests against the
   real venue. `attest.ts` reports MATCH against the live address and that address is
-  verified on the explorer; coverage is 97.25% of lines and 100% of the vault's 43
+  verified on the explorer; coverage is 97.28% of lines and 100% of the vault's 43
   functions.
 - Scripts: `bot.ts` (requote loop), `ledger.ts` (episodes from chain events),
   `attest.ts` (live bytecode vs. artifact), `fork-test.ts`, `operator.ts`, `verify.ts`.

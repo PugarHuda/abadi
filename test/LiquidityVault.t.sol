@@ -23,6 +23,13 @@ contract MockUSDC is ERC20 {
     function mint(address to, uint256 amount) external {
         _mint(to, amount);
     }
+
+    /// a16z's ERC4626Test stages a NEGATIVE yield by burning the vault's collateral, which
+    /// is the only way to fuzz a vault that has lost money without a strategy that loses it.
+    /// This one has lost money, so refusing to model that would be a strange omission.
+    function burn(address from, uint256 amount) external {
+        _burn(from, amount);
+    }
 }
 
 contract MockPool {

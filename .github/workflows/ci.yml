@@ -34,6 +34,12 @@ jobs:
       - name: Install forge-std
         run: forge install foundry-rs/forge-std --no-git
 
+      - name: Install a16z's ERC-4626 property tests
+        # Third-party conformance: the standard's requirements as fuzzed properties,
+        # written by somebody who has never seen this vault. `/lib/` is gitignored, so
+        # this has to be installed here the same way forge-std is.
+        run: forge install a16z/erc4626-tests --no-git
+
       - name: Build
         run: forge build --sizes
 

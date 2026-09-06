@@ -116,9 +116,13 @@ Open Track
 > still. Depositors are down 2.03% while that plays out, and the ledger says so on the
 > front page.
 >
-> 117 unit tests, five stateful invariants, nine fork tests against the real venue, 85
-> browser tests, 97.25% line coverage and 43/43 functions on the vault. Sixteen reproducible
-> SDK and venue defects reported with transaction hashes.
+> 143 unit tests, five stateful invariants, nine fork tests against the real venue, 85
+> browser tests, 97.28% line coverage and 43/43 functions on the vault. It also passes
+> **a16z's ERC-4626 property suite** — all 26 fuzzed properties, conformance defined by
+> somebody who has never seen this vault rather than by our own coverage number. Sixteen
+> reproducible SDK and venue defects reported with transaction hashes, and the venue's error
+> table uploaded to the public signature databases so its reverts decode for every team on
+> the chain, not just for us.
 
 ---
 

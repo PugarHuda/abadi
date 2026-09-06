@@ -142,11 +142,53 @@ ${body.trim()}
   console.log(`${file} -> ${OUT}/${file}  (${doc.length} bytes)`);
 }
 
-// Carry over anything else the pages reference.
+// Carry over anything else the pages reference. `.txt` is here for `llms.txt`, which is
+// the one file on this site written for a machine rather than a reader.
 for (const f of readdirSync(SRC)) {
   if (PAGES[f]) continue;
   if (statSync(join(SRC, f)).isDirectory()) continue;
-  if (![".json", ".svg", ".png", ".webp", ".ico", ".css", ".js"].includes(extname(f))) continue;
+  if (![".json", ".svg", ".png", ".webp", ".ico", ".css", ".js", ".txt"].includes(extname(f))) continue;
   copyFileSync(join(SRC, f), join(OUT, f));
   console.log(`copied ${f}`);
 }
+
+/* The vault's ABI, at a stable URL.
+ *
+ * Five other entries in this hackathon put capital into the same order book. Until now the
+ * only way any of them could call this vault was to clone the repo and run `forge build`,
+ * which is a strange thing to ask of somebody who just wants to read `totalAssets`. It is
+ * generated rather than committed so it cannot drift from the source that is deployed.
+ *
+ * `deployments.json` names the chain in CAIP-2 form, because that is what tooling reads. */
+const artifact = JSON.parse(readFileSync("out/LiquidityVault.sol/LiquidityVault.json", "utf8"));
+writeFileSync(join(OUT, "abi.json"), JSON.stringify(artifact.abi, null, 2));
+console.log(`wrote abi.json  (${artifact.abi.length} entries)`);
+
+writeFileSync(
+  join(OUT, "deployments.json"),
+  JSON.stringify(
+    {
+      name: "Abadi",
+      description:
+        "An ERC-4626 vault that makes markets on DreamDEX Event Contracts holding no inventory.",
+      chain: "eip155:50312",
+      chainName: "Somnia Shannon Testnet",
+      rpc: RPC,
+      explorer: "https://shannon-explorer.somnia.network",
+      vault: { address: VAULT, kind: "ERC-4626", abi: "/abi.json" },
+      asset: { address: "0x70a86D8842FB63C4Ad2b7cdddF530eBf1BB25d8E", symbol: "tUSDC", decimals: 6 },
+      // Every address this project has ever deployed, so a reader who finds an old one in a
+      // transaction can tell it is retired rather than wonder which is live.
+      retired: VAULTS.map((v) => ({ address: v.address, note: v.note ?? "" })),
+      links: {
+        repo: "https://github.com/PugarHuda/abadi",
+        app: "https://abadi-wheat.vercel.app/app",
+        ledger: "https://abadi-wheat.vercel.app/dashboard",
+      },
+      updated: new Date().toISOString().slice(0, 10),
+    },
+    null,
+    2,
+  ),
+);
+console.log("wrote deployments.json");

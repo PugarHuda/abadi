@@ -210,3 +210,62 @@ test.describe("a cancelled signature", () => {
     await expect(status).toHaveAttribute("data-tone", "bad");
   });
 });
+
+/**
+ * The files written for machines rather than readers.
+ *
+ * Five other entries in this hackathon put capital into the same order book. Until these
+ * existed the only way any of them could call this vault was to clone the repo and run
+ * `forge build`, which is a strange thing to ask of somebody who wants to read
+ * `totalAssets`. They are generated at build time from `.vault-addr` and the compiled
+ * artifact, so they cannot drift from what is deployed — and this checks that they do not.
+ */
+test.describe("the machine-readable surface", () => {
+  test("/deployments.json names the live vault and every retired one", async ({ request, page }) => {
+    const res = await request.get(BASE + "/deployments.json");
+    expect(res.status()).toBe(200);
+    const d = await res.json();
+
+    // CAIP-2, because that is what tooling reads, and it must be Shannon.
+    expect(d.chain).toBe("eip155:50312");
+
+    // The address here is the address the site itself uses. One source, `.vault-addr`.
+    await page.goto(BASE + "/");
+    const live = await page.evaluate(() => (window as any).ABADI.vault as string);
+    expect(d.vault.address.toLowerCase()).toBe(live.toLowerCase());
+    expect(d.asset.decimals).toBe(6);
+
+    // A reader who finds an old address in a transaction must be able to tell it is retired.
+    expect(Array.isArray(d.retired)).toBe(true);
+    expect(d.retired.length).toBeGreaterThan(0);
+    for (const r of d.retired) {
+      expect(r.address).toMatch(/^0x[0-9a-fA-F]{40}$/);
+      expect(r.address.toLowerCase(), "a retired address is not the live one").not.toBe(live.toLowerCase());
+    }
+  });
+
+  test("/abi.json is the real ABI and carries the functions an integrator needs", async ({ request }) => {
+    const res = await request.get(BASE + "/abi.json");
+    expect(res.status()).toBe(200);
+    const abi = await res.json();
+    const named = new Set(abi.filter((x: any) => x.type === "function").map((x: any) => x.name));
+    // The ERC-4626 surface, which is the whole reason to publish this.
+    for (const fn of ["asset", "totalAssets", "deposit", "redeem", "convertToAssets", "maxWithdraw"]) {
+      expect(named.has(fn), `${fn} is in the published ABI`).toBe(true);
+    }
+    // And the custom errors, so a revert from this vault decodes for whoever called it.
+    expect(abi.some((x: any) => x.type === "error"), "custom errors are published too").toBe(true);
+  });
+
+  test("/llms.txt is served as text and states the vault address", async ({ request, page }) => {
+    const res = await request.get(BASE + "/llms.txt");
+    expect(res.status()).toBe(200);
+    expect(res.headers()["content-type"]).toContain("text/plain");
+    const body = await res.text();
+    await page.goto(BASE + "/");
+    const live = await page.evaluate(() => (window as any).ABADI.vault as string);
+    expect(body).toContain(live);
+    // It must not promise the vault is doing well, because it is not.
+    expect(body).toMatch(/down|loss/i);
+  });
+});

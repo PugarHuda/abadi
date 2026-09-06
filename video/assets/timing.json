@@ -1,6 +1,6 @@
 {
   "fps": 30,
-  "durationInFrames": 5039,
+  "durationInFrames": 5271,
   "scenes": [
     {
       "id": "problem",
@@ -204,16 +204,18 @@
         "lines": [
           "$ forge test",
           "Ran 1 test for test/fork/Venue.fork.t.sol:VenueForkTest",
-          "Suite result: ok. 0 passed; 0 failed; 1 skipped; finished in 1.36ms (0.00ns CPU time)",
+          "Suite result: ok. 0 passed; 0 failed; 1 skipped; finished in 1.07ms (0.00ns CPU time)",
           "Ran 10 tests for test/AbadiReactive.t.sol:AbadiReactiveTest",
-          "Suite result: ok. 10 passed; 0 failed; 0 skipped; finished in 2.50ms (2.14ms CPU time)",
+          "Suite result: ok. 10 passed; 0 failed; 0 skipped; finished in 2.04ms (1.67ms CPU time)",
           "Ran 15 tests for test/MarketEngine.t.sol:MarketEngineTest",
-          "Suite result: ok. 15 passed; 0 failed; 0 skipped; finished in 16.09ms (22.36ms CPU time)",
-          "Ran 89 tests for test/LiquidityVault.t.sol:LiquidityVaultTest",
-          "Suite result: ok. 89 passed; 0 failed; 0 skipped; finished in 16.61ms (64.78ms CPU time)",
+          "Suite result: ok. 15 passed; 0 failed; 0 skipped; finished in 27.97ms (27.32ms CPU time)",
+          "Ran 91 tests for test/LiquidityVault.t.sol:LiquidityVaultTest",
+          "Suite result: ok. 91 passed; 0 failed; 0 skipped; finished in 81.23ms (77.29ms CPU time)",
+          "Ran 26 tests for test/LiquidityVault.conformance.t.sol:LiquidityVaultConformanceTest",
+          "Suite result: ok. 26 passed; 0 failed; 0 skipped; finished in 2.95s (19.44s CPU time)",
           "Ran 1 test for test/LiquidityVault.invariant.t.sol:LiquidityVaultInvariantTest",
-          "Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 27.50s (27.49s CPU time)",
-          "Ran 5 test suites in 27.51s (27.53s CPU time): 115 tests passed, 0 failed, 1 skipped (116 total tests)",
+          "Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 22.64s (22.63s CPU time)",
+          "Ran 6 test suites in 22.65s (25.70s CPU time): 143 tests passed, 0 failed, 1 skipped (144 total tests)",
           "",
           "$ node scripts/fork-test.ts     # the same vault, against the live venue",
           "Ran 9 tests for test/fork/Venue.fork.t.sol:VenueForkTest",
@@ -225,32 +227,47 @@
         ]
       },
       "audio": "vo-tests.mp3",
-      "speech": 10.344,
+      "speech": 18.096,
       "pad": 0.7,
-      "durationInFrames": 332,
+      "durationInFrames": 564,
       "captions": [
         {
-          "text": "A hundred and fifteen tests, nine of them against",
+          "text": "A hundred and forty-three tests, nine against the real",
           "start": 0.092583,
-          "end": 2.604166
+          "end": 2.824083
         },
         {
-          "text": "the real venue on a fork.",
-          "start": 2.604166,
-          "end": 4.328708
+          "text": "venue on a fork, and every one of the",
+          "start": 2.824083,
+          "end": 4.965291
+        },
+        {
+          "text": "twenty-six properties in an independent ERC-4626 conformance",
+          "start": 4.965291,
+          "end": 9.907374
+        },
+        {
+          "text": "suite —",
+          "start": 9.907416,
+          "end": 10.266207
+        },
+        {
+          "text": "the standard's rules, not ours.",
+          "start": 10.682875,
+          "end": 12.592625
         },
         {
           "text": "Ninety-seven percent line coverage on the vault, and",
-          "start": 4.699083,
-          "end": 7.939791
+          "start": 12.974541,
+          "end": 15.995374
         },
         {
-          "text": "every one of its forty-three functions.",
-          "start": 8.055541,
-          "end": 10.011583
+          "text": "all forty-three of its functions.",
+          "start": 16.006958,
+          "end": 17.754624
         }
       ],
-      "words": 29
+      "words": 44
     },
     {
       "id": "reactivity",

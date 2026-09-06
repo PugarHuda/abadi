@@ -25,6 +25,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: forge install foundry-rs/forge-std --no-git
+      - run: forge install a16z/erc4626-tests --no-git
       - name: Fork Shannon and run the venue suite
         # Finds a live window, prices inside its book, forks at the current block, and
         # plays the taker against the vault's own legs through the real BinaryPool.
