@@ -49,13 +49,20 @@
   /* The escalation ladder, drawn as the recorder draws it: a pip in the margin whose
      colour is the pen that wrote the line. A 3px rail down the side is the generated-UI
      tell and says nothing a pip does not. */
+  /* Its own bed, for the reason the activity list below has one. `.status` sat straight on
+     the printed grid with only a border, so the paper under its text alternated between
+     stock and a rule and the sampled contrast moved with it — 3.6:1 on the rows that landed
+     on a rule, against a 4.5:1 floor. It reads as intermittent because the line is pencil
+     only in its resting tone; `work`, `ok` and `bad` all darken it, so a screenshot taken
+     while anything is happening passes and one taken at rest does not. */
   .status {
     position: relative;
-    margin: 0 0 var(--chart); padding: 11px 0 11px 22px;
-    border-top: 1px solid var(--rule-major);
+    margin: 0 0 var(--chart); padding: 11px 20px 11px 34px;
+    background: var(--stock-sunk);
+    border-top: 1px solid var(--rule-major); border-bottom: 1px solid var(--rule-major);
     font-size: 15px; color: var(--pencil); max-width: 80ch;
   }
-  .status::before { content: ""; position: absolute; left: 0; top: 1.05em; width: 8px; height: 8px; background: var(--ctl-line); }
+  .status::before { content: ""; position: absolute; left: 14px; top: 1.05em; width: 8px; height: 8px; background: var(--ctl-line); }
   .status[data-tone="work"] { color: var(--ink); }
   .status[data-tone="work"]::before { background: var(--ink); }
   .status[data-tone="ok"] { color: var(--ink); }
@@ -121,13 +128,20 @@
 
   main table { font-family: var(--mono); font-size: 12.5px; }
 
-  /* Busy is shown with the palette the disabled state already uses, not with `opacity: .6`.
-     Opacity fades the text INTO whatever is behind it: on the primary button that landed at
-     2.3:1 against the 4.5:1 AA floor, and it failed CI intermittently because the detector
-     only sees it while a transaction is in flight. These two colours are the pair this
-     stylesheet already measured at 6.0:1. */
+  /* Busy is shown by changing colour, never with `opacity`. Opacity fades the text INTO
+     whatever is behind it: on the primary button that landed at 2.3:1 against the 4.5:1 AA
+     floor, and it failed CI intermittently, because the busy state exists only between a
+     click and a receipt and only a screenshot taken in that window sees it.
+
+     `--ink` rather than the `--pencil` the disabled state uses, and the difference is not
+     cosmetic. The detector samples rendered PIXELS, so it reads the anti-aliased edge of a
+     glyph, which is always a blend of the text colour into the background. Pencil on
+     stock-sunk is a true 6.0:1 and sampled that way it came back 3.6:1 — still under the
+     floor, and only in CI, where the web font has not necessarily loaded and thinner
+     fallback glyphs give the sampler even less solid ink to measure. Ink on stock-sunk is
+     about 13:1, so the margin survives the sampling instead of depending on it. */
   [data-busy="true"] button:not([disabled]) {
-    background: var(--stock-sunk); color: var(--pencil); border-color: var(--ctl-line);
+    background: var(--stock-sunk); color: var(--ink); border-color: var(--ctl-line);
     cursor: progress;
   }
 
