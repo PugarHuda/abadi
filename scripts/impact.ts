@@ -1,10 +1,12 @@
 /**
  * What the venue's book looks like with Abadi in it, and what it looks like without.
  *
- * Every other submission to this hackathon reads the venue, scores it, or wraps it.
- * Abadi is the only one that puts capital into the book, so it is the only one that can
- * be asked whether the book got better. The README has made that claim since day one off
- * a single episode — "the incumbent tightened in response" — which is an anecdote.
+ * This was written when Abadi was the only submission putting capital into the book. It
+ * is not any more — the field went from 13 entries to 31 between 2026-09-02 and the 6th,
+ * and HOUSE, DreamVault, TEMPO, HedgePulse and Perennis all quote this venue now. What
+ * stays true is narrower and is the reason this script exists: Abadi is the only one that
+ * has *measured* what its own quotes did to the book. The README made the claim from day
+ * one off a single episode — "the incumbent tightened in response" — which is an anecdote.
  *
  * This is the same claim as a measurement. For every window Abadi has quoted, the
  * venue's indexer still holds every order that ever rested on it, open or cancelled or
@@ -44,17 +46,42 @@ type Row = {
   lastUpdatedAtTimestamp: string;
 };
 
+/** How long one indexer question may take before it is abandoned and asked again.
+ *
+ * `fetch` rejects on a refused connection or a response. It does NOT reject when the host
+ * accepts the socket and then says nothing, and that is what this indexer does under load:
+ * on 2026-09-06 this script sat on a single request for THIRTY MINUTES — one second of CPU
+ * in twenty-nine minutes, waiting on a promise that was never going to settle. The retry
+ * loop below could not help, because nothing had failed yet.
+ *
+ * The same bug, with the same cause, once left the dashboard's ledger on "loading" for good
+ * (`web/ledger.js`, and see `fetchIn()` there). A timeout is what converts a hang into an
+ * error the retry can act on. 20s is generous: these queries legitimately take seconds. */
+const ASK_TIMEOUT_MS = 20_000;
+
 /** The indexer answers `upstream request timeout` as plain text under load, so the
  *  response is read as text first: JSON.parse on that produced a stack trace that said
  *  nothing about what had actually happened. */
 async function gql<T>(query: string, variables: Record<string, unknown>, tries = 4): Promise<T> {
   for (let attempt = 1; ; attempt++) {
-    const r = await fetch(INDEXER, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ query, variables }),
-    });
-    const text = await r.text();
+    let text: string;
+    try {
+      const r = await fetch(INDEXER, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ query, variables }),
+        signal: AbortSignal.timeout(ASK_TIMEOUT_MS),
+      });
+      text = await r.text();
+    } catch (err) {
+      // An abort is this script's own timeout firing, not a page failure — same retry as
+      // a truncated body. Anything else (DNS, refused) is retried too, then reported.
+      if (attempt >= tries) {
+        throw new Error(`indexer unreachable after ${tries} tries: ${(err as Error).message}`);
+      }
+      await new Promise((res) => setTimeout(res, 800 * attempt));
+      continue;
+    }
     let j: any;
     try {
       j = JSON.parse(text);

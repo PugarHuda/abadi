@@ -718,3 +718,9 @@ deliberate and stated rather than discovered by running out of time.
 
 **The differentiator:** Abadi is the only submission that makes DreamDEX better rather
 than merely using it.
+
+> ⚠ **Stale, 2026-09-06.** Written when 13 projects had entered; there are now 31, and
+> HOUSE, DreamVault, TEMPO, HedgePulse and Perennis all put capital into this venue. What
+> survives is the measurement, not the superlative: Abadi is the one that rebuilt the
+> venue's book with and without its own orders and published the difference. See
+> `SUBMISSION.md` for the wording that is currently true.
