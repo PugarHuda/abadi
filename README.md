@@ -513,6 +513,12 @@ and **all sixteen are filed on the venue's own tracker** as
 [somnia-chain/dreamdex-bot-kit#26 … #41](https://github.com/somnia-chain/dreamdex-bot-kit/issues?q=is%3Aissue+Abadi) — one issue each, so each can be closed on its
 own. A report that lives only in the reporter's repository has not been reported.
 
+Six of them are also proposed as a change to the kit itself:
+[**PR #42**](https://github.com/somnia-chain/dreamdex-bot-kit/pull/42) adds an *Event Contracts* section to its `docs/gotchas.md`. That file has
+sixteen entries and all sixteen are spot or perp, so a participant building on Event Contracts
+hits none of them and all six of these — the price scale, the module-pull at redemption, the
+book that freezes at expiry, and the beacon proxy behind every pool.
+
 ### What went back to the chain rather than into this repo
 
 Several of those defects are identifiable *only* by a bare four-byte selector, because the

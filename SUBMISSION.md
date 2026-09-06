@@ -135,7 +135,8 @@ Open Track
 > **a16z's ERC-4626 property suite** — all 26 fuzzed properties, conformance defined by
 > somebody who has never seen this vault rather than by our own coverage number. Sixteen
 > reproducible SDK and venue defects, each one filed on the venue's own tracker
-> ([dreamdex-bot-kit#26 … #41](https://github.com/somnia-chain/dreamdex-bot-kit/issues?q=is%3Aissue+Abadi)) with transaction hashes, and the venue's error table
+> ([dreamdex-bot-kit#26 … #41](https://github.com/somnia-chain/dreamdex-bot-kit/issues?q=is%3Aissue+Abadi)) with transaction hashes, six of them also proposed back
+> into the kit's own gotchas doc as [PR #42](https://github.com/somnia-chain/dreamdex-bot-kit/pull/42), and the venue's error table
 > uploaded to the public signature databases so its reverts decode for every team on the
 > chain, not just for us.
 
@@ -190,6 +191,7 @@ hackathon page. Paste this:
 > than in a footnote.
 >
 > Also filed 16 reproducible SDK and venue defects on dreamdex-bot-kit (https://github.com/somnia-chain/dreamdex-bot-kit/issues?q=is%3Aissue+Abadi) with tx hashes,
+> plus a PR adding the six binary-market ones to its gotchas doc (https://github.com/somnia-chain/dreamdex-bot-kit/pull/42),
 > and uploaded the venue's error table to the public signature databases — 637 signatures
 > newly registered, so its reverts decode in `cast 4byte` for everyone now, not just for us.
 >

@@ -8,6 +8,10 @@ Everything below cost us real debugging time and is reproducible.
 Each section below links to its issue. A report that lives only in the reporter's repository
 has not been reported; this file is the working, and the tracker is where it goes.
 
+Six of them — the ones a bot builder hits rather than the ones the team would fix — are also
+proposed as a change to the kit itself, in [**PR #42**](https://github.com/somnia-chain/dreamdex-bot-kit/pull/42): an *Event Contracts* section for
+its `docs/gotchas.md`, whose existing sixteen entries are all spot and perp.
+
 Issues 1–6 are from 2026-08-26 and are ordered by how much time each one cost. Everything
 after is appended in the order it was found rather than reordered, so numbering people
 have already read stays put: 7–8 from settling a real position, 9–10 from the first live
