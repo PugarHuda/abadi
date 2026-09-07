@@ -85,7 +85,7 @@ jobs:
           exit $bad
 
       - name: The published ABI must be the compiled one
-        # web/abi.json is served at /abi.json for other projects to call this vault with.
+        # public/abi.json is served at /abi.json for other projects to call this vault with.
         # It is committed, because Vercel builds the site with no Foundry and generating it
         # there took production down. Committed means it can go stale, so it is gated here
         # where the compiler exists rather than trusted.
@@ -142,20 +142,31 @@ jobs:
           node scripts/lib/quoting.ts --self-check
 
       - name: Build site
-        run: node scripts/build-site.mjs
+        run: npm run build
 
       - name: Assert the built pages are complete documents
-        # The sources are page CONTENT, because that is what the artifact renderer
-        # wants. Serving them raw put the live site into quirks mode with no mobile
-        # viewport, and nothing caught it. This is that regression, as a gate.
+        # The framework emits the document shell now, and this gate predates it: the pages
+        # were once published as raw content and the live site sat in quirks mode with no
+        # mobile viewport. Kept, because "the framework does that for you" is exactly the
+        # assumption the regression was made of. Case-insensitive on charset: React writes
+        # the attribute as `charSet`, which every HTML parser reads the same and a
+        # case-sensitive grep does not.
         run: |
-          for f in dist/index.html dist/deck.html; do
+          for f in out/index.html out/deck.html; do
             head -c 15 "$f" | grep -qi '<!doctype html>' || { echo "::error::$f has no doctype"; exit 1; }
             grep -q '<html lang=' "$f" || { echo "::error::$f has no lang"; exit 1; }
-            grep -q 'name="viewport"' "$f" || { echo "::error::$f has no viewport"; exit 1; }
-            grep -q 'charset=' "$f" || { echo "::error::$f has no charset"; exit 1; }
+            grep -qi 'name="viewport"' "$f" || { echo "::error::$f has no viewport"; exit 1; }
+            grep -qi 'charset=' "$f" || { echo "::error::$f has no charset"; exit 1; }
             echo "ok  $f"
           done
+
+      - name: The framework did not change the page
+        # `scripts/to-jsx.mjs` converted five hand-written pages into App Router routes by
+        # machine. This renders the pre-migration build from the same sources and compares
+        # every body against the export, ignoring only what a framework is entitled to
+        # reshape. All five matched on the day of the migration and it stays a gate, because
+        # the sources in web/ are the record of what the pages said.
+        run: node scripts/compare-render.mjs
 
       - name: Install Chromium
         run: npx playwright install --with-deps chromium

@@ -1,11 +1,15 @@
-/** Static server that mirrors the Vercel config: outputDirectory dist, cleanUrls on.
- *  QA has to run against the same routing production uses, or it proves nothing. */
+/** Static server over the framework's export, mirroring what Vercel serves.
+ *
+ *  QA has to run against the same routing production uses, or it proves nothing. Next writes
+ *  `/dashboard` as `out/dashboard.html`, so the extension-then-index resolution below is what
+ *  Vercel's own handling of a static export does, and the headers come from `vercel.json`
+ *  rather than a copy of it. */
 import { createServer } from "node:http";
 import { readFile, stat } from "node:fs/promises";
 import { readFileSync } from "node:fs";
 import { join, extname } from "node:path";
 
-const ROOT = "dist";
+const ROOT = "out";  // the framework's static export
 const PORT = Number(process.env.PORT ?? 4321);
 
 /* The security headers, read from `vercel.json` rather than copied.

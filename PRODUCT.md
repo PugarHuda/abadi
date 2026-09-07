@@ -57,9 +57,14 @@ cost, and what was fixed is part of the positioning, not an apology for it.
   97.28% of lines and 100% of the vault's 43 functions.
 - Scripts: `bot.ts` (requote loop), `ledger.ts` (episodes from chain events),
   `attest.ts` (live bytecode vs. artifact), `fork-test.ts`, `operator.ts`, `verify.ts`.
-- Site: three static pages plus 404, built by `scripts/build-site.mjs` into `dist/`,
-  hosted on Vercel at https://abadi-wheat.vercel.app. No framework, no build step beyond
-  wrapping; the live strip and live ledger are plain JS against public APIs.
+- Site: four pages plus 404, **Next.js App Router, statically exported** to `out/`, hosted
+  on Vercel at https://abadi-wheat.vercel.app. Nothing renders per request — every number a
+  reader sees is read from the chain in their own browser, which is the rule below and
+  predates the framework, so a server runtime would only add somewhere for it to be broken.
+  Routing, the document shell, `metadata`, `robots.txt` and `sitemap.xml` are the
+  framework's; the live strip, the ledger and the wallet calls stay plain JS against public
+  APIs, loaded per page. `scripts/compare-render.mjs` renders the pre-migration build from
+  the same sources and gates on every page's body still matching.
 - Constraint: nothing on the site may be a mock, placeholder, or "coming soon". A number
   is live from chain or it is not shown; a failure state says so.
 - Terminology: UP/DOWN (the venue's), "complete set", "naked leg", "one-sided fill",
@@ -70,7 +75,7 @@ cost, and what was fixed is part of the positioning, not an apology for it.
 - Name: Abadi — Indonesian for *everlasting*. Line: "The markets expire every window.
   The liquidity doesn't."
 - Mark: one contract split by a price — turmeric and teal blocks, a hairline price level
-  drawn past the block. `web/logo.svg`.
+  drawn past the block. `public/logo.svg`.
 - Palette in use: ink `#14203A`, raised `#1B2A48`, line `#2A3B5E`, cotton `#EAE4D6`,
   cotton-dim `#8D97AE`, turmeric `#E0A045` (UP), teal `#4FA396` (DOWN).
 - Type in use: Bricolage Grotesque (display), Public Sans (body), Martian Mono (numbers,

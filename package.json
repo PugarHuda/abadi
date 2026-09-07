@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "node scripts/build-site.mjs",
+    "build": "node scripts/deployments.mjs && next build",
     "serve": "node qa/serve.mjs",
     "qa": "npx playwright test",
     "typecheck": "tsc --noEmit",
@@ -25,10 +25,14 @@
     "video:render": "node video/render.mjs",
     "video:studio": "remotion studio video/remotion/index.ts --public-dir=video/assets",
     "video": "npm run video:vo && npm run video:shots && npm run video:render",
-    "selectors": "node scripts/selectors.mjs"
+    "selectors": "node scripts/selectors.mjs",
+    "dev": "next dev",
+    "start": "next start",
+    "compare": "node scripts/compare-render.mjs"
   },
   "dependencies": {
     "@somnia-chain/markets-sdk": "^0.28.1",
+    "next": "^16.3.4",
     "viem": "^2.21.0"
   },
   "devDependencies": {

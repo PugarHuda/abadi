@@ -1,5 +1,5 @@
 /* The film borrows the site's world rather than inventing a second one. These are the
- * values from web/recorder.css; DESIGN.md is the contract they answer to. The alarm pen
+ * values from app/recorder.css; DESIGN.md is the contract they answer to. The alarm pen
  * is here for completeness and is deliberately unused — it is reserved for a true alarm. */
 import { loadFont as loadArchivo } from "@remotion/google-fonts/Archivo";
 import { loadFont as loadPlex } from "@remotion/google-fonts/IBMPlexMono";

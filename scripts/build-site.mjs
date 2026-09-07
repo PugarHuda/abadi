@@ -1,10 +1,14 @@
 /**
- * Wraps the page sources in web/ into complete HTML documents in dist/.
+ * The site build as it was before Next.js — kept, and no longer the build.
  *
- * The sources are written as page CONTENT — no doctype, no <html>, no <head> —
- * because that is what the artifact renderer expects; it supplies the shell itself.
- * Vercel serves files verbatim, so publishing them raw put the live site into quirks
- * mode with no mobile viewport. One source, two targets, and the wrapper lives here.
+ * `app/` is what ships. This still renders `web/*.html` into `dist/` exactly as it did, and
+ * `scripts/compare-render.mjs` runs it on every CI push to check that the framework's export
+ * still says the same thing the hand-written pages said, body for body. That comparison is
+ * the only reason `web/*.html` and this file are still here, and it is a good reason: a
+ * mechanical conversion is worth what its verification is worth.
+ *
+ * Do not add features here. Add them to `app/` and let this one fall behind — the day it
+ * does, the gate will say so and both can be retired together.
  *
  * Run: node scripts/build-site.mjs
  */

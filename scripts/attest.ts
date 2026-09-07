@@ -15,7 +15,7 @@ import { createPublicClient, http, toFunctionSelector } from "viem";
 import { readFileSync } from "node:fs";
 import { shannon, RPC } from "./lib/somnia.ts";
 
-const ARTIFACT = "out/LiquidityVault.sol/LiquidityVault.json";
+const ARTIFACT = "forge-out/LiquidityVault.sol/LiquidityVault.json";
 
 /**
  * On a MISMATCH, say what the difference IS.

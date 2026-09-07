@@ -1,6 +1,6 @@
 /* Publish the vault's ABI to the site, and keep it from drifting.
  *
- * `web/abi.json` is served at https://abadi-wheat.vercel.app/abi.json so another project can
+ * `public/abi.json` is served at https://abadi-wheat.vercel.app/abi.json so another project can
  * call this vault without cloning the repo and running `forge build`. Five other entries in
  * this hackathon put capital into the same order book; asking them to compile our contracts
  * to read `totalAssets` is a strange thing to ask.
@@ -17,13 +17,13 @@
  * not exactly what the current source compiles to. Same idea as the test-count gate: if a
  * fact is going to be asserted outside the code, something has to check it.
  *
- *   node scripts/abi.mjs           # regenerate web/abi.json after changing the contract
+ *   node scripts/abi.mjs           # regenerate public/abi.json after changing the contract
  *   node scripts/abi.mjs --check   # fail if it is out of date (CI)
  */
 import { readFileSync, writeFileSync } from "node:fs";
 
-const ARTIFACT = "out/LiquidityVault.sol/LiquidityVault.json";
-const PUBLISHED = "web/abi.json";
+const ARTIFACT = "forge-out/LiquidityVault.sol/LiquidityVault.json";
+const PUBLISHED = "public/abi.json";
 
 let artifact;
 try {

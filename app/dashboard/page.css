@@ -1,0 +1,154 @@
+/* Page-specific only; the world lives in /recorder.css.
+     Read mode: this page exists so a sceptic can check the claims. Structure for
+     comprehension first, then make it worth staying in. */
+
+  .home { display: flex; align-items: center; gap: 12px; text-decoration: none; color: inherit; }
+  .home svg { width: 20px; height: 38px; display: block; }
+  .gloss { font-size: 13px; font-stretch: 80%; color: var(--pencil); text-align: right; line-height: 1.5; }
+  .gloss b { color: var(--ink); font-weight: 500; }
+  .nav { margin: 0 0 var(--chart); padding-bottom: var(--chart); border-bottom: 1px solid var(--rule-major); }
+
+  .thesis { max-width: 22ch; }
+  .sub { margin: 0 0 calc(var(--chart) * 2); max-width: 68ch; font-size: 17px; }
+
+  /* ------------------------------------------------------------------- live channel */
+  .live, .ledger-live {
+    background: var(--stock-sunk);
+    border-top: 1px solid var(--rule-major); border-bottom: 1px solid var(--rule-major);
+    padding: 20px 22px; margin: 0 0 var(--chart);
+  }
+  .live-err { display: none; position: relative; margin: 0 0 14px; padding: 11px 0 11px 22px; border-top: 1px solid var(--alarm); border-bottom: 1px solid var(--alarm); color: var(--alarm); }
+  .live-err::before { content: ""; position: absolute; left: 0; top: 1.05em; width: 8px; height: 8px; background: var(--alarm); }
+  /* "unreachable" is the state live.js and ledger.js actually set; this rule only knew
+     "error", so the honest-failure sentence was hidden on both panels. */
+  [data-state="error"] .live-err,
+  [data-state="unreachable"] .live-err { display: block; }
+  .live-slots { list-style: none; margin: 16px 0 0; padding: 14px 0 0; border-top: 1px solid var(--rule-major); font-family: var(--mono); font-size: 12px; color: var(--pencil); }
+  .live-foot { margin: 16px 0 0; font-size: 13px; color: var(--pencil); max-width: 74ch; }
+
+  /* --------------------------------------------------------------- the bounded axis
+   * A prediction market's price axis is bounded 0..1, which is the whole point of the
+   * picture: the tradable spread is three percent of the paper. */
+  .axis-frame { margin: 0 0 12px; }
+  .axis {
+    position: relative; height: 46px;
+    background: var(--stock-sunk);
+    border-top: 1px solid var(--rule-major); border-bottom: 1px solid var(--rule-major);
+    background-image: repeating-linear-gradient(to right,
+      var(--rule-major) 0, var(--rule-major) 1px, transparent 1px, transparent 10%);
+  }
+  .span { position: absolute; top: 0; bottom: 0; }
+  .span b { position: absolute; left: 50%; transform: translateX(-50%); top: -21px; white-space: nowrap; font-family: var(--mono); font-size: 11px; font-weight: 400; background: var(--stock); padding: 1px 5px; }
+  .span.theirs { background: var(--rule); top: 12px; bottom: 12px; }
+  .span.theirs b { color: var(--ink); }
+  .span.ours { background: var(--ink); top: 0; bottom: 0; }
+  .span.ours b { top: auto; bottom: -20px; color: var(--ink); font-weight: 500; }
+  .axis-ends { display: flex; justify-content: space-between; margin-top: 26px; font-size: 12.5px; color: var(--pencil); }
+  .axis-note { margin: 26px 0 var(--chart); max-width: 68ch; }
+
+  /* ------------------------------------------------------------------- the order book */
+  .ladder { display: grid; gap: var(--chart); grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); margin: 0 0 var(--chart); }
+  .bids, .asks {
+    background: var(--stock-sunk);
+    border-top: 1px solid var(--rule-major); border-bottom: 1px solid var(--rule-major);
+    padding: 16px 18px;
+  }
+  .col-head { font-size: 13px; font-stretch: 80%; font-weight: 500; color: var(--pencil); padding-bottom: 10px; margin-bottom: 6px; border-bottom: 1px solid var(--rule-major); }
+  .lvl { position: relative; display: flex; justify-content: space-between; align-items: baseline; padding: 7px 8px; font-family: var(--mono); font-size: 13px; }
+  /* Depth is drawn behind the numbers, never over them. */
+  /* Depth is a tint, not a fill. At --ctl-line the vault's own level failed 4.5:1
+     against its ink price, and the size column failed against a full-width bar; both
+     are measured text, so the bar lightens rather than the text. */
+  .depth { position: absolute; left: 0; top: 0; bottom: 0; background: rgba(22, 38, 43, .08); z-index: 0; }
+  .asks .depth { background: rgba(42, 58, 107, .13); }
+  .px, .sz { position: relative; z-index: 1; }
+  .sz { color: var(--ink); }
+  .lvl.mine { font-weight: 500; }
+  .lvl.mine .depth { background: rgba(22, 38, 43, .18); }
+  .tag { font-family: var(--sans); font-size: 11px; font-stretch: 80%; font-weight: 500; color: var(--stock); background: var(--ink); padding: 1px 5px; margin-left: 8px; }
+  .book-note { font-size: 13px; color: var(--pencil); margin: 0 0 var(--chart); max-width: 74ch; }
+  #book[data-state="error"] + .book-note { color: var(--alarm); }
+
+  /* -------------------------------------------------------------------- the verdicts */
+  .verdict { margin: 0 0 calc(var(--chart) * 1.5); padding: 14px 0 0 22px; border-top: 1px solid var(--ctl-line); }
+  .verdict p { margin: 0 0 10px; max-width: 68ch; }
+  .verdict p:last-child { margin-bottom: 0; }
+  .verdict code { background: var(--stock-sunk); padding: 1px 5px; }
+
+  /* ----------------------------------------------------------------------- the chart */
+  .chart { margin: var(--chart) 0 0; }
+  .chart-err { display: none; margin: 10px 0 0; color: var(--alarm); font-size: 14px; }
+  .chart[data-state="unreachable"] .chart-err { display: block; }
+  .chart figcaption { font-size: 13px; color: var(--pencil); margin-bottom: 10px; }
+  .chart-plot { position: relative; }
+  .chart svg { display: block; width: 100%; height: 220px; background: var(--stock); border: 1px solid var(--rule-major); }
+  .chart .grid { stroke: var(--rule); stroke-width: 1; }
+  /* text, not a line: an axis label wants a fill. Given a stroke it renders as outlined
+     glyphs, which is how these read until it was looked at. */
+  .chart text.axis { fill: var(--pencil); font-family: var(--mono); font-size: 11px; stroke: none; background: none; height: auto; border: 0; }
+  /* ledger.js draws the area and the trace as two paths. The wash has no style of its
+     own, so an unstyled .wash falls back to SVG's default fill — solid black — and the
+     chart reads as a filled block rather than a curve. */
+  .chart path.wash { fill: rgba(22, 38, 43, .10); stroke: none; }
+  .chart path.line { fill: none; stroke: var(--ink); stroke-width: 1.6; stroke-linejoin: round; }
+  .chart .end { fill: var(--ink); }
+  .chart .dot { fill: var(--ink); }
+  .chart .dot.neg { fill: var(--alarm); }
+  .chart .endlabel { font-family: var(--mono); font-size: 11px; fill: var(--pencil); }
+  .xhair { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--alarm); pointer-events: none; }
+  .tip {
+    position: absolute; z-index: 3; pointer-events: none;
+    background: var(--ink); color: var(--stock);
+    font-family: var(--mono); font-size: 11.5px; padding: 7px 9px; white-space: nowrap;
+  }
+  .tip b { font-weight: 500; }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13px; color: var(--pencil); margin-top: 10px; }
+
+  .tablewrap { overflow-x: auto; margin: var(--chart) 0 0; }
+  .episodes { font-family: var(--mono); font-size: 12px; }
+  .episodes th, .episodes td { white-space: nowrap; }
+
+  /* --------------------------------------------------------------- the filled position */
+  .ledger { margin: 0 0 var(--chart); }
+  .ledger .row { display: flex; justify-content: space-between; gap: 20px; padding: 11px 0; border-bottom: 1px solid var(--rule); }
+  .ledger dt { font-size: 15px; }
+  .ledger dd { margin: 0; font-family: var(--mono); font-size: 13.5px; }
+  .ledger .total { border-bottom: 0; border-top: 2px solid var(--ink); margin-top: 4px; padding-top: 13px; }
+  .ledger .total dt, .ledger .total dd { font-weight: 500; }
+
+  .readout {
+    display: flex; flex-wrap: wrap; gap: 16px 28px; align-items: baseline;
+    background: var(--stock-sunk);
+    border-top: 1px solid var(--rule-major); border-bottom: 1px solid var(--rule-major);
+    padding: 20px 22px; margin: 0 0 var(--chart);
+  }
+  .readout .n { font-family: var(--mono); font-size: clamp(34px, 6vw, 56px); font-weight: 500; letter-spacing: -0.02em; line-height: 1; }
+  .readout .l { flex: 1 1 320px; }
+  .readout .l b { display: block; font-size: 15px; font-weight: 600; margin-bottom: 5px; }
+  .readout .l p { margin: 0; font-size: 14.5px; color: var(--pencil); max-width: 60ch; }
+
+  /* ------------------------------------------------------------------- the calibration */
+  .cal { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; margin: 0 0 8px; }
+  .tier { text-align: center; }
+  /* One plot per tier, the 50% line dashed across it: a bar above the line is up winning
+     more often than a coin, below it is less. */
+  .plot {
+    position: relative; height: 120px;
+    background: var(--stock-sunk);
+    border-top: 1px solid var(--rule-major); border-bottom: 1px solid var(--rule-major);
+  }
+  .plot::before { content: ""; position: absolute; left: 0; right: 0; top: 50%; border-top: 1px dashed var(--ctl-line); }
+  /* The pen says which way the tier missed the coin, so the class has to carry the
+     meaning. Colouring the first three by nth-child matched the data by luck on this
+     dataset and would have lied the moment a tier crossed 50%. */
+  .bar { position: absolute; left: 32%; right: 32%; }
+  .bar.over { background: var(--ink); }
+  .bar.under { background: var(--pen-down); }
+  .v { font-family: var(--mono); font-size: 13px; margin-top: 8px; }
+  .t { font-size: 12.5px; color: var(--pencil); }
+  .cal-axis { display: flex; flex-wrap: wrap; gap: 8px 20px; justify-content: space-between; font-size: 13px; color: var(--pencil); margin: 0 0 var(--chart); }
+
+  @media (max-width: 620px) {
+    .cal { grid-template-columns: repeat(3, 1fr); }
+    .gloss { text-align: left; }
+  }

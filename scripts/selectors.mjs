@@ -53,7 +53,7 @@ function collect(abi, from) {
 }
 
 console.log("sources");
-collect(JSON.parse(readFileSync("web/abi.json", "utf8")), "web/abi.json");
+collect(JSON.parse(readFileSync("public/abi.json", "utf8")), "public/abi.json");
 
 /* Every array the SDK ships that looks like an ABI. Naming the four we happen to know would
  * miss the next one the venue adds; the shape is the reliable filter.

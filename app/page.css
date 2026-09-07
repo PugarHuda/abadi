@@ -1,0 +1,120 @@
+/* Page-specific only. The world lives in /recorder.css. */
+
+  /* ------------------------------------------------------------------ the pen carriage
+   *
+   * The price control is a pen on a carriage. Dragging it moves the pen across the chart
+   * and both channels redraw under it. It is the one instrument on the site that the
+   * reader operates, so it is the one thing drawn at full size. */
+  .carriage {
+    background: var(--stock-sunk);
+    border-top: 1px solid var(--rule-major);
+    border-bottom: 1px solid var(--rule-major);
+    padding: 20px 22px 22px;
+    margin: 0 0 var(--chart);
+  }
+
+  .track {
+    position: relative;
+    height: 44px;
+    margin: 4px 0 0;
+    cursor: ew-resize;
+    touch-action: none;
+    border-bottom: 1px solid var(--ctl-line);
+    /* The carriage runs on a ruled bed, so the pen's position is readable against
+       something rather than floating. */
+    background-image: repeating-linear-gradient(to right,
+      var(--rule-major) 0, var(--rule-major) 1px, transparent 1px, transparent 10%);
+  }
+  .knob {
+    position: absolute; top: 50%; width: 15px; height: 15px;
+    margin: -7px 0 0 -7px; border-radius: 50%;
+    background: var(--ink); border: 2px solid var(--stock-sunk);
+  }
+  /* The pen itself: a hairline dropped from the carriage to the paper. */
+  .knob::after {
+    content: ""; position: absolute; left: 50%; top: 11px; width: 1px; height: 15px;
+    margin-left: -0.5px; background: var(--ink);
+  }
+
+  .ends {
+    display: flex; justify-content: space-between;
+    font-family: var(--mono); font-size: 11.5px; color: var(--pencil);
+    padding-top: 5px;
+  }
+
+  .legs { margin-top: 18px; display: grid; gap: 10px; }
+  .leg, .sum {
+    display: grid; grid-template-columns: 6.5rem 5.5rem 1fr; gap: 14px; align-items: center;
+  }
+  .leg .name, .sum .name { font-size: 13px; font-stretch: 80%; font-weight: 500; }
+  .leg .val, .sum .val { font-family: var(--mono); font-size: 14px; font-weight: 500; }
+  .bar, .whole { display: block; height: 12px; background: var(--stock); border: 1px solid var(--rule-major); }
+  .bar i { display: block; height: 100%; background: var(--ink); }
+  .leg.down .bar i {
+    background: var(--pen-down);
+    /* Channel two is the dashed pen. Colour is never the only signal. */
+    background-image: repeating-linear-gradient(45deg,
+      rgba(245,241,230,.55) 0 3px, transparent 3px 7px);
+  }
+  .whole { display: flex; }
+  .whole b { display: block; height: 100%; }
+  .whole b:first-child { background: var(--ink); }
+  .whole b:last-child {
+    background: var(--pen-down);
+    background-image: repeating-linear-gradient(45deg,
+      rgba(245,241,230,.55) 0 3px, transparent 3px 7px);
+  }
+  .sum { margin-top: 4px; padding-top: 12px; border-top: 1px solid var(--rule-major); }
+  .sum .val { font-weight: 500; }
+  .rig-foot { margin: 16px 0 0; font-size: 15px; max-width: 70ch; }
+
+  /* ------------------------------------------------------------------- the arithmetic */
+  .maths {
+    font-family: var(--mono); font-size: 12.5px; line-height: 2;
+    background: var(--stock-sunk);
+    border-top: 1px solid var(--rule-major); border-bottom: 1px solid var(--rule-major);
+    padding: 18px 22px; margin: 0 0 var(--chart);
+    overflow-x: auto; white-space: nowrap;
+  }
+  .maths .k { color: var(--pencil); }
+  .maths .u { color: var(--ink); font-weight: 500; }
+  .maths .d { color: var(--pen-down); font-weight: 500; }
+  .maths .r { display: inline-block; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--ctl-line); }
+
+  /* --------------------------------------------------------------- the event channel
+   *
+   * What has run, written the way a recorder writes it: a pip in the margin, the event
+   * named in chart lettering, the reading beside it. */
+  .ran { list-style: none; margin: 0 0 var(--chart); padding: 0; }
+  .ran li {
+    display: grid; grid-template-columns: 7rem 1fr auto; gap: 6px 18px;
+    padding: 14px 0; border-bottom: 1px solid var(--rule);
+    align-items: baseline;
+  }
+  .ran li:last-child { border-bottom: 0; }
+  .ran .what {
+    font-size: 13px; font-stretch: 80%; font-weight: 500;
+    position: relative; padding-left: 14px;
+  }
+  .ran .what::before {
+    content: ""; position: absolute; left: 0; top: .45em;
+    width: 7px; height: 7px; background: var(--ink);
+  }
+  .ran .said b { font-weight: 600; }
+  .ran .tx { font-family: var(--mono); font-size: 12px; color: var(--pencil); white-space: nowrap; }
+
+  /* ------------------------------------------------------------------ the live channel */
+  .live-slots { list-style: none; margin: 16px 0 0; padding: 14px 0 0; border-top: 1px solid var(--rule-major); font-family: var(--mono); font-size: 12px; color: var(--pencil); }
+  .live-foot { margin: 14px 0 0; font-size: 13px; color: var(--pencil); }
+  .live-err { display: none; }
+  /* Both spellings. `live.js` sets "unreachable"; this rule only knew "error", so the one
+     sentence explaining why the numbers are dashes was written into a hidden element and
+     the reader saw three dashes and no reason. The test passed too — `toContainText` reads
+     textContent, which a `display: none` element still has. */
+  .live[data-state="error"] .live-err,
+  .live[data-state="unreachable"] .live-err { display: block; }
+
+  @media (max-width: 640px) {
+    .leg, .sum { grid-template-columns: 5rem 4.5rem 1fr; gap: 10px; }
+    .ran li { grid-template-columns: 1fr; }
+  }

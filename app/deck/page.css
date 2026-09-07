@@ -1,0 +1,110 @@
+/* Page-specific only; the world lives in /recorder.css.
+     Experience mode: one slide at a time, the paper still feeding underneath. */
+
+  html, body { height: 100%; overflow: hidden; }
+
+  .deck { position: fixed; inset: 0; }
+
+  .slide {
+    position: absolute; inset: 0;
+    padding: clamp(56px, 7vh, 92px) clamp(28px, 7vw, 96px) clamp(70px, 9vh, 100px);
+    display: flex; flex-direction: column; justify-content: center;
+    opacity: 0; visibility: hidden;
+    transform: translateY(14px);
+    transition: opacity .34s ease, transform .34s ease, visibility 0s linear .34s;
+    overflow-y: auto;
+  }
+  .slide > * { max-width: 980px; width: 100%; margin-left: auto; margin-right: auto; }
+  .slide > p, .slide > ul { max-width: min(62ch, 980px); margin-left: 0; margin-right: auto; }
+  .slide.on {
+    opacity: 1; visibility: visible; transform: none;
+    transition: opacity .34s ease, transform .34s ease, visibility 0s;
+  }
+
+  .slide h1 {
+    margin: 0 0 14px;
+    font-size: clamp(44px, 8vw, 92px); font-weight: 700; font-stretch: 112%;
+    letter-spacing: -0.035em; line-height: 0.92;
+  }
+  .slide h2 {
+    margin: 0 0 20px;
+    font-size: clamp(26px, 3.6vw, 44px); font-weight: 600;
+    letter-spacing: -0.022em; line-height: 1.14;
+    max-width: 22ch; text-wrap: balance;
+  }
+  .slide h2 em { font-style: normal; color: var(--pen-down); }
+  .slide p { margin: 0 0 16px; font-size: clamp(16px, 1.9vw, 19px); }
+  .slide p.line { font-size: clamp(19px, 2.5vw, 27px); font-weight: 500; max-width: 26ch; }
+  .slide p.line em { font-style: normal; color: var(--pen-down); }
+  .slide p.meta { font-size: 14px; color: var(--pencil); }
+  .slide p.dim { color: var(--pencil); }
+
+  .cover .mark {
+    height: clamp(60px, 9vh, 104px); width: auto; align-self: flex-start;
+    display: block; margin: 0 0 clamp(10px, 1.8vh, 20px);
+  }
+
+  .slide ul { padding-left: 20px; margin: 0 0 16px; }
+  .slide li { margin-bottom: 9px; font-size: clamp(15px, 1.8vw, 18px); }
+  .slide li::marker { color: var(--pen-down); }
+
+  .slide table { font-family: var(--sans); font-size: clamp(14px, 1.6vw, 16px); margin-bottom: 18px; }
+  .slide th { border-bottom: 1px solid var(--ctl-line); padding: 8px 14px 8px 0; }
+  .slide td { border-bottom: 1px solid var(--rule); padding: 9px 14px 9px 0; }
+  .slide td.num { font-family: var(--mono); text-align: right; font-size: clamp(13px, 1.5vw, 15px); }
+  .slide tr.hi td { border-top: 2px solid var(--ink); border-bottom: 0; font-weight: 600; }
+
+  .slide pre {
+    font-family: var(--mono); font-size: clamp(12px, 1.4vw, 14.5px); line-height: 1.85;
+    background: var(--stock-sunk);
+    border-top: 1px solid var(--rule-major); border-bottom: 1px solid var(--rule-major);
+    padding: 16px 20px; margin: 0 0 18px;
+    overflow-x: auto;
+  }
+  .slide pre b { font-weight: 500; }
+  .slide pre i { font-style: normal; color: var(--pencil); }
+
+  /* ------------------------------------------------------------------------- chrome */
+
+  /* The paper feed: how far through the roll this slide is. */
+  .bar { position: fixed; left: 0; right: 0; bottom: 0; height: 3px; background: var(--rule); z-index: 20; }
+  .bar i { display: block; height: 100%; width: 100%; transform-origin: left; background: var(--ink); transition: transform .34s cubic-bezier(.2,.8,.2,1); }
+
+  .nav { position: fixed; bottom: 20px; right: clamp(20px, 4vw, 40px); display: flex; align-items: center; gap: 6px; z-index: 20; }
+  .nav button {
+    appearance: none; background: var(--stock); cursor: pointer;
+    border: 1px solid var(--ctl-line); color: var(--ink);
+    font-family: var(--mono); font-size: 13px; line-height: 1;
+    width: 34px; height: 30px; padding: 0;
+    transition: background-color .15s, border-color .15s;
+  }
+  .nav button:hover:not(:disabled) { background: var(--ink); color: var(--stock); border-color: var(--ink); }
+  .nav button:disabled { cursor: default; background: var(--stock-sunk); color: var(--pencil); border-color: var(--ctl-line); }
+  .count { font-family: var(--mono); font-size: 12px; color: var(--pencil); margin-right: 10px; }
+  .count b { color: var(--ink); font-weight: 500; }
+
+  .hint {
+    position: fixed; bottom: 22px; left: clamp(28px, 7vw, 96px);
+    font-size: 13px; color: var(--pencil); z-index: 20;
+    transition: opacity .4s ease;
+  }
+  .hint.gone { opacity: 0; }
+
+  .skip { position: fixed; }
+
+  /* Announced, never drawn. A slide change is silent to a screen reader otherwise. */
+  .sr-only {
+    position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
+    overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0;
+  }
+
+  .slide:focus-visible, .slide pre:focus-visible { outline: 2px solid var(--ink); outline-offset: -2px; }
+
+  @media (max-width: 640px) {
+    .hint { display: none; }
+    .slide { padding-bottom: 74px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .slide { transition: opacity .01s, visibility 0s; transform: none; }
+    .bar i { transition: none; }
+  }

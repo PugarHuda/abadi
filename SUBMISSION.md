@@ -84,8 +84,8 @@ them in, so it reads without them.
 Open Track
 ```
 
-**Logo / cover image** — `web/logo.svg` is the mark. If a raster is needed,
-`web/og.png` is 1200×630 and already carries the wordmark.
+**Logo / cover image** — `public/logo.svg` is the mark. If a raster is needed,
+`public/og.png` is 1200×630 and already carries the wordmark.
 
 ---
 

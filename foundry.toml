@@ -1,6 +1,6 @@
 [profile.default]
 src = "src"
-out = "out"
+out = "forge-out"
 libs = ["lib", "node_modules"]
 solc = "0.8.30"  # @somnia-chain/reactivity-contracts pins `pragma solidity 0.8.30` exactly
 optimizer = true
