@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import SiteHeader from "../site-header";
 import Script from "next/script";
 import "./page.css";
 
@@ -22,22 +23,7 @@ export default function AppPage() {
 
       <div className="wrap">
 
-        <header className="masthead">
-          <a className="lockup" href="/" aria-label="Abadi home">
-            <svg viewBox="0 0 20 38" aria-hidden="true">
-              <rect x="0" y="4" width="11.7" height="30" fill="#16262B" />
-              <rect x="13.1" y="4" width="6.9" height="30" fill="#2A3A6B" />
-              <path d="M12.4 0V38" stroke="#B4331C" strokeWidth="1.4" />
-            </svg>
-            <h1>abadi</h1>
-          </a>
-          <nav aria-label="Site">
-            <a href="/">Landing</a>
-            <a href="/dashboard">The working</a>
-            <a href="/deck">Deck</a>
-            <a href="/app" aria-current="page">App</a>
-          </nav>
-        </header>
+        <SiteHeader current="/app" />
 
         <main id="app" data-busy="false" tabIndex={-1}>
 

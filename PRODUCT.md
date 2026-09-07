@@ -63,8 +63,10 @@ cost, and what was fixed is part of the positioning, not an apology for it.
   predates the framework, so a server runtime would only add somewhere for it to be broken.
   Routing, the document shell, `metadata`, `robots.txt` and `sitemap.xml` are the
   framework's; the live strip, the ledger and the wallet calls stay plain JS against public
-  APIs, loaded per page. `scripts/compare-render.mjs` renders the pre-migration build from
-  the same sources and gates on every page's body still matching.
+  APIs, loaded per page. The migration was verified by rendering the pre-framework build from
+  the same sources and comparing every page's body against the export — all five matched, twice
+  in CI — and that reference build was retired when the header became a shared component, which
+  is the first change the two versions were ever meant to differ on.
 - What the framework cost, stated rather than absorbed: a page shipped **37 KB** before it and
   ships about **505 KB** after. The weight budget in `qa/perf.spec.ts` is two numbers now — the
   document, the stylesheets and our own modules stay under the **100 KB** they were always

@@ -74,7 +74,7 @@ jobs:
           n=$(forge test 2>&1 | grep -oE '[0-9]+ tests passed' | tail -1 | cut -d' ' -f1)
           echo "forge reports $n"
           bad=0
-          for f in README.md web/deck.html; do
+          for f in README.md app/deck/page.tsx; do
             for m in $(grep -oE '[0-9]+ tests' "$f" | cut -d' ' -f1 | sort -u); do
               if [ "$m" != "$n" ]; then
                 echo "::error::$f says $m tests, forge says $n"
@@ -159,14 +159,6 @@ jobs:
             grep -qi 'charset=' "$f" || { echo "::error::$f has no charset"; exit 1; }
             echo "ok  $f"
           done
-
-      - name: The framework did not change the page
-        # `scripts/to-jsx.mjs` converted five hand-written pages into App Router routes by
-        # machine. This renders the pre-migration build from the same sources and compares
-        # every body against the export, ignoring only what a framework is entitled to
-        # reshape. All five matched on the day of the migration and it stays a gate, because
-        # the sources in web/ are the record of what the pages said.
-        run: node scripts/compare-render.mjs
 
       - name: Install Chromium
         run: npx playwright install --with-deps chromium

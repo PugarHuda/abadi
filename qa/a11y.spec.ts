@@ -82,7 +82,7 @@ function luminance([r, g, b]: number[]) {
 for (const [path, selector] of [
   ["/", ".out a, .track"],
   ["/app", "button, input[type=text]"],
-  ["/deck", ".nav button"],
+  ["/deck", ".deckbar button"],
   ["/404", "main a"],
 ] as const) {
   test(`${path}: every control boundary clears 3:1 against the surface behind it`, async ({ page }) => {

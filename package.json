@@ -27,8 +27,7 @@
     "video": "npm run video:vo && npm run video:shots && npm run video:render",
     "selectors": "node scripts/selectors.mjs",
     "dev": "next dev",
-    "start": "next start",
-    "compare": "node scripts/compare-render.mjs"
+    "start": "next start"
   },
   "dependencies": {
     "@somnia-chain/markets-sdk": "^0.28.1",

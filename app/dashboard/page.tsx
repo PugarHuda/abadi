@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import type { Metadata } from "next";
+import SiteHeader from "../site-header";
 import Script from "next/script";
 import "./page.css";
 
@@ -27,26 +28,12 @@ export default function Dashboard() {
 
       <div className="wrap">
 
-        <header className="masthead">
-          <a className="home" href="/" aria-label="Abadi home">
-            <svg viewBox="0 0 20 38" aria-hidden="true">
-              <rect x="0" y="4" width="11.7" height="30" fill="#16262B" />
-              <rect x="13.1" y="4" width="6.9" height="30" fill="#2A3A6B" />
-              <path d="M12.4 0V38" stroke="#B4331C" strokeWidth="1.4" />
-            </svg>
-            <h1 className="wordmark">abadi</h1>
-          </a>
+        <SiteHeader current="/dashboard">
           <div className="gloss">
             Market making for<br />DreamDEX Event Contracts<br />
             <b>Shannon 50312</b><br /><b>26&ndash;28 Aug 2026</b>
           </div>
-        </header>
-        <nav className="nav" aria-label="Site">
-          <a href="/">Landing</a>
-          <a href="/dashboard" aria-current="page">The working</a>
-          <a href="/deck">Deck</a>
-          <a className="go" href="/app">Open the app</a>
-        </nav>
+        </SiteHeader>
 
         <main id="main" tabIndex={-1}>
 

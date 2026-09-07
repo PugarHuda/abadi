@@ -11,10 +11,6 @@
  * answer the same either way: whichever of the two directories that project is pointed at, it
  * holds the site that was just built.
  *
- * `scripts/compare-render.mjs` overwrites `dist/` with the pre-framework build on purpose,
- * immediately before comparing the two — so if you are looking at `dist/` and wondering why it
- * is the old site, that is why, and it is only ever true after that script has run.
- *
  * Delete this once the project's own setting is known to be right.
  */
 import { cpSync, rmSync, existsSync } from "node:fs";

@@ -70,16 +70,28 @@
   .bar { position: fixed; left: 0; right: 0; bottom: 0; height: 3px; background: var(--rule); z-index: 20; }
   .bar i { display: block; height: 100%; width: 100%; transform-origin: left; background: var(--ink); transition: transform .34s cubic-bezier(.2,.8,.2,1); }
 
-  .nav { position: fixed; bottom: 20px; right: clamp(20px, 4vw, 40px); display: flex; align-items: center; gap: 6px; z-index: 20; }
-  .nav button {
+  /* Renamed from `.nav`, which is what the site header is called in recorder.css. Two
+     different things under one class name is how the header drifted apart in the first
+     place: this bar inherited link styling meant for a masthead and then had to override
+     it. It is the deck's transport, so it is called that. */
+  .deckbar { position: fixed; bottom: 20px; right: clamp(20px, 4vw, 40px); display: flex; align-items: center; gap: 6px; z-index: 20; }
+  .deckbar button {
     appearance: none; background: var(--stock); cursor: pointer;
     border: 1px solid var(--ctl-line); color: var(--ink);
     font-family: var(--mono); font-size: 13px; line-height: 1;
     width: 34px; height: 30px; padding: 0;
     transition: background-color .15s, border-color .15s;
   }
-  .nav button:hover:not(:disabled) { background: var(--ink); color: var(--stock); border-color: var(--ink); }
-  .nav button:disabled { cursor: default; background: var(--stock-sunk); color: var(--pencil); border-color: var(--ctl-line); }
+  .deckbar button:hover:not(:disabled) { background: var(--ink); color: var(--stock); border-color: var(--ink); }
+  .deckbar button:disabled { cursor: default; background: var(--stock-sunk); color: var(--pencil); border-color: var(--ctl-line); }
+  .deckbar .home {
+    font-family: var(--mono); font-size: 13px; line-height: 1; text-decoration: none;
+    background: var(--stock); border: 1px solid var(--ctl-line); color: var(--ink);
+    height: 30px; padding: 0 10px; display: inline-flex; align-items: center;
+    margin-right: 10px;
+    transition: background-color .15s, border-color .15s;
+  }
+  .deckbar .home:hover { background: var(--ink); color: var(--stock); border-color: var(--ink); }
   .count { font-family: var(--mono); font-size: 12px; color: var(--pencil); margin-right: 10px; }
   .count b { color: var(--ink); font-weight: 500; }
 

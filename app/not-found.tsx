@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import SiteHeader from "./site-header";
 import "./not-found.css";
 
 export const metadata: Metadata = {
@@ -18,6 +19,10 @@ export default function NotFound() {
   return (
     <>
       <a className="skip" href="#main">Skip to content</a>
+
+      <div className="wrap">
+        <SiteHeader current="/404" />
+      </div>
 
       <main id="main" tabIndex={-1}>
         {/* The trace runs, then the pen lifts. Decorative: the sentence below says the same

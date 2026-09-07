@@ -14,15 +14,9 @@
      pencil, where the type is larger and the hierarchy is doing work. */
   main { --pencil: #333B39; }
 
-  .masthead nav { display: flex; flex-wrap: wrap; gap: 4px; }
-  .masthead nav a {
-    font-size: 15px; font-weight: 500; padding: 8px 12px; text-decoration: none;
-    border: 1px solid transparent;
-  }
-  .masthead nav a:hover { background: var(--stock-sunk); }
-  .masthead nav a[aria-current="page"] { border-color: var(--ctl-line); }
-  .lockup { text-decoration: none; color: inherit; }
-  .lockup h1 { font-size: clamp(26px, 4vw, 36px); font-weight: 700; font-stretch: 112%; letter-spacing: -0.03em; margin: 0; }
+  /* The masthead and its nav were restyled here, under `.masthead nav` rather than the
+     `.nav` recorder.css already defines — same links, different size, one click apart. The
+     shared `SiteHeader` uses the canonical classes, so the copies are gone. */
 
   /* Every h2 on this page is a calibration band, same as .band elsewhere. */
   main h2 {

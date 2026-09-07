@@ -149,7 +149,8 @@ export default function Deck() {
       <div className="bar"><i style={{ width: "10%" }}></i></div>
       <p className="hint">← → or space to move</p>
       <p className="sr-only" id="announce" role="status"></p>
-      <div className="nav">
+      <div className="deckbar">
+        <a className="home" href="/" aria-label="Abadi home">abadi</a>
         <span className="count"><b>01</b> / 10</span>
         <button id="prev" aria-label="Previous slide">←</button>
         <button id="next" aria-label="Next slide">→</button>

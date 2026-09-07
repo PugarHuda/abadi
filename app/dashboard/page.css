@@ -2,11 +2,8 @@
      Read mode: this page exists so a sceptic can check the claims. Structure for
      comprehension first, then make it worth staying in. */
 
-  .home { display: flex; align-items: center; gap: 12px; text-decoration: none; color: inherit; }
-  .home svg { width: 20px; height: 38px; display: block; }
   .gloss { font-size: 13px; font-stretch: 80%; color: var(--pencil); text-align: right; line-height: 1.5; }
   .gloss b { color: var(--ink); font-weight: 500; }
-  .nav { margin: 0 0 var(--chart); padding-bottom: var(--chart); border-bottom: 1px solid var(--rule-major); }
 
   .thesis { max-width: 22ch; }
   .sub { margin: 0 0 calc(var(--chart) * 2); max-width: 68ch; font-size: 17px; }

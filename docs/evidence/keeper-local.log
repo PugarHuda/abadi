@@ -8725,3 +8725,13 @@ keeper exited 1 -- see the ALERT lines above
 2026-09-07 04:12:54 quote    slot 0 59ce  worked  0xb8fc0756069f14cdee71802d86ab7317b2da1d25ac7e0f0fa02e63554d37332c  gas 1548639
 2026-09-07 04:12:58 arm      08:05:15Z  worked  0x03329c7b6f756390d7ca71f0759d1ecb0c66c07d86312a73d0baf43c1fa5419f  gas 467072
 2026-09-07 04:13:03 cycle 1  NAV 9317.77  idle 9220.17  resting 97.60  share 0.974013
+2026-09-07 04:26:02 vault    0xFd9c93581ADD42B9B13ba5550542Fc7315775cD9
+2026-09-07 04:26:02 operator 0x39D2bae5EAedA9283535dDC98F1991c81eD5Cd7E
+2026-09-07 04:26:02 interval 30s  active 3  size 100 (x0.5 on 900s)  dead 6 ticks  momentum 3 ticks/20s  gas floor 0.5 STT  1 cycles
+2026-09-07 04:26:02 fv       ON  refuse over 0.1 of edge, skew up to 3 ticks toward fair; no model means book-only and a log line saying so
+2026-09-07 04:27:05 skip     slot 0 59ce  completing costs 0.611 on top of 0.516 = 1.127 the pair, over the 1.060 line — carrying the leg instead
+2026-09-07 04:27:21 tiers    quoting 14400s, 900s only — 3600s and 86400s are left alone on the ledger's record
+2026-09-07 04:27:22 sampled  1 books in 0.3s; second look in 20s
+2026-09-07 04:27:45 fv       ETH-0-07SEP26-0800/tUSDC  fair 0.542  spot 2499.73 strike 2497.33 (feed tick at tradingStart+0s)  sigma 44.0% on 239 M1 returns (half-life 120m, lambda 0.9942)  12736s left  d2 0.104  feed 0s old  book mid 0.589  edge 0.048
+2026-09-07 04:27:45 skip     ETH-0-07SEP26-0800/tUSDC  mid moved 34 ticks in 20s — trending, not quoting
+2026-09-07 04:27:47 cycle 1  NAV 9266.17  idle 9220.17  resting 46.00  share 0.968619
