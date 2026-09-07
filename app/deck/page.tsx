@@ -39,14 +39,16 @@ export default function Deck() {
       <section className="slide" data-i="2" tabIndex={0} aria-label="Slide 3 of 10">
         <h2>Does up win more often than the market prices it to?</h2>
         <table>
-          <tr><th>Tier</th><th>n</th><th style={{ textAlign: "right" }}>Up won</th><th style={{ textAlign: "right" }}>z vs fair coin</th></tr>
-          <tr><td>60s</td><td className="num">500</td><td className="num">49.6%</td><td className="num">−0.18</td></tr>
-          <tr><td>300s</td><td className="num">500</td><td className="num">48.6%</td><td className="num">−0.63</td></tr>
-          <tr><td>900s</td><td className="num">500</td><td className="num">48.2%</td><td className="num">−0.80</td></tr>
-          <tr><td>1h</td><td className="num">500</td><td className="num">51.0%</td><td className="num">+0.45</td></tr>
-          <tr><td>4h</td><td className="num">364</td><td className="num">51.9%</td><td className="num">+0.73</td></tr>
-          <tr><td>24h</td><td className="num">58</td><td className="num">58.6%</td><td className="num">+1.31</td></tr>
-          <tr className="hi"><td><b>pooled</b></td><td className="num">2,422</td><td className="num">49.96%</td><td className="num">−0.04</td></tr>
+          <tbody>
+            <tr><th>Tier</th><th>n</th><th style={{ textAlign: "right" }}>Up won</th><th style={{ textAlign: "right" }}>z vs fair coin</th></tr>
+            <tr><td>60s</td><td className="num">500</td><td className="num">49.6%</td><td className="num">−0.18</td></tr>
+            <tr><td>300s</td><td className="num">500</td><td className="num">48.6%</td><td className="num">−0.63</td></tr>
+            <tr><td>900s</td><td className="num">500</td><td className="num">48.2%</td><td className="num">−0.80</td></tr>
+            <tr><td>1h</td><td className="num">500</td><td className="num">51.0%</td><td className="num">+0.45</td></tr>
+            <tr><td>4h</td><td className="num">364</td><td className="num">51.9%</td><td className="num">+0.73</td></tr>
+            <tr><td>24h</td><td className="num">58</td><td className="num">58.6%</td><td className="num">+1.31</td></tr>
+            <tr className="hi"><td><b>pooled</b></td><td className="num">2,422</td><td className="num">49.96%</td><td className="num">−0.04</td></tr>
+          </tbody>
         </table>
         <p className="dim">No. Four hundredths of a standard error from a coin flip, across every settled market on the venue.</p>
       </section>
@@ -103,10 +105,12 @@ export default function Deck() {
         <h2>The key that steers the quotes can't move a token.</h2>
         <p>BinaryPool has no operator gate. The DreamDEX team confirmed the only shape that works today is a contract that owns its own orders — which is what Abadi is.</p>
         <table>
-          <tr><th>Actor</th><th>Can</th><th>Cannot</th></tr>
-          <tr><td><code>operator</code></td><td>quote, cancel</td><td className="cross"><b>move any token</b></td></tr>
-          <tr><td><code>governor</code></td><td>set operator, risk params; <code>sweepNative</code> the vault's ~32.8 STT wake-up reserve</td><td className="cross">touch depositor collateral</td></tr>
-          <tr><td>depositor</td><td>deposit, withdraw</td><td className="cross">steer quotes</td></tr>
+          <tbody>
+            <tr><th>Actor</th><th>Can</th><th>Cannot</th></tr>
+            <tr><td><code>operator</code></td><td>quote, cancel</td><td className="cross"><b>move any token</b></td></tr>
+            <tr><td><code>governor</code></td><td>set operator, risk params; <code>sweepNative</code> the vault's ~32.8 STT wake-up reserve</td><td className="cross">touch depositor collateral</td></tr>
+            <tr><td>depositor</td><td>deposit, withdraw</td><td className="cross">steer quotes</td></tr>
+          </tbody>
         </table>
         <p className="dim"><code>settle()</code> is permissionless — proceeds go to the vault, never the caller, and a settled market leaves the live list so redemption has to be pulled. <code>flatten()</code> is operator-only while a market still trades, because cancelling a live quote destroys the spread; open to anyone once it can't.</p>
       </section>
@@ -127,13 +131,15 @@ export default function Deck() {
       <section className="slide" data-i="9" tabIndex={0} aria-label="Slide 10 of 10">
         <h2>One vault. Full lifecycle. Honest about the rest.</h2>
         <table>
-          <tr><th>Run against the venue</th><th></th></tr>
-          <tr><td>Quoting inside the book, top of book</td><td className="num tick">✓</td></tr>
-          <tr><td>Both legs filled into a complete set</td><td className="num tick">✓</td></tr>
-          <tr><td><code>settle()</code> — redeemed 100.00 on a 97.60 basis</td><td className="num tick">✓</td></tr>
-          <tr><td><code>flatten()</code> — merged early, 671s before expiry</td><td className="num tick">✓</td></tr>
-          <tr><td>148 tests, five stateful invariants</td><td className="num tick">✓</td></tr>
-          <tr><td>Keeper-free wake-up — the chain settled a window for us</td><td className="num tick">✓</td></tr>
+          <tbody>
+            <tr><th>Run against the venue</th><th></th></tr>
+            <tr><td>Quoting inside the book, top of book</td><td className="num tick">✓</td></tr>
+            <tr><td>Both legs filled into a complete set</td><td className="num tick">✓</td></tr>
+            <tr><td><code>settle()</code> — redeemed 100.00 on a 97.60 basis</td><td className="num tick">✓</td></tr>
+            <tr><td><code>flatten()</code> — merged early, 671s before expiry</td><td className="num tick">✓</td></tr>
+            <tr><td>148 tests, five stateful invariants</td><td className="num tick">✓</td></tr>
+            <tr><td>Keeper-free wake-up — the chain settled a window for us</td><td className="num tick">✓</td></tr>
+          </tbody>
         </table>
         <p><b>A handful of fills proves the mechanism, not the edge.</b> Adverse selection is the real risk a maker carries, and we met it twice in one afternoon — a leg taken while the market walked away from the other. NAV marks that leg at zero, so the loss lands on us and not on whoever deposits next. Measuring the frequency needs many quotes across many windows. The bot and the ledger exist so that number grows without anyone having to trust it.</p>
         <p className="dim">The markets expire. The liquidity doesn't.</p>

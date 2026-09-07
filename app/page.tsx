@@ -133,27 +133,29 @@ export default function Home() {
 
         <div className="scroll">
           <table>
-            <tr><th>Actor</th><th>Can</th><th>Cannot</th></tr>
-            <tr>
-              <td className="who">operator</td>
-              <td>Quote and cancel</td>
-              <td className="cannot"><b>Move a single token.</b> The bot key steers prices and has no path to the money</td>
-            </tr>
-            <tr>
-              <td className="who">governor</td>
-              <td>Set the operator, risk limits, price grid. Sweep the vault's native STT with <code>sweepNative</code> &mdash; ~32.8 STT today, the reserve that pays for the self-wake</td>
-              <td className="cannot"><b>Touch depositor collateral.</b> Handover is two-step, so a mistyped address hands the seat to nobody</td>
-            </tr>
-            <tr>
-              <td className="who">depositor</td>
-              <td>Deposit and withdraw against ERC-4626 shares</td>
-              <td className="cannot">Steer quotes</td>
-            </tr>
-            <tr>
-              <td className="who">anyone</td>
-              <td>Settle a resolved market, and merge a pair once the window can no longer trade</td>
-              <td className="cannot">Redirect the proceeds &mdash; they go to the vault, never the caller</td>
-            </tr>
+            <tbody>
+              <tr><th>Actor</th><th>Can</th><th>Cannot</th></tr>
+              <tr>
+                <td className="who">operator</td>
+                <td>Quote and cancel</td>
+                <td className="cannot"><b>Move a single token.</b> The bot key steers prices and has no path to the money</td>
+              </tr>
+              <tr>
+                <td className="who">governor</td>
+                <td>Set the operator, risk limits, price grid. Sweep the vault's native STT with <code>sweepNative</code> &mdash; ~32.8 STT today, the reserve that pays for the self-wake</td>
+                <td className="cannot"><b>Touch depositor collateral.</b> Handover is two-step, so a mistyped address hands the seat to nobody</td>
+              </tr>
+              <tr>
+                <td className="who">depositor</td>
+                <td>Deposit and withdraw against ERC-4626 shares</td>
+                <td className="cannot">Steer quotes</td>
+              </tr>
+              <tr>
+                <td className="who">anyone</td>
+                <td>Settle a resolved market, and merge a pair once the window can no longer trade</td>
+                <td className="cannot">Redirect the proceeds &mdash; they go to the vault, never the caller</td>
+              </tr>
+            </tbody>
           </table>
         </div>
 
