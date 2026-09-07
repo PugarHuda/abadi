@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "node scripts/deployments.mjs && next build",
+    "build": "node scripts/deployments.mjs && next build && node scripts/mirror-dist.mjs",
     "serve": "node qa/serve.mjs",
     "qa": "node scripts/qa.mjs",
     "typecheck": "tsc --noEmit",
