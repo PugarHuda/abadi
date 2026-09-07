@@ -51,3 +51,6 @@ public/deployments.json
 
 # Written by the scheduled deploy retry.
 docs/evidence/deploy-retry.log
+
+# Progress chatter from the scheduled impact run; the measurement itself is committed.
+docs/evidence/impact-2026-09-07.progress.txt
