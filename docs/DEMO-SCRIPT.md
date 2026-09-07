@@ -92,7 +92,7 @@ scene became what was on the screen rather than what had been written for it.
   described almost word for word. The measurement is still ours alone; being the only maker
   is not. **Never restore a superlative about the field without re-reading the field.**
 - **The impact line said "every window we've ever quoted."** The measurement covers 70
-  windows and is dated 31 August; there are 223 episodes now. It says "seventy of the
+  windows and is dated 31 August; there are 224 episodes now. It says "seventy of the
   windows we've quoted", which stays true however many there are.
 - The numbers moved hard: depositors from −0.51% to **−2.03%**, nine completions to
   **fourteen**, and carrying a naked leg got *worse* rather than better.
@@ -116,14 +116,14 @@ to be a day old — this table is the checklist for the next one, so it tracks t
 | Third-party conformance | a16z `ERC4626Test`, **26/26** fuzzed properties — `test/LiquidityVault.conformance.t.sol` |
 | Fork tests against the real venue | **9**, all passing — `node scripts/fork-test.ts` |
 | Coverage | 97.28% of lines, 43/43 functions on `LiquidityVault.sol` |
-| Per share | **0.967282** — the film's live panel read 0.967052 at capture |
-| Depositors, vs. par | **−312.99 tUSDC (−3.27%)** — below par |
+| Per share | **1.000000** on the vault deployed 2026-09-07 — par on a new ERC-4626, NOT a return. Say the record instead. |
+| The record, all vaults | **−498.19 on 21,931.45 of basis (−2.27%)** · the retired vault ended at 0.962755 |
 | Realised, every closed episode | −498.19 on 21,931.45 (−2.27%) |
-| Episodes | **223** across 13 vaults |
+| Episodes | **224** across 14 vaults |
 | Fill shape | 172 complete · 47 one-sided · 2 no fill · 2 open — **21% adverse** |
 | One-sided: carried vs completed | 26 carried at −30.12%, worst −100% · **14 completed at −0.98%**, worst −3.47% — `docs/evidence/completing-2026-09-06.md` |
 | Completion refusals | **126** (median pair 1.209, cheapest refused 1.061) |
-| Venue spread, without us vs with | 0.0249 vs 0.0192 over **70 windows, measured 2026-08-31** — tighter on 66, wider on **none**. Not "every window"; there are 223 episodes now |
+| Venue spread, without us vs with | 0.0249 vs 0.0192 over **70 windows, measured 2026-08-31** — tighter on 66, wider on **none**. Not "every window"; there are 224 episodes now |
 | SDK issues filed | 16 |
 | Live vault | `0xF5571c653B142B87BB552FB212e244bd80693f24` — `attest.ts` says **MISMATCH** since `8cd803e`: the source is ahead of the chain by two guards, on purpose. The film does not state this either way, so nothing in it is wrong. |
 | Reactivity settle, on chain | `0x2f75001ea73bd66cf62649841542a2d8b74cad22afa1513e5e6463730a009f50` |

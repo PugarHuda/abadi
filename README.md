@@ -300,15 +300,15 @@ bot skips arming and says so until then. `sweepNative` brings the reserve back o
 **Run against the venue, on Shannon**
 
 - Quoting inside the incumbent's spread, top of book, both legs filling into complete sets
-- **The vault is down, and the number that says so is the one to read.** Per share is
-  **0.967282** — 9,253.38 of assets on 9,566.37 of shares, so anyone who deposited at par is
-  down **312.99 tUSDC, −3.27%**. Across **223 episodes on 13 vaults**: 172 closed into a
-  complete set, 47 one-sided, 2 with neither leg filled, 2 still open, and **−498.19 realised
-  on 21,931.45 of basis**. 21% of filled quotes were adverse; the strategy needs under about
-  9%. The vault before this one ended at per share **0.951368** — **−6.84%** at its worst
-  reading, for anyone who had deposited. `scripts/ledger.ts` reads every figure back off the
-  chain across all thirteen addresses, so a redeploy does not clear the history; it only
-  resets the denominator of one of them. *Read 2026-09-07 12:45 UTC.*
+- **The vault running today reads 1.000000, and that is not a return.** It was deployed on
+  2026-09-07 and a new ERC-4626 starts at par; the record the price forgot is the one to read.
+  Across **224 episodes on 14 vaults**: 172 closed into a complete set, 47 one-sided, 2 with
+  neither leg filled, and **−498.19 realised on 21,931.45 of basis, −2.27%**. 21% of filled
+  quotes were adverse where the strategy needs under about 9%. The vault this one replaced
+  ended at per share **0.962755** against shares issued at par — **−3.7%** for anyone who had
+  deposited, and it is still on chain with 54.30 of escrow open on it. `scripts/ledger.ts`
+  reads every figure back off the chain across all fourteen addresses, so a redeploy does not
+  clear the history; it only resets the denominator of one of them. *Read 2026-09-07 15:10 UTC.*
 
   It replaces a published **+2.37%**, which was the realised spread on the winning episodes
   only: the ledger accumulated into its complete-set branch alone, so one-sided episodes
