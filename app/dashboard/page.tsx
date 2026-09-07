@@ -31,7 +31,7 @@ export default function Dashboard() {
         <SiteHeader current="/dashboard">
           <div className="gloss">
             Market making for<br />DreamDEX Event Contracts<br />
-            <b>Shannon 50312</b><br /><b>26&ndash;28 Aug 2026</b>
+            <b>Shannon 50312</b><br /><b>since 26 Aug 2026</b>
           </div>
         </SiteHeader>
 
