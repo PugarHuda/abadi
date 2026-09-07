@@ -64,6 +64,19 @@ for (const path of ["/deck#5", "/deck#9"]) {
     await withoutChainReads(page);
     await page.setViewportSize(PHONE);
     await page.goto(BASE + path, { waitUntil: "load" });
+
+    /* Wait for the slide to finish arriving before measuring anything on it.
+     *
+     * Slides cross-fade over 340ms, and the deck's script now loads `afterInteractive` — so
+     * on a slow machine the hash is read, the fade starts, and axe scans a frame in the
+     * middle of it. It then reports the blend rather than the stylesheet: `#777c76` on
+     * `#eee9db` at 3.51:1, two colours that appear in no CSS file here, for text that is
+     * 7.6:1 once the slide has landed. CI failed on exactly that and the laptop never did.
+     * A half-faded frame is not a state anybody reads. */
+    await page.waitForFunction(() => {
+      const on = document.querySelector(".slide.on");
+      return !!on && Number(getComputedStyle(on).opacity) === 1;
+    });
     await scan(page, `${path} at ${PHONE.width}px`);
   });
 }
