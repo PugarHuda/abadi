@@ -50,14 +50,24 @@ left is uploading it and pressing submit.**
 Abadi
 ```
 
-**Vision** — the one paragraph that appears on the card. Keep it under ~350 characters;
-every other submission's runs 200–300.
+**Vision** — the one paragraph that appears on the card. **The form's hard limit is 256
+characters**, not the ~350 this file said until the form refused a 331-character paragraph.
+This is 249, which leaves seven for a smart quote:
 
 ```
-An ERC-4626 vault that makes markets on DreamDEX holding no inventory: two opposite buys
-cross, the pool mints the pair, and a complete set is worth exactly 1 whichever way the
-window resolves. Rebuilt from the venue's own order rows across 70 windows, the book is
-23% tighter with Abadi in it. The ledger publishes the losses too.
+An ERC-4626 vault that market-makes DreamDEX Event Contracts holding no inventory: the pool mints a pair worth exactly 1 either way. Rebuilt from the venue's own order rows over 70 windows, the book is 23% tighter with Abadi in it. Losses published.
+```
+
+What went to make it fit, in order of what was least load-bearing: the mechanism sentence
+("two opposite buys cross") — "holding no inventory" and "a pair worth exactly 1 either way"
+carry it between them — and "the ledger publishes the losses too" shortened to two words.
+What did NOT go: **70 windows**. The sample size is what makes 23% a measurement rather than
+a boast, and it is the one claim in this field nobody else makes.
+
+If a shorter one is ever needed, this is 244:
+
+```
+An ERC-4626 vault that market-makes DreamDEX Event Contracts holding no inventory: the pool mints a pair worth exactly 1 either way. Rebuilt from the venue's own order rows, the book is 23% tighter with Abadi in it. The ledger publishes losses.
 ```
 
 ⚠ **The earlier version of this paragraph opened "Twelve projects here read DreamDEX. Abadi
