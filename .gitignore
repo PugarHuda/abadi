@@ -48,3 +48,6 @@ public/deployments.json
 
 # Vercel CLI link and pulled settings.
 .vercel/
+
+# Written by the scheduled deploy retry.
+docs/evidence/deploy-retry.log
