@@ -65,6 +65,12 @@ cost, and what was fixed is part of the positioning, not an apology for it.
   framework's; the live strip, the ledger and the wallet calls stay plain JS against public
   APIs, loaded per page. `scripts/compare-render.mjs` renders the pre-migration build from
   the same sources and gates on every page's body still matching.
+- What the framework cost, stated rather than absorbed: a page shipped **37 KB** before it and
+  ships about **505 KB** after. The weight budget in `qa/perf.spec.ts` is two numbers now — the
+  document, the stylesheets and our own modules stay under the **100 KB** they were always
+  held to (25–91 KB by page), and React with the App Router runtime is a separate **447 KB**,
+  identical on every page and capped so it cannot drift. Merging them would have meant one
+  600 KB number with the old standard lost inside it. LCP is still inside Google's 2.5s.
 - Constraint: nothing on the site may be a mock, placeholder, or "coming soon". A number
   is live from chain or it is not shown; a failure state says so.
 - Terminology: UP/DOWN (the venue's), "complete set", "naked leg", "one-sided fill",

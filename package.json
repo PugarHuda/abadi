@@ -5,7 +5,7 @@
   "scripts": {
     "build": "node scripts/deployments.mjs && next build",
     "serve": "node qa/serve.mjs",
-    "qa": "npx playwright test",
+    "qa": "node scripts/qa.mjs",
     "typecheck": "tsc --noEmit",
     "probe": "node scripts/probe.ts",
     "history": "node scripts/history.ts",

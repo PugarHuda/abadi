@@ -1,19 +1,10 @@
 import { defineConfig, devices } from "@playwright/test";
 
-/* `npm run qa` means the local mirror; a bare `npx playwright test` still means production.
- *
- * The script used to carry `BASE=http://localhost:4321` as a POSIX env prefix, which npm on
- * Windows hands to cmd.exe, where it is not a command. It worked in CI and on nobody's
- * laptop. `npm_lifecycle_event` is set by npm itself on every platform, so the default lives
- * here instead and an explicit BASE still wins over both. */
-const BASE =
-  process.env.BASE ??
-  (process.env.npm_lifecycle_event === "qa"
-    ? "http://localhost:4321"
-    : "https://abadi-wheat.vercel.app");
-
-// The specs read the variable, not this file, and the config is evaluated before they load.
-process.env.BASE = BASE;
+/* The target. `scripts/qa.mjs` sets BASE in a real process before Playwright starts, which
+ * is the only place it can be set and be seen by the worker processes that run the specs —
+ * setting it from inside this file looked like it worked and quietly tested production
+ * instead. Unset means production, which is what a bare `npx playwright test` should mean. */
+const BASE = process.env.BASE ?? "https://abadi-wheat.vercel.app";
 
 export default defineConfig({
   testDir: "qa",
@@ -34,7 +25,11 @@ export default defineConfig({
    * the target is production. */
   webServer: BASE.includes("localhost")
     ? {
-        command: "node scripts/build-site.mjs && node qa/serve.mjs",
+        // Serve only. `npm run qa` builds first; this command must not, because the build
+        // it used to run was the pre-framework one, which writes `dist/` and leaves `out/`
+        // — the directory this server reads — untouched or half-written. That mismatch
+        // failed seventy-one tests against a page that was fine when served by hand.
+        command: "node qa/serve.mjs",
         url: BASE,
         reuseExistingServer: true,
         timeout: 60_000,
