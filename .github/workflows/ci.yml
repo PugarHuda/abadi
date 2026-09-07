@@ -112,21 +112,6 @@ jobs:
 
       - run: npm ci
 
-      - name: The address in the prose must be the address in .vault-addr
-        # The live address on the front page was a build older than the source for a
-        # whole day, and the only reason anyone noticed is that a value path finally
-        # reverted. `.vault-addr` is the one place the address lives; everything that
-        # quotes it has to agree. (Whether that address is running THIS source needs the
-        # chain, so it is `node scripts/attest.ts` and not a CI step.)
-        run: |
-          a=$(cat .vault-addr)
-          grep -q "$a" README.md || { echo "::error::README does not carry $a"; exit 1; }
-          short="${a:0:10}…${a: -4}"
-          for f in web/index.html web/dashboard.html; do
-            grep -q "$short" "$f" || { echo "::error::$f does not carry $short"; exit 1; }
-          done
-          echo "ok  $a"
-
       - name: Typecheck
         run: npx tsc --noEmit
 
@@ -143,6 +128,26 @@ jobs:
 
       - name: Build site
         run: npm run build
+
+      - name: The address in the prose must be the address in .vault-addr
+        # The live address on the front page was a build older than the source for a
+        # whole day, and the only reason anyone noticed is that a value path finally
+        # reverted. `.vault-addr` is the one place the address lives; everything that
+        # quotes it has to agree. (Whether that address is running THIS source needs the
+        # chain, so it is `node scripts/attest.ts` and not a CI step.)
+        #
+        # The pages no longer hardcode it at all — they read `.vault-addr` at build time and
+        # render `{shortVault}` — so this checks the BUILT pages rather than their source,
+        # which is the only place the two could still disagree. README is prose and is
+        # checked as prose.
+        run: |
+          a=$(cat .vault-addr)
+          grep -q "$a" README.md || { echo "::error::README does not carry $a"; exit 1; }
+          short="${a:0:10}…${a: -4}"
+          for f in out/index.html out/dashboard.html; do
+            grep -q "$short" "$f" || { echo "::error::$f does not carry $short"; exit 1; }
+          done
+          echo "ok  $a"
 
       - name: Assert the built pages are complete documents
         # The framework emits the document shell now, and this gate predates it: the pages
