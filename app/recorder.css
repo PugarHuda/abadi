@@ -196,6 +196,9 @@ h3.sub { margin: calc(var(--chart) * 1.5) 0 8px; font-size: 17px; font-weight: 6
 p { max-width: 68ch; }
 .note { margin: 0 0 var(--chart); max-width: 68ch; }
 .note b { font-weight: 600; }
+/* A 42-character address has no break opportunity in it, so on a 375px screen it pushed the
+   whole page 42px wider than the viewport and every section under it scrolled sideways. */
+.note a { overflow-wrap: anywhere; }
 small, .aside { color: var(--pencil); font-size: 14px; }
 
 /* Superseded, not deleted: the record shows its own strata. */

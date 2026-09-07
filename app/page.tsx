@@ -34,11 +34,40 @@ export default function Home() {
 
         <main id="main" tabIndex={-1}>
 
+        {/* The problem before the mechanism.
+          *
+          * The thesis line below is the better sentence and it was doing the wrong job: it
+          * describes what this vault does, which only lands once you already know what a pair
+          * is. A reader arriving cold needs the problem first — and on this venue the problem
+          * is one measured fact, so it is stated as one. */}
+        <p className="kicker">
+          DreamDEX runs twelve series at once and quotes a flat <b>2.9%</b> on every one of
+          them. That is the signature of nobody being on the other side.
+        </p>
+
         <h2 className="thesis">The price moves. <em>The pair doesn’t.</em></h2>
         <p className="lede">
           Abadi quotes both sides of a DreamDEX event market, keeps one of each when they fill,
           and collects the difference. It never needs an opinion about the outcome.
         </p>
+
+        {/* The proof and the invitation, above the fold.
+          *
+          * The measurement was four screens down, and it is the one claim in this hackathon
+          * nobody else makes. The nav's "Open the app" is navigation, not an invitation; a
+          * reader asking "what do I do here" had nothing to answer them until the footer. */}
+        <div className="offer">
+          <div className="proof">
+            <span className="k">measured</span>
+            <b>0.0249 → 0.0192</b>
+            <span>the venue's own spread, without this vault and with it — rebuilt from its
+            order rows over 70 windows, tighter on 66 and wider on none</span>
+          </div>
+          <div className="acts">
+            <a className="btn primary" href="/app">Open the app</a>
+            <a className="btn" href="/dashboard">See the working</a>
+          </div>
+        </div>
 
         {/* ============ the instrument ============ */}
         <div className="carriage">

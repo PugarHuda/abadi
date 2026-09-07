@@ -39,7 +39,7 @@ export default function AppPage() {
              there is nothing to choose and this stays empty. */}
         <div className="wallets" id="wallets" hidden={true} role="group" aria-label="Choose a wallet"></div>
         <p className="note nowallet" id="nowallet" hidden={true}>
-          No wallet in this browser. Install <a href="https://metamask.io/download/" target="_blank" rel="noopener">MetaMask</a>
+          No wallet in this browser. Install <a href="https://metamask.io/download/" target="_blank" rel="noopener">MetaMask</a>{" "}
           or <a href="https://rabby.io/" target="_blank" rel="noopener">Rabby</a>, then reload this page. Everything below
           still reads live from the chain without one.
         </p>

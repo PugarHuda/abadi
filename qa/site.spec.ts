@@ -115,6 +115,11 @@ test.describe("landing", () => {
     const sum = page.locator("#pSum");
 
     await expect(sum).toHaveText("1.000");
+    /* `boundingBox()` is viewport coordinates and does not scroll, so `page.mouse` aims at
+       whatever is on screen right now. Both pointer tests here passed for weeks only because
+       the control happened to sit above the fold; adding two paragraphs to the hero pushed it
+       below one and every click landed on nothing, still reading a valid 0.620. */
+    await track.scrollIntoViewIfNeeded();
     const box = (await track.boundingBox())!;
 
     for (const frac of [0.08, 0.31, 0.5, 0.77, 0.96]) {
@@ -169,6 +174,7 @@ test.describe("landing", () => {
     const page = await ctx.newPage();
     await page.goto(BASE + "/", { waitUntil: "networkidle" });
     const track = page.locator("#track");
+    await track.scrollIntoViewIfNeeded();
     const box = (await track.boundingBox())!;
     const before = Number(await page.locator("#pUp").textContent());
     await page.touchscreen.tap(box.x + box.width * 0.9, box.y + box.height / 2);

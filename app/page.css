@@ -118,3 +118,51 @@
     .leg, .sum { grid-template-columns: 5rem 4.5rem 1fr; gap: 10px; }
     .ran li { grid-template-columns: 1fr; }
   }
+
+/* ------------------------------------------------------------------ the offer
+ *
+ * Three things were missing from the first screen, and none of them is a style: the
+ * problem, the proof, and something to do. The page led with its mechanism, buried its
+ * one uncontested measurement four screens down, and left the only invitation as a
+ * navigation button in the corner. All three are stated in the recorder's own ink —
+ * nothing here is a new colour or a new face. */
+
+/* Prose in the grotesque, the measurement in mono — DESIGN.md's rule, which the first
+   draft of this line broke by setting the whole sentence in mono. A paragraph in a
+   monospace face reads as code and the eye skips it, which is the opposite of what a
+   standfirst is for. */
+.kicker {
+  margin: 0 0 16px;
+  font-size: 16px; color: var(--pencil);
+  max-width: 58ch; line-height: 1.55;
+}
+.kicker b { font-family: var(--mono); font-size: 15px; font-weight: 500; color: var(--ink); }
+
+.offer {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 18px 28px;
+  margin: 0 0 calc(var(--chart) * 2);
+  padding: 18px 22px;
+  background: var(--stock-sunk);
+  border-top: 1px solid var(--rule-major); border-bottom: 1px solid var(--rule-major);
+}
+.proof { flex: 1 1 340px; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; }
+/* The measurement reads as an instrument reading, which is what it is. */
+.proof .k {
+  font-family: var(--mono); font-size: 12px; font-stretch: 80%;
+  letter-spacing: .08em; text-transform: uppercase; color: var(--pencil);
+}
+.proof b {
+  font-family: var(--mono); font-size: clamp(20px, 2.4vw, 26px); font-weight: 500;
+  letter-spacing: -.01em; color: var(--ink);
+}
+.proof span:last-child { flex: 1 1 100%; font-size: 14.5px; color: var(--pencil); line-height: 1.5; max-width: 60ch; }
+.acts { display: flex; flex-wrap: wrap; gap: 8px; }
+
+@media (max-width: 620px) {
+  /* `flex: 1 1 340px` is a width while the band is a row and a HEIGHT the moment it turns
+     into a column: 340px of it, which a wrapped flex container then spreads its lines out
+     to fill. That is where the two hand-sized holes in the first phone draft came from. */
+  .offer { flex-direction: column; align-items: stretch; }
+  .proof { flex: 0 0 auto; }
+  .acts .btn { flex: 1 1 100%; text-align: center; }
+}

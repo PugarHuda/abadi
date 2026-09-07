@@ -285,6 +285,18 @@ test.describe("app without a wallet", () => {
     await expect(page.locator("#usdcAddr")).toHaveAttribute("href", new RegExp("/address/" + USDC + "$", "i"));
   });
 
+  test("does not scroll sideways on a phone", async ({ page }) => {
+    // The other three pages have had this test for weeks; /app, the one page with two
+    // 42-character addresses printed in a paragraph, did not — and was 42px wider than
+    // a 375px screen, which drags every section below it sideways as you scroll.
+    await page.setViewportSize({ width: 375, height: 780 });
+    await page.goto(BASE + "/app", { waitUntil: "networkidle" });
+    const overflow = await page.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    );
+    expect(overflow, "horizontal scroll on mobile").toBeLessThanOrEqual(1);
+  });
+
   test("says how many signatures a deposit really costs", async ({ page }) => {
     await page.goto(BASE + "/app", { waitUntil: "networkidle" });
     // The approval is for exactly the deposit, so the deposit spends it: there is no
