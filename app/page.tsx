@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import type { Metadata } from "next";
+import Script from "next/script";
 import "./page.css";
 
 export const metadata: Metadata = {
@@ -214,9 +215,9 @@ export default function Home() {
         </footer>
 
       </div>
-      <script defer src="/fetchin.js" />
-      <script defer src="/live.js" />
-      <script defer src="/home-inline.js" />
+      <Script src="/fetchin.js" strategy="afterInteractive" />
+      <Script src="/live.js" strategy="afterInteractive" />
+      <Script src="/home-inline.js" strategy="afterInteractive" />
     </>
   );
 }

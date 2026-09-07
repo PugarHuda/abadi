@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import "./page.css";
 
 export const metadata: Metadata = {
@@ -151,8 +152,8 @@ export default function AppPage() {
         </main>
 
       </div>
-      <script defer src="/fetchin.js" />
-      <script defer src="/app.js" />
+      <Script src="/fetchin.js" strategy="afterInteractive" />
+      <Script src="/app.js" strategy="afterInteractive" />
     </>
   );
 }

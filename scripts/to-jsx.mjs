@@ -166,6 +166,7 @@ for (const [file, cfg] of Object.entries(ROUTES)) {
   const lines = [];
   if (usesVault) lines.push('import { readFileSync } from "node:fs";');
   lines.push('import type { Metadata } from "next";');
+  if (srcs.length) lines.push('import Script from "next/script";');
   lines.push('import "./' + cssName + '";');
   lines.push("");
   lines.push("export const metadata: Metadata = {");
@@ -193,7 +194,17 @@ for (const [file, cfg] of Object.entries(ROUTES)) {
   lines.push("  return (");
   lines.push("    <>");
   for (const l of jsx.split("\n")) lines.push(l.trim() ? "      " + l : "");
-  for (const s of srcs) lines.push("      <script defer src=" + JSON.stringify(s) + " />");
+  /* `next/script` with `afterInteractive`, NOT a plain `<script defer>`.
+   *
+   * These modules mutate the DOM the moment they run — they disable buttons, write status
+   * lines, fill panels. A deferred script wins that race against React's hydration on a fast
+   * machine and loses it on a slow one: hydration then finds markup it did not render, throws
+   * the subtree away, and every listener attached a moment earlier goes with it. It passed
+   * locally and took twenty-two tests down in CI, which is exactly the shape of failure that
+   * timing bugs have. `afterInteractive` is the framework's guarantee that hydration is done. */
+  for (const s of srcs) {
+    lines.push("      <Script src=" + JSON.stringify(s) + ' strategy="afterInteractive" />');
+  }
   lines.push("    </>");
   lines.push("  );");
   lines.push("}");

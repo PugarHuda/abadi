@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import "./page.css";
 
 export const metadata: Metadata = {
@@ -147,7 +148,7 @@ export default function Deck() {
         <button id="prev" aria-label="Previous slide">←</button>
         <button id="next" aria-label="Next slide">→</button>
       </div>
-      <script defer src="/deck-inline.js" />
+      <Script src="/deck-inline.js" strategy="afterInteractive" />
     </>
   );
 }

@@ -8662,3 +8662,14 @@ keeper exited 1 -- see the ALERT lines above
 2026-09-07 02:27:32 fv       BTC-0-07SEP26-0400/tUSDC  fair 0.155  spot 79997.50 strike 80346.75 (feed tick at tradingStart+0s)  sigma 32.4% on 239 M1 returns (half-life 92m, lambda 0.9925)  5548s left  d2 -1.014  feed 2s old  book mid 0.071  edge 0.084
 2026-09-07 02:27:32 skip     BTC-0-07SEP26-0400/tUSDC  mid 0.071 — priced as near-certain, no two-sided trade here
 2026-09-07 02:27:35 cycle 1  NAV 9317.77  idle 9317.77  resting 0.00  share 0.974013
+2026-09-07 02:41:05 vault    0xFd9c93581ADD42B9B13ba5550542Fc7315775cD9
+2026-09-07 02:41:05 operator 0x39D2bae5EAedA9283535dDC98F1991c81eD5Cd7E
+2026-09-07 02:41:05 interval 30s  active 3  size 100 (x0.5 on 900s)  dead 6 ticks  momentum 3 ticks/20s  gas floor 0.5 STT  1 cycles
+2026-09-07 02:41:05 fv       ON  refuse over 0.1 of edge, skew up to 3 ticks toward fair; no model means book-only and a log line saying so
+2026-09-07 02:42:11 tiers    quoting 14400s, 900s only — 3600s and 86400s are left alone on the ledger's record
+2026-09-07 02:42:11 sampled  2 books in 0.4s; second look in 20s
+2026-09-07 02:42:33 fv       ETH-0-07SEP26-0400/tUSDC  fair 0.845  spot 2530.59 strike 2514.59 (feed tick at tradingStart+0s)  sigma 51.4% on 239 M1 returns (half-life 77m, lambda 0.9911)  4648s left  d2 1.014  feed 1s old  book mid 0.794  edge 0.051
+2026-09-07 02:42:33 skip     ETH-0-07SEP26-0400/tUSDC  mid moved 25 ticks in 20s — trending, not quoting
+2026-09-07 02:42:34 fv       BTC-0-07SEP26-0400/tUSDC  fair 0.499  spot 80346.32 strike 80346.75 (feed tick at tradingStart+0s)  sigma 34.8% on 239 M1 returns (half-life 77m, lambda 0.9911)  4646s left  d2 -0.003  feed 2s old  book mid 0.500  edge 0.002
+2026-09-07 02:42:34 skip     BTC-0-07SEP26-0400/tUSDC  mid moved 42 ticks in 20s — trending, not quoting
+2026-09-07 02:42:38 cycle 1  NAV 9317.77  idle 9317.77  resting 0.00  share 0.974013
