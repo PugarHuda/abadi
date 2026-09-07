@@ -9148,3 +9148,23 @@ keeper exited 1 -- see the ALERT lines above
 2026-09-07 14:11:39 ALERT    cycle-failed  cycle 1 threw and did no further work this pass: @somnia-chain/markets-sdk: indexer RegistryMarkets failed: The operation was aborted due to timeout
 2026-09-07 14:11:39 run ended with 1 alert(s) — exiting 1
 keeper exited 1 -- see the ALERT lines above 
+2026-09-07 14:26:04 vault    0xFd9c93581ADD42B9B13ba5550542Fc7315775cD9
+2026-09-07 14:26:04 operator 0x39D2bae5EAedA9283535dDC98F1991c81eD5Cd7E
+2026-09-07 14:26:04 interval 30s  active 3  size 100 (x0.5 on 900s)  dead 6 ticks  momentum 3 ticks/20s  gas floor 0.5 STT  1 cycles
+2026-09-07 14:26:04 fv       ON  refuse over 0.1 of edge, skew up to 3 ticks toward fair; no model means book-only and a log line saying so
+2026-09-07 14:27:00 skip     slot 0 5e8d  completing costs 0.850 on top of 0.433 = 1.283 the pair, over the 1.060 line — carrying the leg instead
+2026-09-07 14:27:12 tiers    quoting 14400s, 900s only — 3600s and 86400s are left alone on the ledger's record
+2026-09-07 14:27:13 sampled  1 books in 0.4s; second look in 20s
+2026-09-07 14:27:37 fv       ETH-0-07SEP26-1600/tUSDC  fair 0.376  spot 2485.61 strike 2489.40 (feed tick at tradingStart+0s)  sigma 36.7% on 239 M1 returns (half-life 92m, lambda 0.9925)  5546s left  d2 -0.316  feed 0s old  book mid 0.393  edge 0.017
+2026-09-07 14:27:37 skip     ETH-0-07SEP26-1600/tUSDC  mid moved 18 ticks in 20s — trending, not quoting
+2026-09-07 14:27:40 cycle 1  NAV 9210.08  idle 9155.78  resting 54.30  share 0.962756
+2026-09-07 14:41:02 vault    0xFd9c93581ADD42B9B13ba5550542Fc7315775cD9
+2026-09-07 14:41:02 operator 0x39D2bae5EAedA9283535dDC98F1991c81eD5Cd7E
+2026-09-07 14:41:02 interval 30s  active 3  size 100 (x0.5 on 900s)  dead 6 ticks  momentum 3 ticks/20s  gas floor 0.5 STT  1 cycles
+2026-09-07 14:41:02 fv       ON  refuse over 0.1 of edge, skew up to 3 ticks toward fair; no model means book-only and a log line saying so
+2026-09-07 14:42:02 skip     slot 0 5e8d  completing costs 0.938 on top of 0.433 = 1.371 the pair, over the 1.060 line — carrying the leg instead
+2026-09-07 14:42:18 tiers    quoting 14400s, 900s only — 3600s and 86400s are left alone on the ledger's record
+2026-09-07 14:42:18 sampled  1 books in 0.4s; second look in 20s
+2026-09-07 14:42:42 fv       ETH-0-07SEP26-1600/tUSDC  fair 0.178  spot 2478.98 strike 2489.40 (feed tick at tradingStart+0s)  sigma 37.5% on 239 M1 returns (half-life 77m, lambda 0.9911)  4640s left  d2 -0.923  feed 0s old  book mid 0.214  edge 0.036
+2026-09-07 14:42:42 skip     ETH-0-07SEP26-1600/tUSDC  mid moved 4 ticks in 20s — trending, not quoting
+2026-09-07 14:42:44 cycle 1  NAV 9210.08  idle 9155.78  resting 54.30  share 0.962756

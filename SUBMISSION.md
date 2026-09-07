@@ -1,37 +1,23 @@
 # Submission — everything DoraHacks asks for, ready to paste
 
-**Abadi is not submitted yet.** Checked again 2026-09-07 11:25 UTC: **forty-nine BUIDLs are
-in**, and none of them is this one. The page says one day left.
+**SUBMITTED 2026-09-07 13:52:30 UTC.** It is on the board as *Abadi*, Open Track, with the
+repo, `https://abadi-wheat.vercel.app`, the logo tile and the film at
+`https://youtu.be/2Bnbz8VKmUQ`.
 
-**The deadline is 2026-09-08 18:00 UTC.** That is `timeline_end` on the hackathon's own
-record, and it is 01:00 on the 9th in Jakarta — this file said "2026-09-09 01:00 UTC" until
-now, which is the local hour mislabelled as UTC and seven hours of runway that does not
-exist.
+**The deadline was EXTENDED to 2026-09-11 18:00 UTC** — 2026/09/12 01:00 in Jakarta, and the
+hackathon record now carries `is_extended: true`. That is four more days than this file was
+written against, and it changes what is worth doing rather than only when: see *What the
+extension buys* at the end.
 
-**The field went 13 → 34 → 49 between the 2nd and the 7th**, and ten of those arrived in the
-last twenty hours: Project Transparency Analyzer, Onyxpulse, Kalibra, Keel, Puls3, AEGIR MART,
-Proofside, Watchman, DreamDEX Up/Down, WindowGuard. **None of the ten is a market-making
-vault** — they are consumer one-tap apps, pre-trade safety checks and scoring tools — so the
-thesis is not more crowded than it was yesterday, only the field is.
+**The field is 52 BUIDLs and 376 hackers.** Three arrived after the extension was announced,
+and one of them is worth reading: **Sequence** (JDollar) — "isolated prediction-market trades
+into programmable, outcome-driven strategies… Somnia Reactivity and user-owned vaults execute
+each step automatically within fixed risk limits." That is a vault plus the reactivity
+precompile, which is this project's own shape. **Ballast** remains the closest on thesis.
 
-One of them is worth knowing about before a judge mentions it: **Henessay's DreamDEX Up/Down
-"ships with a 21-entry feedback report"**, which is more entries than this project's sixteen.
-The answer is not to count higher. Ours are filed on the venue's own tracker as
-dreamdex-bot-kit#26–#41 with a pull request behind them, which is a different claim from a
-report in a repository, and it is the claim to make. **Ballast** is the closest: a pooled
-counterparty quoting both sides of every window, opening on a measurement of its own — "83.5%
-of 5,000 DreamDEX markets never saw a single trade" — which is this project's move as well as
-its thesis. HOUSE rests both sides from a wallet on the same no-inventory mechanism, almost
-word for word. DreamVault is the depositor half. TEMPO, HedgePulse and Perennis all put
-capital into the book. Anything below that counts or ranks the field has to be re-checked
-against the live list before it is pasted — see the note under **Vision**.
-
-The list is at `https://dorahacks.io/api/v1/hub/hackathons/2358/buidls?page=1&page_size=60`,
-which answers 405 to a plain fetcher and needs a **headed** browser; fetch it from inside the
-page context once Cloudflare clears.
-
-Submitting needs the DoraHacks account, so it is the one step nobody else can do. This file
-exists so it takes ten minutes rather than an evening.
+The submitted film says **148 tests** and the repository says 149: a governor-cap bound landed
+between the upload and the re-render. Re-uploading is a two-minute job and the extension makes
+it free — `video/out/abadi-demo.mp4` is current, and the BUIDL's video field takes a new link.
 
 Submit at: **https://dorahacks.io/hackathon/event-contracts/buidl** → *Submit BUIDL*.
 
@@ -247,3 +233,36 @@ is the one claim in this field that no other submission makes.
 
 **3. Do not lead with "the only one".** Thirty-four BUIDLs are in and at least six put
 capital into this book. Lead with the measurement, which is still uncontested.
+
+---
+
+## What the extension buys
+
+Four days changes one decision that was settled only by the clock.
+
+**`node scripts/attest.ts` says MISMATCH, and it is the most checkable claim in this
+submission.** `src/` is ahead of the deployed vault by three guards now:
+
+| | |
+|---|---|
+| `SizeBelowFilled` | `reduceQuote` could mark a partially filled slot below the pairs it holds and move the share price 12% with nothing sent anywhere |
+| bounded `setRiskParams` / `setGrid` | `minHalfSpread` at 0, `headroomBps` past half a tier, or a zero tick each brick quoting by typing |
+| `MAX_DEPLOYED_BPS` | the book-wide cap is a `uint16` with no ceiling, so 65,535 reads as a limit and means 655% of NAV |
+
+All three are governor-or-operator-only and the operator, governor and deployer are one key,
+so nothing is at risk that this project does not already control. They are still not on chain,
+and a judge who runs the command the README gives them sees a failure.
+
+**Redeploying was refused for a reason that no longer holds.** It moved the address the film,
+the site and the evidence cite, two days out. With four days there is room to do it properly:
+disable both keepers, `forge test`, `forge create`, `attest`, `forge verify-contract`, withdraw
+the idle from the old vault, approve and deposit, `setOperator`, send 33 STT, `npm run risk --
+--send` (the exposure caps reset to 0 on every redeploy), write `.vault-addr`, `attest` again,
+rebuild the site, re-run the ledger, re-record the film, re-enable the keepers. Roughly 0.4 STT
+of gas and an afternoon, and the recipe is in `docs/evidence/redeploy-2026-08-31.md` because it
+has been done before.
+
+**It is the user's capital and their submitted BUIDL, so it is their call.** What it buys is a
+green `attest`, a share-price hole closed on chain rather than in a file, and one fewer
+paragraph of explanation on the front page. What it costs is a new address on a submission
+already on the board, and a re-render.
