@@ -30,8 +30,17 @@ re-attached to the synthesiser's bare words, and cards break on a full stop befo
 break on a length cap. Remotion is free for individuals and companies of three or fewer;
 this is a solo entry, which is the licence it ships under.
 
-Four things in this pipeline are load-bearing and should not be simplified away:
+Five things in this pipeline are load-bearing and should not be simplified away:
 
+- **The pointer is drawn by the page, not by the recorder.** Playwright's video captures the
+  page and nothing else: `page.mouse` and `page.click` dispatch real events and leave no mark
+  on screen, so every shot showed a deck advancing and a panel scrolling with nothing visibly
+  doing it. `video/cursor.mjs` injects a cursor element before any page script runs and moves
+  it from the same `mousemove` events a hand would produce — the clicks are Playwright's own,
+  only the picture of the pointer is drawn. Two things it has to get right: the page is scaled
+  with CSS `zoom` for filming, so the drawn pointer divides the event coordinates back out,
+  and `boundingBox()` is ALREADY in the zoomed space, so a click must not be scaled again —
+  doing that sent the click past the button and the deck never advanced.
 - **A panel is checked before it is filmed.** The dashboard's own `data-state` has to read
   `live`. The indexer fails about one call in five and the explorer went down entirely on
   the 2nd; a shot of a panel reading `unreachable` is not footage of a live dashboard.
@@ -93,7 +102,7 @@ to be a day old — this table is the checklist for the next one, so it tracks t
 
 | Claim | The number |
 |---|---|
-| Unit tests | **148** passing (149 total; the fork suite skips without `FORK_RPC`). The rendered film says **146** and its terminal shot shows 146 — true at render time, two governor-setter tests behind now. A re-render for that reason alone is not worth 2:56 of pipeline; a re-render for any other reason must re-run `npm run video:vo` for that line. |
+| Unit tests | **148** passing (149 total; the fork suite skips without `FORK_RPC`). The voice says it and `video/assets/forge-test.txt` shows it — the drift from 146 closed on the 2026-09-07 re-render. |
 | Third-party conformance | a16z `ERC4626Test`, **26/26** fuzzed properties — `test/LiquidityVault.conformance.t.sol` |
 | Fork tests against the real venue | **9**, all passing — `node scripts/fork-test.ts` |
 | Coverage | 97.28% of lines, 43/43 functions on `LiquidityVault.sol` |

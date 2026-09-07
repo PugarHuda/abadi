@@ -17,6 +17,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
 import { HEIGHT, SITE, WIDTH } from "./script.mjs";
+import { install, park, moveTo, clickOn } from "./cursor.mjs";
 
 const run = promisify(execFile);
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -133,6 +134,10 @@ async function film(browser, scene, seconds) {
       reducedMotion: "no-preference",
     });
     const page = await context.newPage();
+    /* The pointer has to be installed before anything navigates: it is an init script, so it
+     * runs in every document this context loads. Without it the film shows a deck advancing
+     * and a panel scrolling with nothing visibly doing either. */
+    await install(page);
     // A scrollbar and a caret are furniture the film does not need.
     await page.addStyleTag({ content: "::-webkit-scrollbar{display:none}" }).catch(() => {});
 
@@ -176,9 +181,19 @@ async function film(browser, scene, seconds) {
       // The camera is rolling from goto; everything below is the shot itself.
       const started = Date.now();
       if (shot.type === "deck") {
-        for (let i = 0; i < shot.slide; i++) {
+        /* Advance to the slide BEFORE the target with the pointer parked off to the side,
+         * then make the last one a visible click. A shot is as long as its line of voice-over
+         * and no longer, so eight narrated clicks would eat the scene; one shows the deck is
+         * something a person drives, which is the whole point of putting a pointer in. */
+        await park(page, WIDTH * 0.62, HEIGHT * 0.42);
+        for (let i = 0; i < Math.max(0, shot.slide - 1); i++) {
           await page.click("#next");
-          await sleep(260);
+          await sleep(200);
+        }
+        if (shot.slide > 0) {
+          await sleep(320);
+          await clickOn(page, "#next", 620);
+          await sleep(420);
         }
         // The deck's own pager is navigation furniture, not the slide. Retire it once
         // we have arrived, or every shot carries a pair of arrows in the corner.
@@ -189,11 +204,16 @@ async function film(browser, scene, seconds) {
       } else if (shot.type === "explorer") {
         // Read down through the log list rather than jumping into the middle of it —
         // the events are the evidence, and a cut that lands on raw topic hex shows none.
+        await park(page, WIDTH * 0.78, HEIGHT * 0.3);
         await sleep(700);
         await drift(page, 1500, seconds * 1000);
       } else if (shot.anchor) {
+        await park(page, WIDTH * 0.5, HEIGHT * 0.22);
         await sleep(900);
         await glideTo(page, shot.anchor, 1800);
+        // Land the pointer on the panel the voice is talking about, rather than leaving it
+        // stranded wherever the scroll happened to end.
+        await moveTo(page, WIDTH * 0.42, HEIGHT * 0.55, 900);
       }
 
       // Hold until the voice is done, plus a tail so Remotion never runs out of frames.

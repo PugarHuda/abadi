@@ -73,6 +73,13 @@ cost, and what was fixed is part of the positioning, not an apology for it.
   held to (25–91 KB by page), and React with the App Router runtime is a separate **447 KB**,
   identical on every page and capped so it cannot drift. Merging them would have meant one
   600 KB number with the old standard lost inside it. LCP is still inside Google's 2.5s.
+- Film: `video/`, one script (`video/script.mjs`) that owns both the voice-over and the shot it
+  plays over, rebuilt end to end with `npm run video`. edge-tts speaks each line and returns a
+  word boundary per word, so the subtitles land on the word with no alignment step; Playwright
+  drives the live site and the explorer and draws its own pointer, so a demo of software
+  somebody operates shows it being operated; Remotion lays voice, footage and captions on one
+  timeline. Every number the voice states is checked against the chain before a render —
+  `docs/DEMO-SCRIPT.md` is that checklist and the record of what each re-record changed.
 - Constraint: nothing on the site may be a mock, placeholder, or "coming soon". A number
   is live from chain or it is not shown; a failure state says so.
 - Terminology: UP/DOWN (the venue's), "complete set", "naked leg", "one-sided fill",
