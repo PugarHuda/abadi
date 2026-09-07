@@ -14,7 +14,11 @@ set LOG=docs\evidence\deploy-retry.log
 
 for /f "tokens=*" %%t in ('powershell -NoProfile -Command "(Get-Date).ToUniversalTime().ToString('yyyy-MM-dd HH:mm:ss')"') do set NOW=%%t
 
-vercel deploy --prebuilt --prod --yes > "%TEMP%\abadi-deploy.txt" 2>&1
+REM `call`, and it matters: the CLI on this machine is vercel.cmd, and one batch file
+REM invoking another without `call` hands control over and never comes back. Everything
+REM below this line -- the log, the route check, the task removing itself -- was dead
+REM code, which is why no log ever appeared while the task ran every 30 minutes.
+call vercel deploy --prebuilt --prod --yes > "%TEMP%\abadi-deploy.txt" 2>&1
 findstr /C:"api-deployments-free-per-day" "%TEMP%\abadi-deploy.txt" >nul
 if %ERRORLEVEL%==0 (
   echo %NOW% still capped>> "%LOG%"
