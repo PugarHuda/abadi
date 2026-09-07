@@ -15,6 +15,13 @@
  */
 import { test, expect, type Page } from "@playwright/test";
 
+import { readFileSync } from "node:fs";
+
+/* The vault the page is configured to read, not a literal. A hardcoded address here kept
+ * answering for a vault that had been retired, so the stub and the page disagreed about
+ * which contract the test was about — and every assertion still passed. */
+const VAULT = readFileSync(".vault-addr", "utf8").trim().toLowerCase();
+
 const BASE = process.env.BASE ?? "https://abadi-wheat.vercel.app";
 const MARKET = "0x" + "ab".repeat(32);
 
@@ -34,7 +41,7 @@ type Order = { isBid: boolean; price: string; quantityRemaining: string; owner: 
 
 /** Answer both reads the panel makes: the vault's slots, and the venue's open orders. */
 async function stub(page: Page, opts: { active: boolean; orders?: Order[]; bookFails?: boolean }) {
-  const vault = "0xfd9c93581add42b9b13ba5550542fc7315775cd9";
+  const vault = VAULT;
 
   await page.route("**/api.infra.testnet.somnia.network/**", async (route) => {
     const raw = route.request().postData();

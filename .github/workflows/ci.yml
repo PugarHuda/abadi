@@ -149,6 +149,13 @@ jobs:
           done
           echo "ok  $a"
 
+      - name: No page may name a retired vault
+        # The address gate above asks whether the CURRENT address is present. It cannot see a
+        # wrong one sitting beside it, which is how the landing page's explorer link and the
+        # film's shot list both went on pointing at a vault retired an hour earlier — and how
+        # two browser specs went on stubbing reads for it while every assertion passed.
+        run: node scripts/no-retired-address.mjs
+
       - name: Assert the built pages are complete documents
         # The framework emits the document shell now, and this gate predates it: the pages
         # were once published as raw content and the live site sat in quirks mode with no

@@ -19,6 +19,7 @@
  * word. The measurement is still ours alone; being the only maker is not. Never restore a
  * superlative about the field without re-reading the field. */
 
+import { readFileSync } from "node:fs";
 export const VOICE = "en-US-AndrewMultilingualNeural";
 /* DEMO-SCRIPT.md says speak slower than feels natural, and the first cut obeyed it at -6%:
  * 121 words a minute and a four-minute-fifteen film, against a submission that allows
@@ -31,7 +32,9 @@ export const WIDTH = 1920;
 export const HEIGHT = 1080;
 
 export const SITE = "https://abadi-wheat.vercel.app";
-export const VAULT = "0xFd9c93581ADD42B9B13ba5550542Fc7315775cD9";
+/* Read, not typed. A literal here survived a redeploy once and pointed the film at a vault
+ * that had been retired an hour earlier. */
+export const VAULT = readFileSync(new URL("../.vault-addr", import.meta.url), "utf8").trim();
 export const SETTLE_TX =
   "0x2f75001ea73bd66cf62649841542a2d8b74cad22afa1513e5e6463730a009f50";
 

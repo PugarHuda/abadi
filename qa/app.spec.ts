@@ -13,6 +13,13 @@
 import { test, expect, type Page } from "@playwright/test";
 import { toFunctionSelector } from "viem";
 
+import { readFileSync } from "node:fs";
+
+/* The vault the page is configured to read, not a literal. A hardcoded address here kept
+ * answering for a vault that had been retired, so the stub and the page disagreed about
+ * which contract the test was about — and every assertion still passed. */
+const VAULT = readFileSync(".vault-addr", "utf8").trim().toLowerCase();
+
 const BASE = process.env.BASE ?? "https://abadi-wheat.vercel.app";
 const ACCOUNT = "0x39d2bae5eaeda9283535ddc98f1991c81ed5cd7e";
 const USDC = "0x70a86d8842fb63c4ad2b7cdddf530ebf1bb25d8e";
@@ -171,8 +178,8 @@ test.describe("app without a wallet", () => {
         return reply([{
           id: "0xfa6580",
           topics: ["0x" + "11".repeat(32), topic, "0x" + "00".repeat(32), "0x" + "00".repeat(32)],
-          owner: "0xfd9c93581add42b9b13ba5550542fc7315775cd9",
-          handler_contract_address: "0xfd9c93581add42b9b13ba5550542fc7315775cd9",
+          owner: VAULT,
+          handler_contract_address: VAULT,
           handler_function_selector: "0x53edf33d",
           gas_limit: "0xf42400",
         }]);

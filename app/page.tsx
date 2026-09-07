@@ -193,7 +193,7 @@ export default function Home() {
           <a href="/dashboard">Read the evidence</a>
           <a href="/deck">Deck</a>
           <a href="https://github.com/PugarHuda/abadi">Source</a>
-          <a href="https://shannon-explorer.somnia.network/address/0xFd9c93581ADD42B9B13ba5550542Fc7315775cD9">Vault on the explorer</a>
+          <a href={`https://shannon-explorer.somnia.network/address/${vault}`}>Vault on the explorer</a>
         </div>
 
         </main>
