@@ -11,6 +11,15 @@
         "rule": "line-length",
         "value": "~138 chars/line (aim for <80)",
         "createdAt": "2026-08-28T05:05:45.097Z"
+      },
+      {
+        "rule": "low-contrast",
+        "value": "*",
+        "files": [
+          "*/app"
+        ],
+        "createdAt": "2026-09-07T03:47:17.325Z",
+        "reason": "Pixel sampler crossing a control's edge, not a real ratio. /app's primary buttons are stock on ink (about 13:1) and its secondary text is 9.1:1; the detector reads the rendered image, so a sample that straddles a dark button's anti-aliased boundary on a stock-sunk panel returns 3.2-4.4:1 and the reported colours are always blends that appear in no stylesheet (#5e635f on #bcbbb0 = ink at 59% over ink at 22% over stock-sunk). axe-core runs the WCAG colour-contrast rule against the DOM on this page in qa/a11y.spec.ts and reports it clean, and qa/a11y.spec.ts also asserts the busy state cannot be shown with opacity. Scoped to this page only."
       }
     ]
   }
