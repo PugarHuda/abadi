@@ -9202,3 +9202,18 @@ keeper exited 1 -- see the ALERT lines above
 2026-09-07 16:13:06 ALERT    cycle-failed  cycle 1 threw and did no further work this pass: @somnia-chain/markets-sdk: indexer RegistryMarkets failed: The operation was aborted due to timeout
 2026-09-07 16:13:06 run ended with 1 alert(s) — exiting 1
 keeper exited 1 -- see the ALERT lines above 
+2026-09-07 16:26:07 vault    0xF5571c653B142B87BB552FB212e244bd80693f24
+2026-09-07 16:26:07 operator 0x39D2bae5EAedA9283535dDC98F1991c81eD5Cd7E
+2026-09-07 16:26:07 interval 30s  active 3  size 100 (x0.5 on 900s)  dead 6 ticks  momentum 3 ticks/20s  gas floor 0.5 STT  1 cycles
+2026-09-07 16:26:07 fv       ON  refuse over 0.1 of edge, skew up to 3 ticks toward fair; no model means book-only and a log line saying so
+2026-09-07 16:27:35 tiers    quoting 14400s, 900s only — 3600s and 86400s are left alone on the ledger's record
+2026-09-07 16:27:35 sampled  0 books in 0.0s; second look in 20s
+2026-09-07 16:27:40 cycle 1  NAV 9155.78  idle 9155.78  resting 0.00  share 1.000000
+2026-09-07 16:41:05 vault    0xF5571c653B142B87BB552FB212e244bd80693f24
+2026-09-07 16:41:05 operator 0x39D2bae5EAedA9283535dDC98F1991c81eD5Cd7E
+2026-09-07 16:41:05 interval 30s  active 3  size 100 (x0.5 on 900s)  dead 6 ticks  momentum 3 ticks/20s  gas floor 0.5 STT  1 cycles
+2026-09-07 16:41:05 fv       ON  refuse over 0.1 of edge, skew up to 3 ticks toward fair; no model means book-only and a log line saying so
+2026-09-07 16:41:53 cycle failed: @somnia-chain/markets-sdk: indexer RegistryMarkets failed: The operation was aborted due to timeout
+2026-09-07 16:41:53 ALERT    cycle-failed  cycle 1 threw and did no further work this pass: @somnia-chain/markets-sdk: indexer RegistryMarkets failed: The operation was aborted due to timeout
+2026-09-07 16:41:53 run ended with 1 alert(s) — exiting 1
+keeper exited 1 -- see the ALERT lines above 
