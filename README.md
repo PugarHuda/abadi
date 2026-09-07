@@ -300,28 +300,20 @@ bot skips arming and says so until then. `sweepNative` brings the reserve back o
 
 - Quoting inside the incumbent's spread, top of book, both legs filling into complete sets
 - **The vault is down, and the number that says so is the one to read.** Per share is
-  **0.972372** — 9,302.07 of assets on 9,566.37 of shares, so anyone who deposited at par
-  is down **264.30 tUSDC, −2.76%**. Across **203 episodes on 13 vaults**: 156 closed into a
-  complete set, 41 one-sided, 2 with neither leg filled, 4 still open, and **−403.50
-  realised on 19,544.25 of basis**. 21% of filled quotes were adverse; the strategy needs
-  under about 9%. The vault before this one ended at per share **0.951368** — **−6.84%** at
-  its worst reading on the 31st, for anyone who had deposited. `scripts/ledger.ts` reads
-  every figure back off the chain across all thirteen addresses, so a redeploy does not
-  clear the history; it only resets the denominator of one of them.
+  **0.967282** — 9,253.38 of assets on 9,566.37 of shares, so anyone who deposited at par is
+  down **312.99 tUSDC, −3.27%**. Across **223 episodes on 13 vaults**: 172 closed into a
+  complete set, 47 one-sided, 2 with neither leg filled, 2 still open, and **−498.19 realised
+  on 21,931.45 of basis**. 21% of filled quotes were adverse; the strategy needs under about
+  9%. The vault before this one ended at per share **0.951368** — **−6.84%** at its worst
+  reading, for anyone who had deposited. `scripts/ledger.ts` reads every figure back off the
+  chain across all thirteen addresses, so a redeploy does not clear the history; it only
+  resets the denominator of one of them. *Read 2026-09-07 12:45 UTC.*
 
-  *Read 2026-09-06 15:20 UTC, `docs/evidence/ledger-2026-09-06.md`. This file carried the
-  numbers of 2026-08-31 for six days after they stopped being true — including a share price
-  of 1.000000, which is what a new ERC-4626 reads on the day it is deployed and is not a
-  return. A section called Honest status showing par while the vault was down 2.76% is the
-  exact failure this project claims to have fixed, so: re-run the ledger before quoting it.*
-
-  This replaces "+133.85 on 5,641.15 of basis (2.37%)", which this file carried until
-  2026-08-31. That figure was not invented: it was the realised spread on the winning
-  episodes. But the ledger accumulated profit and basis *only* in the complete-set
-  branch, so the 18 one-sided episodes entered neither the numerator nor the denominator,
-  and the published return was arithmetically incapable of going negative. The dashboard
-  ran the same code, so its equity curve could not draw a drawdown either. Both are fixed;
-  the sign of the answer changed.
+  It replaces a published **+2.37%**, which was the realised spread on the winning episodes
+  only: the ledger accumulated into its complete-set branch alone, so one-sided episodes
+  entered neither the numerator nor the denominator and the figure was arithmetically
+  incapable of going negative. The dashboard ran the same code. Both fixed, and the sign of
+  the answer changed.
 - The record is not uniform by window length, and that is where the loss lives: a
   complete set earns about 2.19 and an adverse fill costs about 22, so the strategy needs
   an adverse rate under roughly 9% and is running at 21%. The 15m tier is the only one
@@ -556,8 +548,7 @@ issue #16.
 ## Use it from your own code
 
 The vault is a plain ERC-4626, so anything that already speaks that standard speaks to this
-without knowing what it does. The two files an integrator needs are served, versioned with the
-site, and were the only machine-readable thing here that nothing pointed at until now:
+without knowing what it does. Two files are served for the purpose, versioned with the site:
 
 | | |
 |---|---|

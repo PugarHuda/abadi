@@ -172,7 +172,7 @@ you would rather post from an X account, create it first — the field takes up 
 > an average of −30% of basis with a −100% in them. The vault now crosses the book to buy
 > the missing side, so the pair is worth exactly 1: fourteen of those have cost −1% on
 > average, worst −3.5%, and it refused 126 times when getting flat was worse than standing
-> still. Depositors are down 2.76% while that plays out, and the ledger says so on the
+> still. Depositors are down 3.27% while that plays out, and the ledger says so on the
 > front page.
 >
 > 148 unit tests, five stateful invariants, nine fork tests against the real venue, 96
@@ -205,9 +205,9 @@ was no way to tell work from a hang.
 The spread claim quoted above is the measurement of **2026-08-31**, dated as such everywhere
 it appears, with `docs/evidence/impact-2026-08-31.txt` behind it. Do not hold up the
 submission waiting for a fresher one, and do not describe the 70 windows as "every window we
-have quoted" — there are 203 episodes now.
+have quoted" — there are 223 episodes now.
 
-The README, `web/deck.html` and `PRODUCT.md` all state test counts, and CI fails if any of
+The README, `app/deck/page.tsx` and `PRODUCT.md` all state test counts, and CI fails if any of
 them disagrees with `forge test`. If you add tests before submitting, update all three.
 
 ---
@@ -231,7 +231,7 @@ hackathon page. Paste this:
 > Tighter on 66 of 70, wider on none. The book measurably improved because something was
 > resting in it.
 >
-> The ledger publishes the losses too: per share 0.972372, depositors down 2.76%, 21% of
+> The ledger publishes the losses too: per share 0.967282, depositors down 3.27%, 21% of
 > filled quotes adverse where the spread needs under ~9%. It's on the front page rather
 > than in a footnote.
 >

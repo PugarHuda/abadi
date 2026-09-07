@@ -45,9 +45,9 @@ two.
 - One leg filling while the market walks away from the other is the real cost. 26 such
   episodes carried to settlement averaged -30.12% of basis; 14 closed by crossing the book
   for the missing side averaged -0.98%. docs/evidence/completing-2026-09-06.md.
-- The vault is down. Per share 0.972372 on 2026-09-06 15:20 UTC, -2.76% against par: 264.30
-  tUSDC below what depositors put in, across 203 episodes on 13 vaults. 21% of filled quotes
-  went adverse where the spread needs under about 9%. docs/evidence/ledger-2026-09-06.md.
+- The vault is down. Per share 0.967282 on 2026-09-07 12:45 UTC, -3.27% against par: 312.99
+  tUSDC below what depositors put in, across 223 episodes on 13 vaults. 21% of filled quotes
+  went adverse where the spread needs under about 9%. docs/evidence/ledger-2026-09-07.md.
 
 ## Repository
 
