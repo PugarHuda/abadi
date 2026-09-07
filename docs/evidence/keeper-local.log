@@ -9175,3 +9175,10 @@ keeper exited 1 -- see the ALERT lines above
 2026-09-07 15:12:22 tiers    quoting 14400s, 900s only — 3600s and 86400s are left alone on the ledger's record
 2026-09-07 15:12:22 sampled  0 books in 0.0s; second look in 20s
 2026-09-07 15:12:26 cycle 1  NAV 9155.78  idle 9155.78  resting 0.00  share 1.000000
+2026-09-07 15:26:01 vault    0xF5571c653B142B87BB552FB212e244bd80693f24
+2026-09-07 15:26:01 operator 0x39D2bae5EAedA9283535dDC98F1991c81eD5Cd7E
+2026-09-07 15:26:01 interval 30s  active 3  size 100 (x0.5 on 900s)  dead 6 ticks  momentum 3 ticks/20s  gas floor 0.5 STT  1 cycles
+2026-09-07 15:26:01 fv       ON  refuse over 0.1 of edge, skew up to 3 ticks toward fair; no model means book-only and a log line saying so
+2026-09-07 15:27:19 tiers    quoting 14400s, 900s only — 3600s and 86400s are left alone on the ledger's record
+2026-09-07 15:27:19 sampled  0 books in 0.0s; second look in 20s
+2026-09-07 15:27:23 cycle 1  NAV 9155.78  idle 9155.78  resting 0.00  share 1.000000

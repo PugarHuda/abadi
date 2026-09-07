@@ -107,10 +107,41 @@ async function main() {
     else if (shares > 0n) console.log(`       ^ holds shares but maxRedeem is 0 — nothing to take today`);
   }
 
-  const total = found.reduce((a, f) => a + f.out, 0n);
+  /* Simulate before calling any of it recoverable.
+   *
+   * `maxRedeem` is what a vault ADVERTISES it will let go of, and two of these have advertised
+   * 97.40 apiece since August while the redeem reverts `ERC20InsufficientBalance` — their
+   * assets are outcome-token positions, not cash. Printing the advertised sum as
+   * "recoverable" made this script say 194.80 tUSDC was sitting there for anyone to take,
+   * which is a number nobody had checked. `--send` already simulated each one and skipped the
+   * failures; the summary now does the same arithmetic the sending path does. */
+  const real: typeof found = [];
+  const promised: typeof found = [];
+  for (const f of found) {
+    try {
+      await pub.simulateContract({
+        address: f.address as `0x${string}`,
+        abi: VAULT_ABI,
+        functionName: "redeem",
+        args: [f.shares, account.address, account.address],
+        account,
+      });
+      real.push(f);
+    } catch {
+      promised.push(f);
+    }
+  }
+
+  const total = real.reduce((a, f) => a + f.out, 0n);
   console.log("");
-  console.log(`recoverable: ${usd(total).trim()} tUSDC across ${found.length} vault(s)`);
+  console.log(`recoverable: ${usd(total).trim()} tUSDC across ${real.length} vault(s) — simulated, not advertised`);
+  for (const f of promised) {
+    console.log(`             ${f.address} advertises ${usd(f.out).trim()} and does not simulate; the assets are positions, not cash`);
+  }
   if (dust > 0n) console.log(`stranded   : ${Number(formatUnits(dust, 18)).toFixed(4)} STT in non-vault contracts with no exit`);
+  found.length = 0;
+  found.push(...real);
+
   if (!send) {
     console.log("");
     console.log("read-only. re-run with --send to redeem.");
