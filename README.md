@@ -211,7 +211,19 @@ scripts/                  the chain scripts that produced docs/evidence/
   backtest.ts             replays the fair-value model over resolved windows and scores it
   impact.ts               rebuilds every window's book with and without Abadi's orders
   recover.ts              walks the deployer's CREATE nonces for anything left in a vault
+  selectors.mjs           publishes this vault's and the venue's ABIs to the signature databases
+
+app/                      the site — Next.js App Router, statically exported to out/
+  layout.tsx              the document shell, and the vault address the pages read
+  site-header.tsx         one masthead, so five pages cannot disagree about the navigation
+  page.tsx · dashboard/ · app/ · deck/ · not-found.tsx
+public/                   served verbatim: abi.json, deployments.json, llms.txt, security.txt,
+                          and the modules that read the chain in the reader's browser
 ```
+
+Nothing on the site renders per request. Every number a reader sees is fetched from the chain
+by their own browser, which is the rule the whole project is built on and the reason the export
+is static: a server runtime would only add a place for that rule to be broken.
 
 ### Lifecycle
 
