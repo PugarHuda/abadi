@@ -1,15 +1,24 @@
 # Submission — everything DoraHacks asks for, ready to paste
 
-**Abadi is not submitted yet.** Checked again 2026-09-06 15:30 UTC: **thirty-four BUIDLs are
-in**, and none of them is this one.
+**Abadi is not submitted yet.** Checked again 2026-09-07 11:25 UTC: **forty-nine BUIDLs are
+in**, and none of them is this one. The page says one day left.
 
 **The deadline is 2026-09-08 18:00 UTC.** That is `timeline_end` on the hackathon's own
 record, and it is 01:00 on the 9th in Jakarta — this file said "2026-09-09 01:00 UTC" until
 now, which is the local hour mislabelled as UTC and seven hours of runway that does not
 exist.
 
-**The field tripled between the 2nd and the 6th, from 13 to 34, and the late arrivals landed
-on Abadi's own ground.** Five came in on the 6th alone. **Ballast** is the closest: a pooled
+**The field went 13 → 34 → 49 between the 2nd and the 7th**, and ten of those arrived in the
+last twenty hours: Project Transparency Analyzer, Onyxpulse, Kalibra, Keel, Puls3, AEGIR MART,
+Proofside, Watchman, DreamDEX Up/Down, WindowGuard. **None of the ten is a market-making
+vault** — they are consumer one-tap apps, pre-trade safety checks and scoring tools — so the
+thesis is not more crowded than it was yesterday, only the field is.
+
+One of them is worth knowing about before a judge mentions it: **Henessay's DreamDEX Up/Down
+"ships with a 21-entry feedback report"**, which is more entries than this project's sixteen.
+The answer is not to count higher. Ours are filed on the venue's own tracker as
+dreamdex-bot-kit#26–#41 with a pull request behind them, which is a different claim from a
+report in a repository, and it is the claim to make. **Ballast** is the closest: a pooled
 counterparty quoting both sides of every window, opening on a measurement of its own — "83.5%
 of 5,000 DreamDEX markets never saw a single trade" — which is this project's move as well as
 its thesis. HOUSE rests both sides from a wallet on the same no-inventory mechanism, almost
@@ -69,11 +78,14 @@ https://github.com/PugarHuda/abadi
 https://abadi-wheat.vercel.app
 ```
 
-**Demo video**
+**Demo video** — REQUIRED, and it is the one thing here that nobody else can do.
 
 ```
-(upload video/out/abadi-demo.mp4 — 2:56, 1080p — and paste the link here)
+(upload video/out/abadi-demo.mp4 to YouTube — 2:56, 1080p — and paste the link)
 ```
+
+YouTube specifically: the form says a YouTube link renders as an embedded player, which is
+what a judge will actually press play on. Unlisted is fine.
 
 Subtitles: upload `video/assets/abadi-demo.srt` as the caption track. The film also burns
 them in, so it reads without them.
@@ -84,8 +96,31 @@ them in, so it reads without them.
 Open Track
 ```
 
-**Logo / cover image** — `public/logo.svg` is the mark. If a raster is needed,
-`public/og.png` is 1200×630 and already carries the wordmark.
+**Category** — the form's own tag list. Match what the card should be filed under:
+
+```
+Crypto / Web3 · DeFi · Prediction Markets · Somnia
+```
+
+**BUIDL logo** — the form wants JPEG or PNG, under 2 MB, 480×480 recommended.
+
+```
+public/logo-480.png          480×480, 2 KB — the mark on the site's paper
+```
+
+`public/logo.svg` is the same mark as vector and `public/og.png` is the 1200×630 card with
+the wordmark; neither is square, which is why the tile exists. Regenerate it with
+`node scripts/logo-tile.mjs` if the mark ever changes.
+
+**Social links** — the form requires **at least one**, and this is the field most likely to
+stop the submission, because this project has no social account. What it does have:
+
+```
+https://github.com/PugarHuda
+```
+
+A GitHub profile is a real account with the work on it, which is more than a placeholder. If
+you would rather post from an X account, create it first — the field takes up to three.
 
 ---
 
