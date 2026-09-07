@@ -11,7 +11,7 @@ Built for the Somnia × DreamDEX Event Contracts Hackathon.
 **[App](https://abadi-wheat.vercel.app/app)** ·
 [The working](https://abadi-wheat.vercel.app/dashboard) ·
 [Deck](https://abadi-wheat.vercel.app/deck) ·
-[Vault on the explorer](https://shannon-explorer.somnia.network/address/0xFd9c93581ADD42B9B13ba5550542Fc7315775cD9)
+[Vault on the explorer](https://shannon-explorer.somnia.network/address/0xF5571c653B142B87BB552FB212e244bd80693f24)
 
 ---
 
@@ -24,11 +24,11 @@ Depositors put in collateral and receive ERC-4626 shares. An operator key steers
 and can never touch the money. Every filled pair is worth exactly 1 at settlement no
 matter which way the market resolves.
 
-**Live on Shannon testnet:** `0xFd9c93581ADD42B9B13ba5550542Fc7315775cD9`
-([source on the explorer](https://shannon-explorer.somnia.network/address/0xFd9c93581ADD42B9B13ba5550542Fc7315775cD9?tab=contract) ·
+**Live on Shannon testnet:** `0xF5571c653B142B87BB552FB212e244bd80693f24`
+([source on the explorer](https://shannon-explorer.somnia.network/address/0xF5571c653B142B87BB552FB212e244bd80693f24?tab=contract) ·
 `node scripts/attest.ts` checks that address is running this source — see below for
 why that is a thing we check now, and for
-[why it says MISMATCH today](#the-source-is-ahead-of-the-chain))
+[what that check is for](#the-source-and-the-chain-agree))
 
 ---
 
@@ -119,22 +119,23 @@ A quote the bot actually places escrows about 98, and measured book-wide utilisa
 be pushed in one direction. `npm run risk` reads them back off the chain, and **they reset to
 0 on every redeploy**, so that command is part of the redeploy list.
 
-### The source is ahead of the chain
+### The source and the chain agree
 
-`node scripts/attest.ts` says **MISMATCH** today, and that is a statement rather than a
-defect. `src/` carries two changes the deployed vault does not:
+`node scripts/attest.ts` says **MATCH**. It did not for two days, and what closed the gap is
+worth naming because all three were found by reading rather than by anything going wrong:
 
 - **`SizeBelowFilled`** — `reduceQuote` could mark a partially filled slot below the pairs it
-  holds and move the share price 12% with nothing sent anywhere. Found by reading, fixed with
-  two regression tests, never fired in 1,262 live cycles. Commit `8cd803e`.
+  holds and move the share price 12% with nothing sent anywhere.
 - **Bounded `setRiskParams` and `setGrid`** — `minHalfSpread` at 0, `headroomBps` past half a
-  tier, or a zero tick each brick quoting by typing. Commit `366db43`.
+  tier, or a zero tick each brick quoting by typing.
+- **`MAX_DEPLOYED_BPS`** — the book-wide cap is a `uint16`, so 65,535 read as a limit and
+  meant 655% of NAV.
 
-Both are governor-or-operator-only, and the operator, governor and deployer are the same key,
-so nothing is at risk that this project does not already control. Redeploying to close them
-moves the address that the film, the site, the evidence files and the submission all cite,
-two days before the deadline — so the source stayed ahead and this paragraph exists instead.
-`attest.ts` prints which functions the deployed code is missing rather than a bare verdict.
+They were fixed in `src/` and, for two days, only there: redeploying moves the address the
+film, the site and the evidence all cite, and that was the wrong trade with a deadline in
+hours. When the deadline moved it stopped being one. The vault was redeployed on 2026-09-07,
+`0xF5571c65…3f24`, and the ledger reads the retired address alongside the other twelve, so
+none of the record is lost — only the denominator of one of them resets.
 
 ---
 
@@ -446,9 +447,8 @@ bot skips arming and says so until then. `sweepNative` brings the reserve back o
   ERC-4626 conformance suite (`test/LiquidityVault.conformance.t.sol`), 9 fork tests against the venue, 96
   browser tests (axe-core WCAG 2.1 AA, Core Web Vitals, touch, the transactions cited on
   the landing page checked against the explorer); `scripts/attest.ts` compares the live
-  address against this source and today reports **MISMATCH, on purpose** — see
-  [The source is ahead of the chain](#the-source-is-ahead-of-the-chain) — and the address it
-  names is verified on the explorer. Coverage on the contracts, measured with
+  address against this source and reports **MATCH**, and the address it names is verified on
+  the explorer. Coverage on the contracts, measured with
   `forge coverage --ir-minimum`: **`LiquidityVault.sol` 97.28% of lines and 100% of its 43
   functions**, `MarketEngine.sol` 100% of lines
 - The site passes [Impeccable](https://impeccable.style)'s 59-rule design detector on
@@ -557,7 +557,7 @@ without knowing what it does. Two files are served for the purpose, versioned wi
 
 ```bash
 # What a share is worth, from nothing but the standard
-cast call 0xFd9c93581ADD42B9B13ba5550542Fc7315775cD9 \
+cast call 0xF5571c653B142B87BB552FB212e244bd80693f24 \
   "convertToAssets(uint256)(uint256)" 1000000 \
   --rpc-url https://api.infra.testnet.somnia.network
 ```

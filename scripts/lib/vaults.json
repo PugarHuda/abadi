@@ -52,5 +52,9 @@
   {
     "address": "0xda15A7137987170118417638a67bd45E864aB5Fe",
     "note": "v11 \u2014 completeSet and reduceQuote landed here; retired the same hour when the coverage refactor changed the bytecode"
+  },
+  {
+    "address": "0xFd9c93581ADD42B9B13ba5550542Fc7315775cD9",
+    "note": "v12 \u2014 the vault the hackathon was submitted against; retired 2026-09-07 so the source's three guards could be on chain, with 54.30 of escrow left to settle"
   }
 ]

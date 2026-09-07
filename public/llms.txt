@@ -11,7 +11,7 @@ two.
 
 ## What it is
 
-- Vault: `0xFd9c93581ADD42B9B13ba5550542Fc7315775cD9`, ERC-4626, 6 decimals, shares `abLIQ`
+- Vault: `0xF5571c653B142B87BB552FB212e244bd80693f24`, ERC-4626, 6 decimals, shares `abLIQ`
 - Asset: `0x70a86D8842FB63C4Ad2b7cdddF530eBf1BB25d8E` (tUSDC, 6 decimals, has no `permit`)
 - Source is verified on the Shannon explorer, and `node scripts/attest.ts` compares the
   deployed bytecode against this repo's artifact and prints MATCH or the difference.
@@ -60,8 +60,6 @@ including the things that went wrong and what they cost.
 - The operator key cannot transfer collateral out, and it CAN trade it away — it picks the
   market, the price and the size. The two caps that bound that are set on chain since
   2026-09-06: 500 tUSDC of escrow per quote, 2500 bps of NAV across the book.
-- `node scripts/attest.ts` says MISMATCH today, deliberately. The source carries two guards
-  the deployed vault does not (a reduceQuote share-price fix and bounded governor setters);
-  redeploying would move the address every published artefact cites, two days from the
-  hackathon deadline. attest.ts names what differs. See the README, "The source is ahead of
-  the chain".
+- `node scripts/attest.ts` says MATCH: the deployed bytecode is this source. It did not for
+  two days, while three guards lived in `src/` and not on chain; the vault was redeployed on
+  2026-09-07 and they are on chain now.

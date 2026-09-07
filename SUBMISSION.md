@@ -125,10 +125,8 @@ you would rather post from an X account, create it first — the field takes up 
 1. **`https://abadi-wheat.vercel.app/dashboard`** — the live book with Abadi's own quote
    tagged inside it, the equity curve that is allowed to go down, and every episode the
    vault has ever run, decoded from the explorer in the reader's browser.
-2. **`https://shannon-explorer.somnia.network/address/0xFd9c93581ADD42B9B13ba5550542Fc7315775cD9`**
-   — the live vault, verified source. `node scripts/attest.ts` says MISMATCH and prints
-   why: `src/` is two guards ahead of this deployment, deliberately, two days from the
-   deadline. README → "The source is ahead of the chain".
+2. **`https://shannon-explorer.somnia.network/address/0xF5571c653B142B87BB552FB212e244bd80693f24`**
+   — the live vault, verified source. `node scripts/attest.ts` says MATCH.
 3. **`docs/evidence/`** — one file per thing that happened, including the things that went
    wrong and what they cost.
 
@@ -176,7 +174,7 @@ you would rather post from an X account, create it first — the field takes up 
 ## Before you submit, re-run these
 
 ```bash
-node scripts/attest.ts     # MISMATCH is expected — it must name only MAX_HEADROOM_BPS()
+node scripts/attest.ts     # must say MATCH
 node scripts/ledger.ts     # re-read per share and the episode count
 forge test                 # the number the README claims
 node scripts/impact.ts     # slow — see below; the published figure stands without it
@@ -236,33 +234,22 @@ capital into this book. Lead with the measurement, which is still uncontested.
 
 ---
 
-## What the extension buys
+## What the extension bought
 
-Four days changes one decision that was settled only by the clock.
+Four days changed one decision that had been settled only by the clock, and it is done.
 
-**`node scripts/attest.ts` says MISMATCH, and it is the most checkable claim in this
-submission.** `src/` is ahead of the deployed vault by three guards now:
+**`node scripts/attest.ts` says MATCH.** The vault was redeployed on 2026-09-07 to
+`0xF5571c653B142B87BB552FB212e244bd80693f24`, verified on the explorer, and the three guards
+that had been in `src/` and nowhere else are on chain:
 
 | | |
 |---|---|
 | `SizeBelowFilled` | `reduceQuote` could mark a partially filled slot below the pairs it holds and move the share price 12% with nothing sent anywhere |
 | bounded `setRiskParams` / `setGrid` | `minHalfSpread` at 0, `headroomBps` past half a tier, or a zero tick each brick quoting by typing |
-| `MAX_DEPLOYED_BPS` | the book-wide cap is a `uint16` with no ceiling, so 65,535 reads as a limit and means 655% of NAV |
+| `MAX_DEPLOYED_BPS` | the book-wide cap is a `uint16`, so 65,535 read as a limit and meant 655% of NAV |
 
-All three are governor-or-operator-only and the operator, governor and deployer are one key,
-so nothing is at risk that this project does not already control. They are still not on chain,
-and a judge who runs the command the README gives them sees a failure.
-
-**Redeploying was refused for a reason that no longer holds.** It moved the address the film,
-the site and the evidence cite, two days out. With four days there is room to do it properly:
-disable both keepers, `forge test`, `forge create`, `attest`, `forge verify-contract`, withdraw
-the idle from the old vault, approve and deposit, `setOperator`, send 33 STT, `npm run risk --
---send` (the exposure caps reset to 0 on every redeploy), write `.vault-addr`, `attest` again,
-rebuild the site, re-run the ledger, re-record the film, re-enable the keepers. Roughly 0.4 STT
-of gas and an afternoon, and the recipe is in `docs/evidence/redeploy-2026-08-31.md` because it
-has been done before.
-
-**It is the user's capital and their submitted BUIDL, so it is their call.** What it buys is a
-green `attest`, a share-price hole closed on chain rather than in a file, and one fewer
-paragraph of explanation on the front page. What it costs is a new address on a submission
-already on the board, and a re-render.
+9,155.78 tUSDC moved across, the exposure caps were set again because they reset to 0 on every
+deployment, and the retired address joins the twelve the ledger already walks — the record is
+not reset, only the denominator of one vault. **The BUIDL cites the repo and the site, both of
+which follow `.vault-addr`, so the submission needs no edit.** The film's live panel shows the
+address it was filmed against, which is why it was re-recorded.

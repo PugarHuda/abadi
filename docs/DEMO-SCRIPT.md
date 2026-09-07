@@ -125,7 +125,7 @@ to be a day old — this table is the checklist for the next one, so it tracks t
 | Completion refusals | **126** (median pair 1.209, cheapest refused 1.061) |
 | Venue spread, without us vs with | 0.0249 vs 0.0192 over **70 windows, measured 2026-08-31** — tighter on 66, wider on **none**. Not "every window"; there are 223 episodes now |
 | SDK issues filed | 16 |
-| Live vault | `0xFd9c93581ADD42B9B13ba5550542Fc7315775cD9` — `attest.ts` says **MISMATCH** since `8cd803e`: the source is ahead of the chain by two guards, on purpose. The film does not state this either way, so nothing in it is wrong. |
+| Live vault | `0xF5571c653B142B87BB552FB212e244bd80693f24` — `attest.ts` says **MISMATCH** since `8cd803e`: the source is ahead of the chain by two guards, on purpose. The film does not state this either way, so nothing in it is wrong. |
 | Reactivity settle, on chain | `0x2f75001ea73bd66cf62649841542a2d8b74cad22afa1513e5e6463730a009f50` |
 
 **Do not say "profitable".** Per share is below par and realised across every vault is
