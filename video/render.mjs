@@ -18,7 +18,7 @@
  */
 import { execFileSync } from "node:child_process";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
-import { existsSync, statSync } from "node:fs";
+import { existsSync, readdirSync, statSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -58,7 +58,19 @@ await mkdir(out, { recursive: true });
  * OLDER script is how it quietly ships the wrong film. `timing.json` is rewritten by every
  * `video:vo` run, so anything on disk older than it was rendered from words that have since
  * changed. Re-render those rather than keep them. */
-const timelineAt = statSync(path.join(assets, "timing.json")).mtimeMs;
+/* The newest of the timeline AND the footage, not the timeline alone.
+ *
+ * `remotion bundle` copies BOTH into the bundle, and this guard only ever looked at one of
+ * them. Re-filming every shot without touching `timing.json` therefore left the bundle
+ * "current" while the footage inside it was the previous take — which is exactly what
+ * happened on 2026-09-07: the cursor was added to the capture, nine shots were refilmed, and
+ * the render served the old ones back. It fails silently and the film looks fine, which is
+ * the worst shape a staleness bug can have. */
+const inputs = [
+  path.join(assets, "timing.json"),
+  ...readdirSync(assets).filter((f) => /^shot-.*\.mp4$/.test(f)).map((f) => path.join(assets, f)),
+];
+const timelineAt = Math.max(...inputs.map((f) => statSync(f).mtimeMs));
 const current = (f) => existsSync(f) && statSync(f).mtimeMs >= timelineAt;
 
 /* The bundle is the one that matters most, and guarding the parts without guarding it was

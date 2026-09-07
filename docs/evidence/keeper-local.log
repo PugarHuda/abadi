@@ -9045,3 +9045,25 @@ keeper exited 1 -- see the ALERT lines above
 2026-09-07 11:27:19 tiers    quoting 14400s, 900s only — 3600s and 86400s are left alone on the ledger's record
 2026-09-07 11:27:19 sampled  0 books in 0.0s; second look in 20s
 2026-09-07 11:27:24 cycle 1  NAV 9322.68  idle 9231.47  resting 91.21  share 0.974526
+2026-09-07 11:41:09 vault    0xFd9c93581ADD42B9B13ba5550542Fc7315775cD9
+2026-09-07 11:41:09 operator 0x39D2bae5EAedA9283535dDC98F1991c81eD5Cd7E
+2026-09-07 11:41:09 interval 30s  active 3  size 100 (x0.5 on 900s)  dead 6 ticks  momentum 3 ticks/20s  gas floor 0.5 STT  1 cycles
+2026-09-07 11:41:09 fv       ON  refuse over 0.1 of edge, skew up to 3 ticks toward fair; no model means book-only and a log line saying so
+2026-09-07 11:42:16 settle   slot 0 5bd0  worked  0x77ad6745c579ffa94ed864d4776d48e4b21673a5d69264fd8795a7478c0f80dc  gas 426035
+2026-09-07 11:42:33 tiers    quoting 14400s, 900s only — 3600s and 86400s are left alone on the ledger's record
+2026-09-07 11:42:33 sampled  0 books in 0.0s; second look in 20s
+2026-09-07 11:42:38 cycle 1  NAV 9251.18  idle 9251.18  resting 0.00  share 0.967052
+2026-09-07 11:56:32 vault    0xFd9c93581ADD42B9B13ba5550542Fc7315775cD9
+2026-09-07 11:56:32 operator 0x39D2bae5EAedA9283535dDC98F1991c81eD5Cd7E
+2026-09-07 11:56:32 interval 30s  active 3  size 100 (x0.5 on 900s)  dead 6 ticks  momentum 3 ticks/20s  gas floor 0.5 STT  1 cycles
+2026-09-07 11:56:32 fv       ON  refuse over 0.1 of edge, skew up to 3 ticks toward fair; no model means book-only and a log line saying so
+2026-09-07 11:58:01 tiers    quoting 14400s, 900s only — 3600s and 86400s are left alone on the ledger's record
+2026-09-07 11:58:01 sampled  0 books in 0.0s; second look in 20s
+2026-09-07 11:58:05 cycle 1  NAV 9251.18  idle 9251.18  resting 0.00  share 0.967052
+2026-09-07 12:11:07 vault    0xFd9c93581ADD42B9B13ba5550542Fc7315775cD9
+2026-09-07 12:11:07 operator 0x39D2bae5EAedA9283535dDC98F1991c81eD5Cd7E
+2026-09-07 12:11:07 interval 30s  active 3  size 100 (x0.5 on 900s)  dead 6 ticks  momentum 3 ticks/20s  gas floor 0.5 STT  1 cycles
+2026-09-07 12:11:07 fv       ON  refuse over 0.1 of edge, skew up to 3 ticks toward fair; no model means book-only and a log line saying so
+2026-09-07 12:12:20 tiers    quoting 14400s, 900s only — 3600s and 86400s are left alone on the ledger's record
+2026-09-07 12:12:20 sampled  0 books in 0.0s; second look in 20s
+2026-09-07 12:12:24 cycle 1  NAV 9251.18  idle 9251.18  resting 0.00  share 0.967052

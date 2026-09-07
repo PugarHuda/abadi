@@ -30,7 +30,17 @@ re-attached to the synthesiser's bare words, and cards break on a full stop befo
 break on a length cap. Remotion is free for individuals and companies of three or fewer;
 this is a solo entry, which is the licence it ships under.
 
-Five things in this pipeline are load-bearing and should not be simplified away:
+Six things in this pipeline are load-bearing and should not be simplified away:
+
+- **`video:shots` REUSES footage it already has** — it prints `have <id>` and moves on — and
+  **`video:render` only checked `timing.json` when deciding whether its bundle was stale.**
+  Both are sensible alone and together they hid a whole re-record: on 2026-09-07 the capture
+  gained a pointer, the voice-over changed, and the film came out with the new words over the
+  OLD footage, because nothing re-filmed and nothing invalidated the bundle that had the old
+  shots copied inside it. Use `node video/capture.mjs --force` when the capture itself
+  changes, and the render's staleness check now takes the newest of `timing.json` *and* every
+  `shot-*.mp4`. A staleness bug that produces a film which looks fine is the worst shape one
+  can have.
 
 - **The pointer is drawn by the page, not by the recorder.** Playwright's video captures the
   page and nothing else: `page.mouse` and `page.click` dispatch real events and leave no mark
