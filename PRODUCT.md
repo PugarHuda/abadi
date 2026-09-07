@@ -50,7 +50,7 @@ cost, and what was fixed is part of the positioning, not an apology for it.
 
 - Contracts: `LiquidityVault` (ERC-4626, quote/cancel/flatten/settle, per-slot sweep,
   `sweepNative`, `LastShareWhileOpen`, `MarketAlreadyQuoted`), `AbadiReactive`,
-  `MarketEngine`. 148 unit tests, five stateful invariants, nine fork tests against the
+  `MarketEngine`. 149 unit tests, five stateful invariants, nine fork tests against the
   real venue. `attest.ts` reports MISMATCH against the live address on purpose — `src/`
   carries two guards that are not deployed, and the README's "The source is ahead of the
   chain" says which and why — and that address is verified on the explorer; coverage is

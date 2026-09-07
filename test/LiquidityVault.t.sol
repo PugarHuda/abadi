@@ -2197,6 +2197,26 @@ contract LiquidityVaultTest is Test {
         assertEq(vault.maxDeployedBps(), 3000);
     }
 
+    /// A cap you can set above 100% of NAV is a number that reads like a limit and bounds
+    /// nothing: the check is `escrow > NAV * bps / 10_000`, so 65,535 passes every quote.
+    function test_deployedBpsCannotExceedTheWholeVault() public {
+        vm.prank(governor);
+        vm.expectRevert(
+            abi.encodeWithSelector(LiquidityVault.DeployedBpsTooLarge.selector, uint16(10_001), uint16(10_000))
+        );
+        vault.setExposureLimits(50e6, 10_001);
+
+        // The whole vault is a legal cap; more than the whole vault is not.
+        vm.prank(governor);
+        vault.setExposureLimits(50e6, 10_000);
+        assertEq(vault.maxDeployedBps(), 10_000);
+
+        // And 0 still means disabled, which `npm run risk` prints in words.
+        vm.prank(governor);
+        vault.setExposureLimits(0, 0);
+        assertEq(vault.maxDeployedBps(), 0);
+    }
+
     /// A per-quote ceiling on escrow. Zero means off, which is what every other test runs
     /// with, so the cap needs its own test or it is only ever exercised as a no-op.
     function test_oneQuoteCannotCommitMoreThanTheNotionalCap() public {

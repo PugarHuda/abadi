@@ -1,17 +1,17 @@
 $ forge test
 Ran 1 test for test/fork/Venue.fork.t.sol:VenueForkTest
-Suite result: ok. 0 passed; 0 failed; 1 skipped; finished in 1.16ms (0.00ns CPU time)
-Ran 96 tests for test/LiquidityVault.t.sol:LiquidityVaultTest
-Suite result: ok. 96 passed; 0 failed; 0 skipped; finished in 74.88ms (70.00ms CPU time)
+Suite result: ok. 0 passed; 0 failed; 1 skipped; finished in 1.46ms (0.00ns CPU time)
 Ran 15 tests for test/MarketEngine.t.sol:MarketEngineTest
-Suite result: ok. 15 passed; 0 failed; 0 skipped; finished in 2.51s (2.52s CPU time)
+Suite result: ok. 15 passed; 0 failed; 0 skipped; finished in 18.52ms (18.47ms CPU time)
+Ran 97 tests for test/LiquidityVault.t.sol:LiquidityVaultTest
+Suite result: ok. 97 passed; 0 failed; 0 skipped; finished in 66.78ms (64.20ms CPU time)
 Ran 10 tests for test/AbadiReactive.t.sol:AbadiReactiveTest
-Suite result: ok. 10 passed; 0 failed; 0 skipped; finished in 2.54s (2.21ms CPU time)
+Suite result: ok. 10 passed; 0 failed; 0 skipped; finished in 2.00s (1.71ms CPU time)
 Ran 26 tests for test/LiquidityVault.conformance.t.sol:LiquidityVaultConformanceTest
-Suite result: ok. 26 passed; 0 failed; 0 skipped; finished in 2.54s (19.63s CPU time)
+Suite result: ok. 26 passed; 0 failed; 0 skipped; finished in 2.00s (16.80s CPU time)
 Ran 1 test for test/LiquidityVault.invariant.t.sol:LiquidityVaultInvariantTest
-Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 22.28s (22.27s CPU time)
-Ran 6 test suites in 22.28s (29.94s CPU time): 148 tests passed, 0 failed, 1 skipped (149 total tests)
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 15.56s (15.55s CPU time)
+Ran 6 test suites in 15.56s (19.65s CPU time): 149 tests passed, 0 failed, 1 skipped (150 total tests)
 
 $ node scripts/fork-test.ts     # the same vault, against the live venue
 Ran 9 tests for test/fork/Venue.fork.t.sol:VenueForkTest

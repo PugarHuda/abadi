@@ -109,6 +109,10 @@ contract LiquidityVault is ERC4626, AbadiReactive, ReentrancyGuard {
     ///      is a constraint on how far it could be pushed in one direction.
     uint16 public maxDeployedBps;
 
+    /// @notice Ceiling on `maxDeployedBps`. A cap of 10,000 bps is the whole vault; anything
+    ///         above it is a number that reads like a limit and bounds nothing.
+    uint16 public constant MAX_DEPLOYED_BPS = 10_000;
+
     /// @dev Floor on the half-spread we will quote, in 1e18 price units. Quoting inside
     ///      this is how a maker turns an edge into adverse selection for free.
     /// @dev In price units, so it scales with the collateral. Set at construction from
@@ -274,6 +278,7 @@ contract LiquidityVault is ERC4626, AbadiReactive, ReentrancyGuard {
     error SizeBelowFilled(uint256 newSize, uint256 pairsHeld);
     error HalfSpreadTooSmall(uint256 given, uint256 floor);
     error HeadroomTooLarge(uint16 given, uint16 ceiling);
+    error DeployedBpsTooLarge(uint16 given, uint16 ceiling);
     error GridMustBePositive();
     error DelayTooLong(uint64 requested, uint64 cap);
 
@@ -1134,6 +1139,14 @@ contract LiquidityVault is ERC4626, AbadiReactive, ReentrancyGuard {
 
     /// @notice Set the exposure caps. Either may be 0, which disables that one.
     function setExposureLimits(uint256 maxQuoteNotional_, uint16 maxDeployedBps_) external onlyGovernor {
+        /* `maxDeployedBps` is a uint16 and the check it feeds is `escrow > NAV * bps / 10_000`,
+         * so 65,535 reads as a limit and means 655% of NAV — every quote passes and nothing
+         * anywhere says the cap is off. The sibling setters were bounded for this reason; this
+         * one was written before that argument and never revisited. 0 still disables it, which
+         * is explicit and visible in `npm run risk`. */
+        if (maxDeployedBps_ > MAX_DEPLOYED_BPS) {
+            revert DeployedBpsTooLarge(maxDeployedBps_, MAX_DEPLOYED_BPS);
+        }
         maxQuoteNotional = maxQuoteNotional_;
         maxDeployedBps = maxDeployedBps_;
         emit ExposureLimitsSet(maxQuoteNotional_, maxDeployedBps_);

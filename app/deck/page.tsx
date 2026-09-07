@@ -137,7 +137,7 @@ export default function Deck() {
             <tr><td>Both legs filled into a complete set</td><td className="num tick">✓</td></tr>
             <tr><td><code>settle()</code> — redeemed 100.00 on a 97.60 basis</td><td className="num tick">✓</td></tr>
             <tr><td><code>flatten()</code> — merged early, 671s before expiry</td><td className="num tick">✓</td></tr>
-            <tr><td>148 tests, five stateful invariants</td><td className="num tick">✓</td></tr>
+            <tr><td>149 tests, five stateful invariants</td><td className="num tick">✓</td></tr>
             <tr><td>Keeper-free wake-up — the chain settled a window for us</td><td className="num tick">✓</td></tr>
           </tbody>
         </table>

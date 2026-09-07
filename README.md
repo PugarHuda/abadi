@@ -257,7 +257,7 @@ direction — `flatten` merges what it can and leaves the slot open for `settle(
 ```bash
 npm install
 forge install foundry-rs/forge-std   # forge-std is not vendored
-forge test                 # 148 tests, no network needed
+forge test                 # 149 tests, no network needed
 
 node scripts/probe.ts      # live markets and spreads
 node scripts/history.ts    # settled-market calibration
@@ -442,7 +442,7 @@ bot skips arming and says so until then. `sweepNative` brings the reserve back o
   crosshair readout, and as a heartbeat ("last activity 12 min ago") that would be the
   first thing to change if a keeper died — so the numbers above can be checked without
   trusting this file
-- 148 unit tests including two fuzzed properties, five stateful invariants and a16z's 26-property
+- 149 unit tests including two fuzzed properties, five stateful invariants and a16z's 26-property
   ERC-4626 conformance suite (`test/LiquidityVault.conformance.t.sol`), 9 fork tests against the venue, 96
   browser tests (axe-core WCAG 2.1 AA, Core Web Vitals, touch, the transactions cited on
   the landing page checked against the explorer); `scripts/attest.ts` compares the live

@@ -112,7 +112,7 @@ to be a day old — this table is the checklist for the next one, so it tracks t
 
 | Claim | The number |
 |---|---|
-| Unit tests | **148** passing (149 total; the fork suite skips without `FORK_RPC`). The voice says it and `video/assets/forge-test.txt` shows it — the drift from 146 closed on the 2026-09-07 re-render. |
+| Unit tests | **149** passing (150 total; the fork suite skips without `FORK_RPC`). The voice says it and `video/assets/forge-test.txt` shows it — the drift from 146 closed on the 2026-09-07 re-render. |
 | Third-party conformance | a16z `ERC4626Test`, **26/26** fuzzed properties — `test/LiquidityVault.conformance.t.sol` |
 | Fork tests against the real venue | **9**, all passing — `node scripts/fork-test.ts` |
 | Coverage | 97.28% of lines, 43/43 functions on `LiquidityVault.sol` |

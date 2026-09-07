@@ -41,6 +41,19 @@
   },
   {
     "type": "function",
+    "name": "MAX_DEPLOYED_BPS",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint16",
+        "internalType": "uint16"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "MAX_HEADROOM_BPS",
     "inputs": [],
     "outputs": [
@@ -1832,6 +1845,22 @@
         "name": "cap",
         "type": "uint64",
         "internalType": "uint64"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "DeployedBpsTooLarge",
+    "inputs": [
+      {
+        "name": "given",
+        "type": "uint16",
+        "internalType": "uint16"
+      },
+      {
+        "name": "ceiling",
+        "type": "uint16",
+        "internalType": "uint16"
       }
     ]
   },
