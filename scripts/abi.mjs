@@ -6,11 +6,10 @@
  * to read `totalAssets` is a strange thing to ask.
  *
  * It is COMMITTED rather than generated at deploy time, and that is not laziness — it is the
- * only shape that works. `vercel.json` builds the site with `node scripts/build-site.mjs`,
- * `installCommand` is empty, and there is no Foundry on that builder. Generating the ABI
- * during the site build took production down the moment it was tried: `ENOENT: out/
- * LiquidityVault.sol/LiquidityVault.json`, on Vercel and in the `web` CI job alike, because
- * neither of them compiles Solidity.
+ * only shape that works. The site build runs `next build` on Vercel, where there is no
+ * Foundry. Generating the ABI during it took production down the moment it was tried:
+ * `ENOENT: forge-out/LiquidityVault.sol/LiquidityVault.json`, on Vercel and in the `web` CI
+ * job alike, because neither of them compiles Solidity.
  *
  * A committed artifact can go stale, so it is gated instead of trusted. `--check` runs in the
  * `contracts` CI job, where Foundry does exist, and fails the build if the published file is
