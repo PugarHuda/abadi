@@ -38,22 +38,31 @@ Abadi
 
 **Vision** — the one paragraph that appears on the card. **The form's hard limit is 256
 characters**, not the ~350 this file said until the form refused a 331-character paragraph.
-This is 249, which leaves seven for a smart quote:
+This is 252, which leaves four:
 
 ```
-An ERC-4626 vault that market-makes DreamDEX Event Contracts holding no inventory: the pool mints a pair worth exactly 1 either way. Rebuilt from the venue's own order rows over 70 windows, the book is 23% tighter with Abadi in it. Losses published.
+An ERC-4626 vault that market-makes DreamDEX Event Contracts holding no inventory: the pool mints a pair worth exactly 1 either way. Rebuilt from the venue's own rows over all 148 windows it quoted, the book is 28% tighter with Abadi. Losses published.
 ```
 
 What went to make it fit, in order of what was least load-bearing: the mechanism sentence
 ("two opposite buys cross") — "holding no inventory" and "a pair worth exactly 1 either way"
-carry it between them — and "the ledger publishes the losses too" shortened to two words.
-What did NOT go: **70 windows**. The sample size is what makes 23% a measurement rather than
-a boast, and it is the one claim in this field nobody else makes.
+carry it between them — "order rows" to "rows", and "the ledger publishes the losses too"
+shortened to two words. What did NOT go: **all 148 windows**. The sample is what makes 28% a
+measurement rather than a boast, and it is the one claim in this field nobody else makes.
+
+The word to be careful with is **all**. The 2026-08-31 version said "70 windows" because 70
+was what that run scored — it lost two to indexer timeouts and there were 72. The
+2026-09-08 run scored every window this vault has ever quoted and refused none, which is a
+different and stronger sentence. Do not write "all" again without checking that the run
+behind it still refused nothing.
+
+Note that 28% is the mean spread across the 148, not a claim about each one: 138 tightened,
+10 were unchanged, none widened.
 
 If a shorter one is ever needed, this is 244:
 
 ```
-An ERC-4626 vault that market-makes DreamDEX Event Contracts holding no inventory: the pool mints a pair worth exactly 1 either way. Rebuilt from the venue's own order rows, the book is 23% tighter with Abadi in it. The ledger publishes losses.
+An ERC-4626 vault that market-makes DreamDEX Event Contracts holding no inventory: the pool mints a pair worth exactly 1 either way. Rebuilt from the venue's own order rows, the book is 28% tighter with Abadi in it. The ledger publishes losses.
 ```
 
 ⚠ **The earlier version of this paragraph opened "Twelve projects here read DreamDEX. Abadi
@@ -140,10 +149,10 @@ you would rather post from an X account, create it first — the field takes up 
 > price and a size and can do nothing else — it cannot move a token, and no function exists
 > that would let it.
 >
-> **What we can prove.** Rebuilding 70 of the windows we have quoted from the venue's own
-> order rows, twice — with our orders and without — the spread was 0.0249 without Abadi and
-> 0.0192 with it: 23% narrower, tighter on 66 of 70, wider on none. Measured 2026-08-31 and
-> published in `docs/evidence/impact-2026-08-31.txt`.
+> **What we can prove.** Rebuilding every window we have ever quoted from the venue's own
+> order rows, twice — with our orders and without — the spread was 0.0245 without Abadi and
+> 0.0175 with it: 28% narrower, tighter on 138 of 148, wider on none. Measured 2026-09-08,
+> all 148 scored and none refused, published in `docs/evidence/impact-2026-09-08.md`.
 >
 > **What we got wrong and fixed in public.** This project once published a +2.37% return.
 > The ledger was summing only the episodes that closed into a complete set, so it could not
@@ -186,10 +195,15 @@ takes tens of seconds. A full run is well over half an hour. It prints its progr
 stderr now, because an earlier version printed nothing at all until it finished and there
 was no way to tell work from a hang.
 
-The spread claim quoted above is the measurement of **2026-08-31**, dated as such everywhere
-it appears, with `docs/evidence/impact-2026-08-31.txt` behind it. Do not hold up the
-submission waiting for a fresher one, and do not describe the 70 windows as "every window we
-have quoted" — there are 224 episodes now.
+The spread claim quoted above is the measurement of **2026-09-08**, dated as such everywhere
+it appears, with `docs/evidence/impact-2026-09-08.md` behind it. It supersedes the
+2026-08-31 run, which scored 70 of 72 windows and is kept at
+`docs/evidence/impact-2026-08-31.txt` as the record of what was claimed then.
+
+"Every window we have quoted" is now literally true and was not true of the 70 — but it is
+true only while the run behind it refuses nothing. Windows are not episodes: 148 windows,
+224+ episodes, because the same window can be quoted more than once and the measurement
+takes each window at the instant our first order rested on it.
 
 The README, `app/deck/page.tsx` and `PRODUCT.md` all state test counts, and CI fails if any of
 them disagrees with `forge test`. If you add tests before submitting, update all three.
@@ -210,9 +224,9 @@ hackathon page. Paste this:
 > no inventory. Two opposite-side buys cross with no seller, the pool mints the pair, and a
 > complete set is worth exactly 1 either way the window resolves.
 >
-> The part I'd point at: I rebuilt 70 of the windows the vault quoted from the venue's own
-> order rows, twice — with our orders and without. Spread 0.0249 without, 0.0192 with.
-> Tighter on 66 of 70, wider on none. The book measurably improved because something was
+> The part I'd point at: I rebuilt every window the vault has quoted from the venue's own
+> order rows, twice — with our orders and without. Spread 0.0245 without, 0.0175 with.
+> Tighter on 138 of 148, wider on none. The book measurably improved because something was
 > resting in it.
 >
 > The ledger publishes the losses too: -498.19 realised on 21,931.45 of basis, 21% of

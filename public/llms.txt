@@ -39,9 +39,10 @@ two.
 
 ## What it measured
 
-- Rebuilding 70 quoted windows twice from the venue's own order rows, with this vault's
-  orders and without: mean spread 0.0249 without, 0.0192 with. Tighter on 66 of 70, wider
-  on none. Dated 2026-08-31, in docs/evidence/impact-2026-08-31.txt.
+- Rebuilding every window this vault has quoted twice from the venue's own order rows, with
+  its orders and without: mean spread 0.0245 without, 0.0175 with. Tighter on 138 of 148,
+  wider on none. All 148 scored, none refused. Dated 2026-09-08, in
+  docs/evidence/impact-2026-09-08.md.
 - One leg filling while the market walks away from the other is the real cost. 26 such
   episodes carried to settlement averaged -30.12% of basis; 14 closed by crossing the book
   for the missing side averaged -0.98%. docs/evidence/completing-2026-09-06.md.

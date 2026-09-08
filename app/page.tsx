@@ -59,9 +59,10 @@ export default function Home() {
         <div className="offer">
           <div className="proof">
             <span className="k">measured</span>
-            <b>0.0249 → 0.0192</b>
+            <b>0.0245 → 0.0175</b>
             <span>the venue's own spread, without this vault and with it — rebuilt from its
-            order rows over 70 windows, tighter on 66 and wider on none</span>
+            order rows across every one of the 148 windows this vault has quoted, tighter
+            on 138 and wider on none</span>
           </div>
           <div className="acts">
             <a className="btn primary" href="/app">Open the app</a>

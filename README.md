@@ -356,12 +356,14 @@ bot skips arming and says so until then. `sweepNative` brings the reserve back o
   one cycle, one of them from a requote
 - **The book is measurably tighter because Abadi is in it.** Every window this project
   has quoted was rebuilt twice from the venue's own order rows — once with Abadi's orders
-  and once with them removed — at the instant our quote landed. Across **70 windows** the
-  spread was **0.0249 without us and 0.0192 with us: 5.8 ticks tighter, 23% narrower.**
-  It tightened on **66 of 70**, was unchanged on 4, and widened on none. Nothing here is
-  modelled or self-reported; which orders are ours is decided by the `owner` field the
+  and once with them removed — at the instant our quote landed. Across **all 148 windows
+  this vault has ever quoted** the spread was **0.0245 without us and 0.0175 with us: 6.9
+  ticks tighter, 28% narrower.** It tightened on **138 of 148**, was unchanged on 10, and
+  widened on none. Not a sample: the 2026-09-08 run scored **every** window and refused
+  none, where the 2026-08-31 run scored 70 of 72 and lost two to indexer timeouts.
+  Nothing here is modelled or self-reported; which orders are ours is decided by the `owner` field the
   venue itself writes. `node scripts/impact.ts` ·
-  [`docs/evidence/impact-2026-08-31.txt`](docs/evidence/impact-2026-08-31.txt)
+  [`docs/evidence/impact-2026-09-08.md`](docs/evidence/impact-2026-09-08.md)
 - **A one-sided fill is now closed, not carried, and two days of it are measured.** One
   leg fills, the book leaves, and the vault holds a direction worth 1 or 0 at settlement.
   `completeSet` crosses the book for the missing side with an IOC order, so the pair

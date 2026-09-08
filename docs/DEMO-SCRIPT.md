@@ -123,9 +123,9 @@ to be a day old — this table is the checklist for the next one, so it tracks t
 | Fill shape | 172 complete · 47 one-sided · 2 no fill · 2 open — **21% adverse** |
 | One-sided: carried vs completed | 26 carried at −30.12%, worst −100% · **14 completed at −0.98%**, worst −3.47% — `docs/evidence/completing-2026-09-06.md` |
 | Completion refusals | **126** (median pair 1.209, cheapest refused 1.061) |
-| Venue spread, without us vs with | 0.0249 vs 0.0192 over **70 windows, measured 2026-08-31** — tighter on 66, wider on **none**. Not "every window"; there are 224 episodes now |
+| Venue spread, without us vs with | 0.0245 vs 0.0175 over **all 148 windows, measured 2026-09-08** — tighter on 138, wider on **none**, and none refused. "Every window" is now accurate; windows are not episodes, and there are 224+ of those |
 | SDK issues filed | 16 |
-| Live vault | `0xF5571c653B142B87BB552FB212e244bd80693f24` — `attest.ts` says **MISMATCH** since `8cd803e`: the source is ahead of the chain by two guards, on purpose. The film does not state this either way, so nothing in it is wrong. |
+| Live vault | `0xF5571c653B142B87BB552FB212e244bd80693f24` — `attest.ts` says **MATCH**: 642 bytes differ, all of them inside the 1,248 bytes of immutables they are allowed to differ in. This line said MISMATCH until 2026-09-08; the 2026-09-07 redeploy is what closed the gap, by putting `SizeBelowFilled` and the bounded setters on chain. |
 | Reactivity settle, on chain | `0x2f75001ea73bd66cf62649841542a2d8b74cad22afa1513e5e6463730a009f50` |
 
 **Do not say "profitable".** Per share is below par and realised across every vault is

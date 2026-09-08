@@ -18,8 +18,8 @@ import { writeFileSync } from "node:fs";
 const W = 1600;
 const H = 900;
 
-/* 0.0249 and 0.0192 on an axis that starts at zero, so the bars are honest: the second is
- * 77% of the first and looks it. The label says the percentage rather than the picture
+/* 0.0245 and 0.0175 on an axis that starts at zero, so the bars are honest: the second is
+ * 72% of the first and looks it. The label says the percentage rather than the picture
  * implying a bigger one. */
 const html = `<!doctype html><meta charset="utf-8">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -65,23 +65,23 @@ const html = `<!doctype html><meta charset="utf-8">
   <div class="where">DreamDEX Event Contracts<br>Somnia Shannon · 50312</div>
 </div>
 
-<h2>The book is <em>23% tighter</em> with this vault quoting in it.</h2>
+<h2>The book is <em>28% tighter</em> with this vault quoting in it.</h2>
 
 <div class="bars">
   <div class="row">
     <div class="cap">without Abadi</div>
-    <div class="track"><div class="fill" style="width:100%;background:var(--rule)"></div><div class="val" style="color:var(--ink)">0.0249</div></div>
+    <div class="track"><div class="fill" style="width:100%;background:var(--rule)"></div><div class="val" style="color:var(--ink)">0.0245</div></div>
   </div>
   <div class="row">
     <div class="cap">with Abadi</div>
-    <div class="track"><div class="fill" style="width:77.1%;background:var(--ink)"></div><div class="val" style="color:var(--stock)">0.0192</div></div>
+    <div class="track"><div class="fill" style="width:71.7%;background:var(--ink)"></div><div class="val" style="color:var(--stock)">0.0175</div></div>
   </div>
 </div>
 
 <div class="bottom">
   <div class="note">
     Every quoted window rebuilt twice from the venue's own <b>Order</b> rows — with our orders
-    and without — at the instant each quote landed. <b>70 windows: tighter on 66, wider on
+    and without — at the instant each quote landed. <b>All 148 windows: tighter on 138, wider on
     none.</b> The same ledger publishes the vault's losses.
   </div>
   <div class="site">abadi-wheat.vercel.app</div>

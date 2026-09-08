@@ -17,10 +17,10 @@ REM   del docs\evidence\impact.cache.json         to force a measurement from sc
 
 cd /d "C:\Hackathons\Event Contracts Hackathon"
 
-echo === run started %DATE% %TIME% >> "docs\evidence\impact-2026-09-07.progress.txt"
-node scripts/impact.ts > "docs\evidence\impact-2026-09-07.md" 2>> "docs\evidence\impact-2026-09-07.progress.txt"
+echo === run started %DATE% %TIME% >> "docs\evidence\impact-2026-09-08.progress.txt"
+node scripts/impact.ts > "docs\evidence\impact-2026-09-08.md" 2>> "docs\evidence\impact-2026-09-08.progress.txt"
 if %ERRORLEVEL% NEQ 0 (
-  echo impact.ts exited %ERRORLEVEL%>> "docs\evidence\impact-2026-09-07.progress.txt"
+  echo impact.ts exited %ERRORLEVEL%>> "docs\evidence\impact-2026-09-08.progress.txt"
   exit /b %ERRORLEVEL%
 )
 
