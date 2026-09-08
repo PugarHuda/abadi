@@ -111,8 +111,9 @@ cost, and what was fixed is part of the positioning, not an apology for it.
 1. A number on screen is read from the chain in the reader's browser, or it is not shown.
 2. State the failure before the fix; the fix is only credible next to what it cost.
 3. The live address is the source — `attest.ts` and the explorer both say so, or the
-   difference is written down where the claim is made. It is written down right now: the
-   source is two guards ahead of the deployed vault, and `attest.ts` names them.
+   difference is written down where the claim is made. It was written down for two days
+   while the source ran ahead of the chain by three guards; the 2026-09-07 redeploy closed
+   that and `attest.ts` says MATCH.
 4. Nothing waits for a human: settle is permissionless, the sweep is armed, the keeper is
    scheduled.
 5. Every claim has a transaction hash a judge can click.
