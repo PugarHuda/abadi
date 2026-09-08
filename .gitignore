@@ -54,3 +54,7 @@ docs/evidence/deploy-retry.log
 
 # Progress chatter from the scheduled impact run; the measurement itself is committed.
 docs/evidence/impact-2026-09-07.progress.txt
+
+# Per-window verdicts kept so a killed impact run resumes instead of restarting. Working
+# state, not evidence — the report it builds is what gets committed.
+docs/evidence/impact.cache.json

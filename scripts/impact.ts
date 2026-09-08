@@ -20,7 +20,7 @@
  *
  * Read-only. `node scripts/impact.ts [--limit N]`
  */
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { INDEXER } from "./lib/somnia.ts";
 
 const VAULTS: { address: string }[] = JSON.parse(readFileSync("scripts/lib/vaults.json", "utf8"));
@@ -221,6 +221,26 @@ function touch(rows: Row[], t: number, withoutUs: boolean) {
 
 const ticks = (x: number) => x / TICK;
 
+/** Each window's verdict, on disk, written the moment that window lands.
+ *
+ * The window loop is three hours of sequential indexer queries and the report is only
+ * printed after the last one, so a run that dies at window 121 of 146 publishes nothing.
+ * That has now happened three times: twice to memory pressure inside an agent session
+ * (windows 68 and 86), and once overnight under Task Scheduler, which is the mechanism
+ * that was supposed to fix the first two.
+ *
+ * Resuming is sound here and is not a shortcut. Every question this script asks is
+ * read-only against settled history — a window whose market expired days ago has the same
+ * order rows today that it had at 02:51 — so a verdict reached yesterday is the same
+ * verdict reached now. What is NOT kept is a failed fetch: see the catch below.
+ *
+ * Delete the file to force a measurement from scratch. */
+const CACHE = "docs/evidence/impact.cache.json";
+type Verdict = { with_: number; without: number; t: number } | { why: string };
+const cache: Record<string, Verdict> = existsSync(CACHE)
+  ? JSON.parse(readFileSync(CACHE, "utf8"))
+  : {};
+
 async function main() {
   console.log("# The book with Abadi in it, and without");
   console.log("");
@@ -254,19 +274,32 @@ async function main() {
 
   let done = 0;
   for (const [market, t] of firstOn) {
-    note(`window ${++done}/${firstOn.size}  …${market.slice(-6)}`);
+    done++;
+    const cached = cache[market];
+    if (cached) { note(`window ${done}/${firstOn.size}  …${market.slice(-6)}  cached`); continue; }
+    note(`window ${done}/${firstOn.size}  …${market.slice(-6)}`);
     try {
       const rows = await bookOf(market);
       // A moment AFTER ours landed, so our own order is in the book being measured.
       const a = touch(rows, t + 1, false);
       const b = touch(rows, t + 1, true);
-      if (!a) { refused.set("no two-sided book with us in it", (refused.get("no two-sided book with us in it") ?? 0) + 1); continue; }
-      if (!b) { refused.set("no book at all without us — we were the only quote", (refused.get("no book at all without us — we were the only quote") ?? 0) + 1); continue; }
-      scored.push({ market, with_: a.spread, without: b.spread, t });
+      cache[market] = !a ? { why: "no two-sided book with us in it" }
+        : !b ? { why: "no book at all without us — we were the only quote" }
+        : { with_: a.spread, without: b.spread, t };
+      writeFileSync(CACHE, JSON.stringify(cache));
     } catch (e: any) {
+      // Deliberately NOT cached. A 504 from the indexer is the load of the moment, not a
+      // property of the window, and the next run should ask again.
       const why = String(e?.message ?? e).split("\n")[0];
       refused.set(why, (refused.get(why) ?? 0) + 1);
     }
+  }
+
+  for (const [market, t] of firstOn) {
+    const v = cache[market];
+    if (!v) continue;
+    if ("why" in v) refused.set(v.why, (refused.get(v.why) ?? 0) + 1);
+    else scored.push({ market, with_: v.with_, without: v.without, t });
   }
 
   if (scored.length === 0) {
