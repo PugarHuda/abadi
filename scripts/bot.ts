@@ -186,6 +186,10 @@ const MAX_TIER = Number(process.env.MAX_TIER ?? 14400);
  *  creates and this vault has never quoted it; `MIN_TIER=60 TIERS=60` is what opens it.
  *  Default 900 keeps the scheduled keeper on exactly the tiers it has a record for. */
 const MIN_TIER = Number(process.env.MIN_TIER ?? DEFAULT_MIN_TIER);
+/** Twice the measured p99 of `loadMarkets` (93s over 859 keeper runs), and two attempts,
+ *  so a hang costs at most six minutes of the scheduled task's fourteen instead of all
+ *  of them. See `retry` in lib/somnia.ts for the 26 runs that paid the old price. */
+const LOAD_MARKETS_TIMEOUT_MS = Number(process.env.LOAD_MARKETS_TIMEOUT_MS ?? 180_000);
 /** Window lengths worth quoting, best first. Empty disables the allowlist. */
 const TIERS = (process.env.TIERS ?? "14400,900").split(",").map(Number).filter((n) => n > 0);
 const ALERT_WEBHOOK = process.env.ALERT_WEBHOOK;
@@ -690,7 +694,7 @@ async function cycle(n: number, bySymbol: Map<string, any>) {
 
   let idleLeft = await read<bigint>("idleAssets");
   const minHalf = await read<bigint>("minHalfSpread");
-  const all = Object.values(await retry("loadMarkets", () => ex.loadMarkets(true)));
+  const all = Object.values(await retry("loadMarkets", () => ex.loadMarkets(true), 2, LOAD_MARKETS_TIMEOUT_MS));
   // The tier choice is a measured one, so say it out loud once a cycle rather than leaving
   // it implied by which markets happen to get quoted.
   if (TIERS.length) log(`tiers    quoting ${TIERS.join("s, ")}s only — 3600s and 86400s are left alone on the ledger's record`);
@@ -829,7 +833,7 @@ async function main() {
 
   for (let n = 1; !CYCLES || n <= CYCLES; n++) {
     try {
-      const all = Object.values(await retry("loadMarkets", () => ex.loadMarkets(true))) as any[];
+      const all = Object.values(await retry("loadMarkets", () => ex.loadMarkets(true), 2, LOAD_MARKETS_TIMEOUT_MS)) as any[];
       const bySymbol = new Map<string, any>();
       for (const m of all) if (m?.info?.marketId) bySymbol.set(String(m.info.marketId).toLowerCase(), m);
 

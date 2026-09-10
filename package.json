@@ -19,7 +19,7 @@
     "recover": "node scripts/recover.ts",
     "abi": "node scripts/abi.mjs",
     "risk": "node scripts/risk.ts",
-    "selfcheck": "node scripts/lib/fairvalue.ts --self-check && node scripts/lib/quoting.ts --self-check",
+    "selfcheck": "node scripts/lib/fairvalue.ts --self-check && node scripts/lib/quoting.ts --self-check && node scripts/lib/somnia.ts --self-check",
     "video:vo": "node video/tts.mjs",
     "video:shots": "node video/capture.mjs",
     "video:render": "node video/render.mjs",

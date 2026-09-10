@@ -75,20 +75,93 @@ export function env(): Record<string, string> {
 /**
  * The indexer returns `RegistryMarkets failed: fetch failed` roughly one call in five.
  * A bot that treats that as fatal dies at random, so every read goes through here.
+ *
+ * `timeoutMs` is the other half of that, and it was missing for the whole life of this
+ * file. Retrying only helps when the call FAILS; a host that accepts the socket and then
+ * says nothing never rejects, so the loop below waits on it forever. This repository has
+ * written that sentence twice already — for `web/ledger.js` and for `scripts/impact.ts` —
+ * and `retry` is the wrapper around every indexer read the live bot makes.
+ *
+ * It is measured, not theoretical: **26 of 1,141 scheduled keeper runs logged their
+ * header and never reached a single cycle**, six of them in the three days to 2026-09-10,
+ * every one dying between the `fv` line and the first book sample — which is where
+ * `loadMarkets` is called. The Windows task limit (PT14M) killed them, so the failure
+ * left no error line, only a missing cycle.
+ *
+ * Left off by default: a timeout on a call that legitimately takes minutes is a new way
+ * to fail. Pass it where the wait has a measured shape. For `loadMarkets` that shape is
+ * p50 58s, p99 93s over 859 runs, so 180s is twice the tail and still four times a
+ * typical call.
  */
-export async function retry<T>(label: string, fn: () => Promise<T>, tries = 4): Promise<T> {
+export async function retry<T>(
+  label: string,
+  fn: () => Promise<T>,
+  tries = 4,
+  timeoutMs?: number,
+): Promise<T> {
   let last: unknown;
   for (let i = 0; i < tries; i++) {
     try {
-      return await fn();
+      /* The timer is cleared on both paths. Left dangling it keeps the event loop alive,
+         and a script that has finished its work but will not exit reads exactly like a
+         script that has hung — which is the thing this argument exists to stop. */
+      if (timeoutMs === undefined) return await fn();
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      try {
+        return await Promise.race([
+          fn(),
+          new Promise<never>((_, reject) => {
+            timer = setTimeout(() => reject(new Error(`no answer in ${timeoutMs >= 1000 ? Math.round(timeoutMs / 1000) + "s" : timeoutMs + "ms"}`)), timeoutMs);
+          }),
+        ]);
+      } finally {
+        if (timer) clearTimeout(timer);
+      }
     } catch (e: any) {
       last = e;
       const msg = String(e?.shortMessage ?? e?.message ?? e);
-      if (!/fetch failed|ECONNRESET|ETIMEDOUT|502|503|504/i.test(msg)) throw e;
+      if (!/fetch failed|ECONNRESET|ETIMEDOUT|no answer in|502|503|504/i.test(msg)) throw e;
       const wait = 400 * 2 ** i;
       console.error(`  ${label}: ${msg.slice(0, 70)} — retrying in ${wait}ms`);
       await new Promise((r) => setTimeout(r, wait));
     }
   }
   throw last;
+}
+
+// ---- self-check, offline. `node scripts/lib/somnia.ts --self-check`
+//
+// `retry` is the wrapper around every indexer read the live bot makes and had no test.
+// The race added to it is the kind of thing that looks right and leaks: a timer nobody
+// clears holds the event loop open, and a bot that finishes its work and will not exit
+// is indistinguishable from the hang this was written to end.
+if (process.argv[1]?.replace(/\\/g, "/").endsWith("scripts/lib/somnia.ts") && process.argv.includes("--self-check")) {
+  const ok = (cond: unknown, what: string) => { if (!cond) throw new Error(what); };
+  const started = Date.now();
+
+  // A call that never settles is the whole point: no rejection, so the retry loop alone
+  // waits forever. With a timeout it becomes an error the loop can act on.
+  const hang = () => new Promise<string>(() => {});
+  let threw = "";
+  try { await retry("hang", hang, 2, 60); } catch (e: any) { threw = String(e?.message ?? e); }
+  ok(/no answer in/.test(threw), `a hanging call must time out, got: ${threw}`);
+
+  // ...and the attempt after a timeout still runs, so a slow moment is not a dead cycle.
+  let n = 0;
+  const flaky = () => (++n === 1 ? new Promise<string>(() => {}) : Promise.resolve("second"));
+  ok((await retry("flaky", flaky, 2, 60)) === "second", "the retry after a timeout must run");
+
+  // A real error is not a timeout and must not be swallowed or retried into one.
+  let calls = 0;
+  const bad = () => { calls++; return Promise.reject(new Error("nonsense")); };
+  let msg = "";
+  try { await retry("bad", bad, 3, 60); } catch (e: any) { msg = String(e?.message ?? e); }
+  ok(msg === "nonsense", `a non-retryable error is rethrown, got: ${msg}`);
+  ok(calls === 1, `a non-retryable error is not retried, called ${calls} times`);
+
+  // Without the argument, nothing changed: this is the path every other caller is on.
+  ok((await retry("plain", () => Promise.resolve(7))) === 7, "no timeout argument still resolves");
+
+  ok(Date.now() - started < 5000, "the self-check must not itself hang");
+  console.log("ok  somnia self-check  (if this process does not exit, a timer leaked)");
 }
