@@ -134,17 +134,19 @@ export default function Deck() {
         * whole project was built for has moved to the 60-second window, and that is the
         * one place Abadi does not quote. Naming that is worth more than a feature list. */}
       <section className="slide" data-i="10" tabIndex={0} aria-label="Slide 11 of 11">
-        <h2>The empty book moved. We are not there yet.</h2>
-        <pre tabIndex={0} role="region" aria-label="Markets created in one day, by window length, and how many ever traded">{"window   created   ever traded\n   "}<b>{"60s      2,880       327   (11%)"}</b>{"\n  300s     1,128       597   (53%)\n  900s       186       147   (79%)  "}<i>{"← abadi"}</i>{"\n 3600s        47        47  (100%)\n14400s         8         8  (100%)  "}<i>{"← abadi"}</i>{"\n          "}<b>{"─────────────────────"}</b>{"\none day    "}<b>{"4,312     3,169 never traded"}</b></pre>
-        <p>Abadi quotes <b>4.6% of the venue</b>, and four fifths of what it quotes had a
-        counterparty already. The 2,553 sixty-second windows a day with nobody in them are
-        the thesis, and they are the gap.</p>
-        <p className="dim">Not a parameter change. This bot samples the book every 20 seconds and the
-        book moves 29–49 ticks between samples — over a 60-second life that is not a quote,
-        it is a coin toss. A seconds-cadence loop is a different bot, and saying so is the
-        same reason <code>reduceQuote</code> has never fired in 1,262 cycles rather than
-        being tuned until it did. Market creation stays out: two addresses made every one
-        of the last 3,000 markets, so that adapter is an interface, not a build.</p>
+        <h2>One quoter, one spread, every window.</h2>
+        <pre tabIndex={0} role="region" aria-label="Markets created in one day, by window length, and how many ever traded">{"tier    created   traded   spread   at the touch\n  "}<b>{"60s     2,880      4%     0.0270   one address"}</b>{"\n  300s     1,128     40%     0.0260   one address\n  900s       186     70%     0.0260   one address  "}<i>{"← abadi"}</i>{"\n         "}<b>{"────────────────────────────────────────"}</b>{"\n  one day  4,312    73% never traded"}</pre>
+        <p>Every tier carries the same book: a flat ~2.6% spread, and in 172 of 172
+        windows measured, <b>a single address holding both sides of the touch</b> — a
+        different one each window. What changes between tiers is takers, not makers.</p>
+        <p className="dim">So the 60-second tier is <b>67% of the venue Abadi has never quoted</b>, and
+        the only thing resting in it is that one quoter at its fixed spread — the same
+        thing Abadi already measurably tightens elsewhere. It is not a parameter change:
+        this bot samples every 20 seconds and the book moves 29–49 ticks between samples,
+        so a 60-second window needs a seconds-cadence loop, which is a different bot.
+        That is the same reason <code>reduceQuote</code> has never fired in 1,262 cycles
+        rather than being tuned until it did. Market creation stays out on measurement:
+        two addresses made every one of the last 3,000 markets.</p>
       </section>
       </main>
 

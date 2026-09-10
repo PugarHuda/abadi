@@ -499,28 +499,30 @@ now pins `cancun`, and the live address shows source rather than bytecode.
 
 ## Where this goes next
 
-Measured on 2026-09-10 from the indexer's own `Market` rows — every market the venue
-created in twenty-four hours, by window length, and how many ever saw a trade:
+Measured on 2026-09-10 from the indexer's own rows: every market the venue created in
+twenty-four hours, and — rebuilding each book at the midpoint of its own window — what was
+actually resting in it.
 
-| window | created | ever traded | |
-|---|---|---|---|
-| **60s** | **2,880** | **327 (11%)** | |
-| 300s | 1,128 | 597 (53%) | |
-| 900s | 186 | 147 (79%) | ← Abadi quotes this |
-| 3600s | 47 | 47 (100%) | |
-| 14400s | 8 | 8 (100%) | ← Abadi quotes this |
-| | **4,312** | **3,169 never traded** | |
+| tier | created | traded | median spread | at the touch | |
+|---|---|---|---|---|---|
+| **60s** | **2,880** | **4%** | 0.0270 | one address, both sides | |
+| 300s | 1,128 | 40% | 0.0260 | one address, both sides | |
+| 900s | 186 | 70% | 0.0260 | one address, both sides | ← Abadi quotes this |
+| | **4,312** | **73% never traded** | | | |
 
-**Abadi quotes 4.6% of the venue, and four fifths of what it quotes had a counterparty
-already.** The empty book this project was built for is real and it has moved: 2,553
-sixty-second windows a day with nobody in them at all. That is the gap, and naming it is
-more useful than a feature list.
+The first draft of this section said the empty book had "moved to the 60-second tier".
+That was wrong, and measuring it properly is what showed why: those windows are not empty.
+In **172 of 172** windows rebuilt, the best bid and the best ask belong to **one address**
+— a different one each window — at the same flat spread the deck's second slide names.
+What separates a 4%-traded tier from a 70%-traded one is takers, not makers.
 
-- **The 60-second tier.** Not a parameter change, which is why it is not already done.
-  This bot samples the book every 20 seconds and the book moves 29–49 ticks between
-  samples; over a 60-second life that is not a quote, it is a coin toss. A seconds-cadence
-  loop is a different bot. It is the same reason `reduceQuote` has never fired in 1,262
-  cycles rather than being tuned until it did — see *Honest status*.
+- **The 60-second tier — 67% of the venue Abadi has never quoted.** The only thing resting
+  there is that one quoter at its fixed spread, which is precisely the thing Abadi is
+  measured to tighten everywhere else. Not a parameter change, which is why it is not
+  already done: this bot samples the book every 20 seconds and the book moves 29–49 ticks
+  between samples, so over a 60-second life that is not a quote, it is a coin toss. A
+  seconds-cadence loop is a different bot. It is the same reason `reduceQuote` has never
+  fired in 1,262 cycles rather than being tuned until it did — see *Honest status*.
 - **Permissionless market creation — cut, on measurement.** Two addresses created every
   one of the last 3,000 markets, so the adapter for it stays a designed interface rather
   than a build. The decision rule was written down before the answer was known.
