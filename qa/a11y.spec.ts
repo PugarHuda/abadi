@@ -151,7 +151,8 @@ test("the deck says which slide it moved to", async ({ page }) => {
   // Nothing announced over the page load — only the move.
   await expect(live).toHaveText("");
   await page.keyboard.press("ArrowRight");
-  await expect(live).toHaveText(/Slide 2 of 10: Every position dies/);
+  const n = await page.locator(".slide").count();
+  await expect(live).toHaveText(new RegExp(`Slide 2 of ${n}: Every position dies`));
 });
 
 test("space on the deck's previous button goes back, not forward", async ({ page }) => {

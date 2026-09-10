@@ -299,7 +299,7 @@ test.describe("deck", () => {
   test("shows exactly one slide at a time", async ({ page }) => {
     await page.goto(BASE + "/deck", { waitUntil: "networkidle" });
     await expect(page.locator(".slide.on")).toHaveCount(1);
-    await expect(page.locator(".slide")).toHaveCount(10);
+    await expect(page.locator(".slide")).toHaveCount(11);
     await expect(page.locator(".slide.on")).toHaveAttribute("data-i", "0");
   });
 
@@ -327,7 +327,11 @@ test.describe("deck", () => {
     await expect(page.locator("#next")).toBeEnabled();
 
     await page.keyboard.press("End");
-    await expect(page.locator(".slide.on")).toHaveAttribute("data-i", "9");
+    // Derived, not written down: a hardcoded 9 here had to be edited by hand the first
+    // time a slide was added, and a test that needs editing to keep passing is a test
+    // that will one day be edited into agreeing with a mistake.
+    const last = (await page.locator(".slide").count()) - 1;
+    await expect(page.locator(".slide.on")).toHaveAttribute("data-i", String(last));
     await expect(page.locator("#next")).toBeDisabled();
     await expect(page.locator("#prev")).toBeEnabled();
   });
@@ -345,12 +349,50 @@ test.describe("deck", () => {
     expect(page.url()).toContain("#3");
   });
 
+  /* This asserted the `transform` string and nothing else, and so it passed for the whole
+   * life of a rail that was wrong. The markup carried an inline `width: 10%`, which beats
+   * the stylesheet's `width: 100%`; `scaleX()` was then applied on top, so the fill was a
+   * tenth of a tenth and reached 10% of the track on the LAST slide. The transform was
+   * correct at every step, which is all the old assertion ever looked at.
+   *
+   * So it measures what the reader sees: painted width against the track it sits in. */
   test("progress rail tracks position", async ({ page }) => {
     await page.goto(BASE + "/deck", { waitUntil: "networkidle" });
-    const width = () => page.evaluate(() => (document.querySelector(".bar i") as HTMLElement).style.transform);
-    expect(await width()).toBe("scaleX(0.1)");
+    const filled = () =>
+      page.evaluate(() => {
+        const track = document.querySelector(".bar")!.getBoundingClientRect().width;
+        const fill = document.querySelector(".bar i")!.getBoundingClientRect().width;
+        return fill / track;
+      });
+    const slides = await page.locator(".slide").count();
+
+    // The fill transitions over .34s, so poll rather than read once.
+    await expect.poll(filled, { timeout: 5000 }).toBeCloseTo(1 / slides, 2);
     await page.keyboard.press("End");
-    expect(await width()).toBe("scaleX(1)");
+    await expect.poll(filled, { timeout: 5000 }).toBeCloseTo(1, 2);
+  });
+
+  /* Five of the deck's slides are built on fixed-width ASCII tables, and every one of
+   * them shipped as a single run-on line from the Next.js migration until 2026-09-10.
+   *
+   * JSX drops the newline between a text line and an element, so `<pre>a\n<b>b</b></pre>`
+   * loses its break. The page still rendered, the build still passed, and the migration's
+   * own body-comparison gate compared normalised text, where the difference does not
+   * exist. Nothing looked at what the reader saw.
+   *
+   * A `<pre>` with one line is a `<pre>` that lost its formatting. */
+  test("every preformatted block kept its line breaks", async ({ page }) => {
+    await page.goto(BASE + "/deck", { waitUntil: "networkidle" });
+    const blocks = await page.locator(".slide pre").evaluateAll((els) =>
+      els.map((el) => ({
+        label: el.getAttribute("aria-label") ?? "(unlabelled)",
+        lines: (el.textContent ?? "").split("\n").length,
+      })),
+    );
+    expect(blocks.length, "the deck has no pre blocks to check").toBeGreaterThan(0);
+    for (const b of blocks) {
+      expect(b.lines, `"${b.label}" collapsed to one line`).toBeGreaterThan(1);
+    }
   });
 
   test("keyboard focus is visible on the controls", async ({ page }) => {

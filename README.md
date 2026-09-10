@@ -497,6 +497,40 @@ now pins `cancun`, and the live address shows source rather than bytecode.
 
 ---
 
+## Where this goes next
+
+Measured on 2026-09-10 from the indexer's own `Market` rows — every market the venue
+created in twenty-four hours, by window length, and how many ever saw a trade:
+
+| window | created | ever traded | |
+|---|---|---|---|
+| **60s** | **2,880** | **327 (11%)** | |
+| 300s | 1,128 | 597 (53%) | |
+| 900s | 186 | 147 (79%) | ← Abadi quotes this |
+| 3600s | 47 | 47 (100%) | |
+| 14400s | 8 | 8 (100%) | ← Abadi quotes this |
+| | **4,312** | **3,169 never traded** | |
+
+**Abadi quotes 4.6% of the venue, and four fifths of what it quotes had a counterparty
+already.** The empty book this project was built for is real and it has moved: 2,553
+sixty-second windows a day with nobody in them at all. That is the gap, and naming it is
+more useful than a feature list.
+
+- **The 60-second tier.** Not a parameter change, which is why it is not already done.
+  This bot samples the book every 20 seconds and the book moves 29–49 ticks between
+  samples; over a 60-second life that is not a quote, it is a coin toss. A seconds-cadence
+  loop is a different bot. It is the same reason `reduceQuote` has never fired in 1,262
+  cycles rather than being tuned until it did — see *Honest status*.
+- **Permissionless market creation — cut, on measurement.** Two addresses created every
+  one of the last 3,000 markets, so the adapter for it stays a designed interface rather
+  than a build. The decision rule was written down before the answer was known.
+- **Deferred by decision, not by running out of time:** tranche routing, copy-trading, and
+  a token. The token has a reason worth stating: no Somnia hackathon winner has ever won
+  on tokenomics, and a token in a submission reads as speculation-first to exactly the
+  people whose venue this is. If the protocol earns real usage it can be argued for then.
+
+---
+
 ## What the evidence folder is for
 
 Every number in this README is reproducible from recorded output, not from a model:
