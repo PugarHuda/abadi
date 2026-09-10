@@ -587,3 +587,35 @@ test.describe("revert decoding", () => {
     expect(await say("0x")).toBe(null);
   });
 });
+
+test.describe("what it did last", () => {
+  /* The vault rests nothing about three quarters of the time — it quotes two of the
+   * venue's four tiers and those windows arrive in bursts. That gap used to leave the
+   * page showing an empty table, which reads as a broken vault rather than an idle one.
+   *
+   * This panel fills the gap with the vault's own events. It is read from the public
+   * explorer, which is rate-limited and does stall, so the assertion is the same shape
+   * as the live strip's: it must resolve to real lines or to an honest failure, and it
+   * must never sit on its loading placeholder. */
+  test("resolves to the vault's own events or an honest failure", async ({ page }) => {
+    await page.goto(BASE + "/app", { waitUntil: "networkidle" });
+    const list = page.locator("#recent");
+    await expect(list).toBeVisible();
+
+    await expect
+      .poll(async () => (await list.textContent())?.includes("Reading the chain…"), { timeout: 25000 })
+      .toBe(false);
+
+    const text = (await list.textContent()) ?? "";
+    if (/Could not read|has not quoted yet/.test(text)) return; // the honest failures
+
+    // Every line dates itself and links the transaction it describes, so a reader can
+    // check any of them against the chain.
+    const items = list.locator("li");
+    expect(await items.count()).toBeGreaterThan(0);
+    expect(text).toMatch(/\d+[smhd] ago —/);
+    for (const href of await list.locator("a").evaluateAll((as) => as.map((a) => (a as HTMLAnchorElement).href))) {
+      expect(href, "each line links its own transaction").toMatch(/\/tx\/0x[0-9a-f]{64}$/i);
+    }
+  });
+});

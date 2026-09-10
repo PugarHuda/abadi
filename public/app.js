@@ -97,7 +97,7 @@
   ["app", "connect", "wallet", "network", "usdc", "stt", "shares", "worth", "nav", "share", "idle",
    "amount", "amountMax", "deposit", "depositForm", "withdrawAmount", "withdrawMax", "withdraw", "withdrawForm",
    "withdrawAll", "allPreview", "faucet", "log", "logEmpty", "slots", "guard", "status", "nowallet", "wake",
-   "freshness", "vaultAddr", "usdcAddr"]
+   "freshness", "vaultAddr", "usdcAddr", "recent"]
     .forEach(function (id) { els[id] = document.getElementById(id); });
   var wakeStt = els.wake.querySelector("[data-wake=stt]");
   var wakeVerdict = els.wake.querySelector("[data-wake=verdict]");
@@ -250,6 +250,113 @@
       });
   }
 
+  /* What the vault last did, from its own logs.
+   *
+   * The panel above shows what is resting NOW, and about three quarters of the time that
+   * is nothing — the bot quotes two of the venue's four tiers and those windows arrive in
+   * bursts. An empty table during a gap reads as a broken vault, so the gap gets the
+   * record instead.
+   *
+   * The contract is verified on the explorer, so `decoded` comes back already resolved to
+   * an event name and named parameters. That is deliberate: `ledger.js` has to pin keccak
+   * topics because it walks THIRTEEN vault addresses, most of them long retired, and this
+   * page reads one live verified address. Pinning a second copy of that table here is how
+   * a newly added event goes missing from one of them.
+   *
+   * One page of logs, no paging: this is the tail, not the ledger. `Swept` is left out —
+   * it is the self-wake heartbeat firing every fifteen minutes with nothing released, and
+   * it would bury the events that moved capital. */
+  var EVENTS = {
+    Quoted: function (p) {
+      return "rested a two-sided quote on " + mkt(p.marketId) + " — " + usd(BigInt(p.size)) +
+        " a side at " + px(BigInt(p.bid)) + " / " + px(BigInt(p.ask));
+    },
+    SetCompleted: function (p) {
+      return "completed the pair on " + mkt(p.marketId) + " — bought the missing side of " +
+        usd(BigInt(p.quantity)) + " for " + usd(BigInt(p.spent));
+    },
+    Flattened: function (p) {
+      return "flattened " + mkt(p.marketId) + " — " + usd(BigInt(p.pairs)) +
+        " pairs returned " + usd(BigInt(p.returned));
+    },
+    Settled: function (p) {
+      return "settled " + mkt(p.marketId) + " — redeemed " + usd(BigInt(p.redeemed)) +
+        // Blockscout renders a bool as either a JSON true or the string "true" depending on
+        // the field; no Settled event was in the page this was written against, so it
+        // accepts both rather than guessing which.
+        (String(p.voided) === "true" ? ", on a window the oracle never answered" : "");
+    },
+    Cancelled: function (p) { return "pulled the quote on " + mkt(p.marketId); },
+    QuoteReduced: function (p) {
+      return "trimmed the quote on " + mkt(p.marketId) + " to " + usd(BigInt(p.newSize));
+    }
+  };
+
+  function mkt(id) { return "…" + String(id).slice(-6); }
+
+  /** "6m ago", and never a negative one: a block timestamp can lead the reader's clock. */
+  function ago(iso) {
+    var s = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 1000));
+    if (s < 60) return s + "s ago";
+    if (s < 3600) return Math.floor(s / 60) + "m ago";
+    if (s < 86400) return Math.floor(s / 3600) + "h ago";
+    return Math.floor(s / 86400) + "d ago";
+  }
+
+  /* Every thirtieth second is the right cadence for a balance and the wrong one for a
+   * history: the tail below changes when the bot acts, which is minutes apart at best.
+   * The explorer is also rate-limited — it already throttles this repository's own test
+   * suite — so a page left open on a judge's second monitor should not spend a request on
+   * it twice a minute. Once on load, then every fifth refresh. */
+  var recentEvery = 5;
+  var recentTick = 0;
+
+  function loadRecent() {
+    if (recentTick++ % recentEvery !== 0) return Promise.resolve();
+    return fetchIn(EXPLORER + "/api/v2/addresses/" + VAULT + "/logs")
+      .then(function (r) { if (!r.ok) throw new Error("explorer " + r.status); return r.json(); })
+      .then(function (j) {
+        var rows = [];
+        (j.items || []).forEach(function (it) {
+          if (rows.length >= 6 || !it.decoded) return;
+          var name = String(it.decoded.method_call).split("(")[0];
+          var say = EVENTS[name];
+          if (!say) return;
+          var p = {};
+          (it.decoded.parameters || []).forEach(function (x) { p[x.name] = x.value; });
+          rows.push({ text: say(p), at: it.block_timestamp, tx: it.transaction_hash });
+        });
+        els.recent.textContent = "";
+        if (!rows.length) {
+          var li = document.createElement("li");
+          li.className = "empty";
+          li.textContent = "This vault has not quoted yet.";
+          els.recent.appendChild(li);
+          return;
+        }
+        rows.forEach(function (r) {
+          var li = document.createElement("li");
+          li.appendChild(document.createTextNode(ago(r.at) + " — " + r.text + " "));
+          var a = document.createElement("a");
+          a.href = EXPLORER + "/tx/" + r.tx;
+          a.target = "_blank";
+          a.rel = "noopener";
+          a.textContent = "explorer";
+          li.appendChild(a);
+          els.recent.appendChild(li);
+        });
+      })
+      /* The explorer is a third party and this panel is a bonus, not a balance. It must
+       * never take the page's numbers down with it. */
+      .catch(function (e) {
+        els.recent.textContent = "";
+        var li = document.createElement("li");
+        li.className = "empty";
+        li.textContent = "Could not read the vault's history (" + e.message + "). The numbers above come from the RPC and are unaffected.";
+        els.recent.appendChild(li);
+      });
+  }
+
   function loadAccount() {
     if (!state.account) return Promise.resolve();
     var a = state.account;
@@ -292,7 +399,7 @@
    * and the heading says when they were read. */
   function refresh() {
     if (document.visibilityState === "hidden") return Promise.resolve();
-    return loadVault().then(loadWake).then(loadAccount).then(function () {
+    return loadVault().then(loadWake).then(loadAccount).then(loadRecent).then(function () {
       state.readAt = new Date();
       els.app.setAttribute("data-stale", "false");
       els.freshness.textContent = "read from the chain every 30 seconds";

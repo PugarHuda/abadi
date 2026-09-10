@@ -130,6 +130,19 @@ export default function AppPage() {
           </table>
         </div>
 
+        {/* A market maker with nothing resting looks like a market maker that does not work.
+          *
+          * It is idle about three quarters of the time and that is the strategy, not a
+          * fault: it quotes two of the venue's four tiers, and those windows open in bursts
+          * with gaps between them. But the table above is empty during every gap, and a
+          * reader arriving in one has no way to tell a resting bot from a dead one.
+          *
+          * So the gap shows the record instead of nothing. Same chain, read the same way,
+          * and the explorer decodes the vault's own events for us because the contract is
+          * verified — which is why there are no event topics pinned in this file. */}
+        <h2>What it did last <span>the vault&apos;s own events, newest first</span></h2>
+        <ul className="log" id="recent"><li className="empty">Reading the chain…</li></ul>
+
         <h2>Activity <span>this session, newest first</span></h2>
         <ul className="log" id="log" aria-live="polite" aria-relevant="additions">
           <li className="empty" id="logEmpty">Nothing yet. Transactions you send appear here with a link to the explorer.</li>
