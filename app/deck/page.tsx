@@ -141,12 +141,14 @@ export default function Deck() {
         different one each window. What changes between tiers is takers, not makers.</p>
         <p className="dim">So the 60-second tier is <b>67% of the venue Abadi has never quoted</b>, and
         the only thing resting in it is that one quoter at its fixed spread — the same
-        thing Abadi already measurably tightens elsewhere. It is not a parameter change:
-        this bot samples every 20 seconds and the book moves 29–49 ticks between samples,
-        so a 60-second window needs a seconds-cadence loop, which is a different bot.
-        That is the same reason <code>reduceQuote</code> has never fired in 1,262 cycles
-        rather than being tuned until it did. Market creation stays out on measurement:
-        two addresses made every one of the last 3,000 markets.</p>
+        thing Abadi already measurably tightens elsewhere. Two absolute numbers were what
+        held it shut: the bot refused any tier under 900s, and demanded 600 seconds of
+        life left, which is longer than a 60-second window ever has. Both are relative to
+        the window now, and <code>MIN_TIER=60 TIERS=60</code> reaches it — verified
+        against the live venue, two windows with 58 seconds left. It stays <b>off</b>:
+        whether quoting it earns is unmeasured, and arming it multiplies a 1.15 STT/day
+        gas burn by the fourteen-fold jump in windows. Market creation stays out on
+        measurement: two addresses made every one of the last 3,000 markets.</p>
       </section>
       </main>
 

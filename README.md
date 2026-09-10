@@ -516,13 +516,30 @@ In **172 of 172** windows rebuilt, the best bid and the best ask belong to **one
 — a different one each window — at the same flat spread the deck's second slide names.
 What separates a 4%-traded tier from a 70%-traded one is takers, not makers.
 
-- **The 60-second tier — 67% of the venue Abadi has never quoted.** The only thing resting
-  there is that one quoter at its fixed spread, which is precisely the thing Abadi is
-  measured to tighten everywhere else. Not a parameter change, which is why it is not
-  already done: this bot samples the book every 20 seconds and the book moves 29–49 ticks
-  between samples, so over a 60-second life that is not a quote, it is a coin toss. A
-  seconds-cadence loop is a different bot. It is the same reason `reduceQuote` has never
-  fired in 1,262 cycles rather than being tuned until it did — see *Honest status*.
+- **The 60-second tier — 67% of the venue Abadi has never quoted. Reachable now; still
+  off.** The only thing resting there is that one quoter at its fixed spread, which is
+  precisely what Abadi is measured to tighten everywhere else.
+
+  Two absolute numbers held it shut, and both contradicted this file's own header
+  ("headroom is a fraction of the tier because a flat number of seconds refuses the fast
+  tiers outright"). `candidates()` dropped every tier under 900s, and `hasHeadroom()`
+  demanded 600 seconds of remaining life — longer than a 60-second window's whole life, so
+  no environment variable could ever reach it. Both are expressed relative to the window
+  now, the floor for every tier that has a record is unchanged to the second, and the
+  momentum sample gap scales with the shortest window in the pool instead of spending a
+  third of it. `node scripts/lib/quoting.ts --self-check` asserts both halves of that.
+
+  `MIN_TIER=60 TIERS=60` opens it. Verified against the live venue: the default floor sees
+  8 quotable windows and none under 900s; with `MIN_TIER=60` two 60-second windows appear
+  with 58 seconds left each.
+
+  **It is not armed, and the reasons are not squeamishness.** Whether quoting a
+  60-second window earns anything is unmeasured — this repository does not turn on a
+  strategy it has no record for. And the operator holds 38.97 STT against a measured
+  1.15 STT/day; going from ~200 windows a day to 2,880 is roughly a fourteen-fold jump in
+  transactions, which is about a day of gas. Arming it is a decision with a number
+  attached, which is the point of writing the number down.
+
 - **Permissionless market creation — cut, on measurement.** Two addresses created every
   one of the last 3,000 markets, so the adapter for it stays a designed interface rather
   than a build. The decision rule was written down before the answer was known.

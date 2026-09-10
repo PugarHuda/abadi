@@ -45,11 +45,26 @@ export type Priced = Candidate & {
   skew: bigint;
 };
 
+/** The shortest window this vault will look at unless told otherwise.
+ *
+ *  900 is not a law of the venue, it is where the ledger has a record. The venue runs a
+ *  60-second tier that is 67% of every market it creates and this vault has never quoted
+ *  it — see the README's *Where this goes next*. Passing `minTier` is what opens it. */
+export const DEFAULT_MIN_TIER = 900;
+
 /** Live binary markets with enough of the window left to be worth quoting. */
-export function candidates(all: unknown[], opts: { shortest?: boolean; now?: number } = {}): Candidate[] {
+export function candidates(
+  all: unknown[],
+  opts: { shortest?: boolean; now?: number; minTier?: number } = {},
+): Candidate[] {
   const now = opts.now ?? Date.now() / 1000;
+  const minTier = opts.minTier ?? DEFAULT_MIN_TIER;
   return (all.filter((x: any) => isBinaryMarket(x.info)) as any[])
-    .filter((m) => Number(m.info.intervalSec || 0) >= 900 && Number(m.info.expiry) - now >= 600)
+    .filter((m) => Number(m.info.intervalSec || 0) >= minTier)
+    .filter((m) => hasHeadroom(
+      { intervalSec: Number(m.info.intervalSec), expiry: Number(m.info.expiry) } as Candidate,
+      now,
+    ))
     .filter((m) => m.outcomes?.[0]?.symbol)
     .sort((a, b) =>
       opts.shortest
@@ -68,10 +83,29 @@ export function candidates(all: unknown[], opts: { shortest?: boolean; now?: num
     }));
 }
 
-/** Does the window still have room for a quote to rest and fill? */
+/** Does the window still have room for a quote to rest and fill?
+ *
+ * The header of this file has always said headroom is a fraction of the tier "because a
+ * flat number of seconds refuses the fast tiers outright", and the code then required a
+ * flat 600 seconds anyway. On the 900s tier that floor is what binds — two thirds of the
+ * window must remain — and on anything shorter than ten minutes it refuses every window
+ * that ever existed. The whole 60-second tier was unreachable from here, and no env var
+ * could reach it, which is why the deck calls quoting it a different bot rather than a
+ * setting.
+ *
+ * The floor is kept exactly as it was for every tier that has a record, and expressed as
+ * a fraction below that, so nothing the live keeper quotes today changes by one second. */
+const LONG_TIER = 900;
+const LONG_FLOOR_SECONDS = 600;
+/** Half the window, for tiers too short for `LONG_FLOOR_SECONDS` to be a sentence. */
+const SHORT_FLOOR_FRACTION = 0.5;
+
 export function hasHeadroom(c: Candidate, now = Date.now() / 1000): boolean {
   const left = c.expiry - now;
-  return left >= c.intervalSec * 0.25 && left >= 600;
+  const floor = c.intervalSec >= LONG_TIER
+    ? LONG_FLOOR_SECONDS
+    : c.intervalSec * SHORT_FLOOR_FRACTION;
+  return left >= c.intervalSec * 0.25 && left >= floor;
 }
 
 /**
@@ -194,6 +228,28 @@ if (process.argv[1]?.replace(/\\/g, "/").endsWith("scripts/lib/quoting.ts") && p
   ok(!hasHeadroom({ ...c, intervalSec: 14400, expiry: now + 3599 }, now), "under a quarter of the tier is not");
   ok(!hasHeadroom({ ...c, intervalSec: 900, expiry: now + 599 }, now), "under ten minutes is never enough");
   ok(hasHeadroom({ ...c, intervalSec: 900, expiry: now + 601 }, now), "ten minutes on a 15m window is");
+
+  /* Opening the fast tiers must not move the tiers that have a record. These four are the
+     rule as it was before `SHORT_FLOOR_FRACTION` existed, asserted again on purpose: the
+     900s and 14400s answers above are the whole guarantee that the live keeper's quoting
+     did not change by one second. */
+  ok(!hasHeadroom({ ...c, intervalSec: 60, expiry: now + 29 }, now), "29s left on a 60s window is under half");
+  ok(hasHeadroom({ ...c, intervalSec: 60, expiry: now + 31 }, now), "31s left on a 60s window is quotable");
+  ok(hasHeadroom({ ...c, intervalSec: 300, expiry: now + 151 }, now), "half a 5m window is quotable");
+  ok(!hasHeadroom({ ...c, intervalSec: 300, expiry: now + 149 }, now), "under half a 5m window is not");
+
+  /* And the tier floor itself. `candidates()` refused everything under 900 seconds, so the
+     60s tier — 67% of every market the venue creates — was unreachable from this file no
+     matter what TIERS said. That is what "a different bot" meant, and it was one number. */
+  const mkt = (intervalSec: number, left: number) => ({
+    // `isBinaryMarket` reads one field: marketType.
+    info: { marketType: "BINARY", marketId: "0x00", intervalSec, expiry: now + left, asset: "BTC", strike: "0", tradingStart: 0 },
+    symbol: "S", outcomes: [{ symbol: "U" }],
+  });
+  const fast = [mkt(60, 40), mkt(900, 700)];
+  ok(candidates(fast, { now }).length === 1, "the 60s window is refused by default");
+  ok(candidates(fast, { now, minTier: 60 }).length === 2, "minTier 60 reaches the fast tier");
+  ok(candidates([mkt(60, 20)], { now, minTier: 60 }).length === 0, "a 60s window with 20s left is still refused");
 
   ok(ticksAway(750_000n, 0.742, 0.772) === 7n, "ticksAway measures from mid to mid");
   ok(ticksAway(757_000n, 0.742, 0.772) === 0n, "a quote at the book's mid is zero ticks away");

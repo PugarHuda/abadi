@@ -90,7 +90,7 @@ import { createPublicClient, createWalletClient, formatEther, http, parseAbi } f
 import { privateKeyToAccount } from "viem/accounts";
 import { readFileSync } from "node:fs";
 import { shannon, addresses, RPC, OUTCOME_TOKEN, PRICE_ONE, TICK, LOT, env, exchange, retry } from "./lib/somnia.ts";
-import { candidates, hasHeadroom, priceInside, ticksAway, toWei, fmt } from "./lib/quoting.ts";
+import { candidates, hasHeadroom, priceInside, ticksAway, toWei, fmt, DEFAULT_MIN_TIER } from "./lib/quoting.ts";
 
 /** Snap a price to the venue's grid; it rejects anything off it. */
 const toTick = (w: bigint) => (w / TICK) * TICK;
@@ -182,6 +182,10 @@ const FAIR_VALUE = !!process.env.FAIR_VALUE;
 const FV_MAX_EDGE = Number(process.env.FV_MAX_EDGE ?? 0.1);
 const FV_SKEW_TICKS = BigInt(process.env.FV_SKEW_TICKS ?? 3);
 const MAX_TIER = Number(process.env.MAX_TIER ?? 14400);
+/** Shortest window this bot will look at. The venue's 60s tier is 67% of every market it
+ *  creates and this vault has never quoted it; `MIN_TIER=60 TIERS=60` is what opens it.
+ *  Default 900 keeps the scheduled keeper on exactly the tiers it has a record for. */
+const MIN_TIER = Number(process.env.MIN_TIER ?? DEFAULT_MIN_TIER);
 /** Window lengths worth quoting, best first. Empty disables the allowlist. */
 const TIERS = (process.env.TIERS ?? "14400,900").split(",").map(Number).filter((n) => n > 0);
 const ALERT_WEBHOOK = process.env.ALERT_WEBHOOK;
@@ -690,7 +694,7 @@ async function cycle(n: number, bySymbol: Map<string, any>) {
   // The tier choice is a measured one, so say it out loud once a cycle rather than leaving
   // it implied by which markets happen to get quoted.
   if (TIERS.length) log(`tiers    quoting ${TIERS.join("s, ")}s only — 3600s and 86400s are left alone on the ledger's record`);
-  const cands = candidates(all, { shortest: SHORTEST })
+  const cands = candidates(all, { shortest: SHORTEST, minTier: MIN_TIER })
     .filter(
       (c) =>
         !quotedMarkets.has(c.marketId.toLowerCase()) &&
@@ -719,8 +723,15 @@ async function cycle(n: number, bySymbol: Map<string, any>) {
     const b: any = firstReads[k];
     if (b?.bids?.[0]?.[0] !== undefined && b?.asks?.[0]?.[0] !== undefined) first.set(c.marketId, { bid: b.bids[0][0], ask: b.asks[0][0] });
   });
-  log(`sampled  ${first.size} books in ${((Date.now() - t0) / 1000).toFixed(1)}s; second look in ${MOMENTUM_WAIT}s`);
-  if (first.size > 0 && active < ACTIVE) await new Promise((r) => setTimeout(r, MOMENTUM_WAIT * 1000));
+  /* The gap between the two samples has to fit inside the shortest window in the pool.
+     Twenty seconds is nothing against a four-hour window and a third of a sixty-second
+     one — waiting it out there spends the window the quote was meant to rest in, and
+     then `hasHeadroom` refuses what is left. Scaled, so the momentum check keeps costing
+     the same FRACTION of a window whatever tier the pool is drawn from. */
+  const shortestTier = Math.min(...pool.map((c) => c.intervalSec), MAX_TIER);
+  const wait = Math.max(2, Math.min(MOMENTUM_WAIT, Math.round(shortestTier * 0.1)));
+  log(`sampled  ${first.size} books in ${((Date.now() - t0) / 1000).toFixed(1)}s; second look in ${wait}s`);
+  if (first.size > 0 && active < ACTIVE) await new Promise((r) => setTimeout(r, wait * 1000));
   const secondReads = new Map<string, any>();
   await Promise.all(pool.map((c) => first.has(c.marketId)
     ? ex.fetchOrderBook(c.upSymbol, 5).then((b: any) => secondReads.set(c.marketId, b)).catch(() => null)
@@ -777,7 +788,7 @@ async function cycle(n: number, bySymbol: Map<string, any>) {
       }
       const moved = ticksAway((toWei(then.bid) + toWei(then.ask)) / 2n, bid, ask);
       if (moved >= MOMENTUM_TICKS) {
-        log(`skip     ${c.symbol}  mid moved ${moved} ticks in ${MOMENTUM_WAIT}s — trending, not quoting`);
+        log(`skip     ${c.symbol}  mid moved ${moved} ticks in ${wait}s — trending, not quoting`);
         quotedMarkets.add(c.marketId.toLowerCase()); // not again this cycle, for any slot
         continue;
       }
