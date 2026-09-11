@@ -97,7 +97,7 @@
   ["app", "connect", "wallet", "network", "usdc", "stt", "shares", "worth", "nav", "share", "idle",
    "amount", "amountMax", "deposit", "depositForm", "withdrawAmount", "withdrawMax", "withdraw", "withdrawForm",
    "withdrawAll", "allPreview", "faucet", "log", "logEmpty", "slots", "guard", "status", "nowallet", "wake",
-   "freshness", "vaultAddr", "usdcAddr", "recent"]
+   "freshness", "vaultAddr", "usdcAddr", "recent", "drawdown"]
     .forEach(function (id) { els[id] = document.getElementById(id); });
   var wakeStt = els.wake.querySelector("[data-wake=stt]");
   var wakeVerdict = els.wake.querySelector("[data-wake=verdict]");
@@ -226,7 +226,16 @@
         state.idle = idle;
         els.nav.textContent = usd(nav);
         els.idle.textContent = usd(idle);
-        els.share.textContent = supply > 0n ? (Number(nav) / Number(supply)).toFixed(6) : "1.000000";
+        var sharePx = supply > 0n ? Number(nav) / Number(supply) : 1;
+        els.share.textContent = sharePx.toFixed(6);
+        /* The sentence above the wallet panel names this number in words. It was written as
+           a literal and was 0.17 points stale within eight hours, which is the same drift
+           this page's own figures exist to avoid. */
+        if (els.drawdown) {
+          els.drawdown.textContent = sharePx < 1
+            ? "down " + (100 * (1 - sharePx)).toFixed(2) + "%"
+            : "up " + (100 * (sharePx - 1)).toFixed(2) + "%";
+        }
         var reads = [];
         for (var i = 0; i < n; i++) reads.push(call(VAULT, A.encode.slots(i)));
         return Promise.all(reads).then(function (ss) {

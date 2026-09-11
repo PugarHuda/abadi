@@ -44,7 +44,9 @@ export default function AppPage() {
           NAV at every moment, and you withdraw whenever the vault has idle collateral. The
           risk is one leg filling while the market walks away from the other: the vault then
           holds a direction, NAV marks it at zero, and the shares fall. That is happening —{" "}
-          <b>25% of filled quotes have gone adverse and the share price is down 5.40%</b>.
+          <b>25% of filled quotes have gone adverse and the share price is{" "}
+          <span id="drawdown">down</span></b>. {/* filled from the chain: a dead number beside
+          a live one is the drift this repository keeps finding */}
           It is testnet money, and <a href="/dashboard">the working</a> shows every episode.
         </p>
 
