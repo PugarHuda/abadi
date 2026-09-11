@@ -178,15 +178,10 @@ you would rather post from an X account, create it first — the field takes up 
 > still. Across every vault the record is -2.27% realised, and the ledger says so on the
 > front page.
 >
-> 149 unit tests, five stateful invariants, nine fork tests against the real venue, 96
+> 149 unit tests, five stateful invariants, nine fork tests against the real venue, 103
 > browser tests, 97.28% line coverage and 43/43 functions on the vault. It also passes
 > **a16z's ERC-4626 property suite** — all 26 fuzzed properties, conformance defined by
-> somebody who has never seen this vault rather than by our own coverage number. Sixteen
-> reproducible SDK and venue defects, each one filed on the venue's own tracker
-> ([dreamdex-bot-kit#26 … #41](https://github.com/somnia-chain/dreamdex-bot-kit/issues?q=is%3Aissue+Abadi)) with transaction hashes, six of them also proposed back
-> into the kit's own gotchas doc as [PR #42](https://github.com/somnia-chain/dreamdex-bot-kit/pull/42), and the venue's error table
-> uploaded to the public signature databases so its reverts decode for every team on the
-> chain, not just for us.
+> somebody who has never seen this vault rather than by our own coverage number.
 
 ---
 

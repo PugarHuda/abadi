@@ -12216,3 +12216,24 @@ keeper exited 1 -- see the ALERT lines above
 2026-09-11 03:12:15 tiers    quoting 14400s, 900s only — 3600s and 86400s are left alone on the ledger's record
 2026-09-11 03:12:15 sampled  0 books in 0.0s; second look in 20s
 2026-09-11 03:12:19 cycle 1  NAV 8704.62  idle 8704.62  resting 0.00  share 0.950725
+2026-09-11 03:26:15 vault    0xF5571c653B142B87BB552FB212e244bd80693f24
+2026-09-11 03:26:15 operator 0x39D2bae5EAedA9283535dDC98F1991c81eD5Cd7E
+2026-09-11 03:26:15 interval 30s  active 3  size 100 (x0.5 on 900s)  dead 6 ticks  momentum 3 ticks/20s  gas floor 0.5 STT  1 cycles
+2026-09-11 03:26:15 fv       ON  refuse over 0.1 of edge, skew up to 3 ticks toward fair; no model means book-only and a log line saying so
+2026-09-11 03:27:12 tiers    quoting 14400s, 900s only — 3600s and 86400s are left alone on the ledger's record
+2026-09-11 03:27:12 sampled  0 books in 0.0s; second look in 20s
+2026-09-11 03:27:16 cycle 1  NAV 8704.62  idle 8704.62  resting 0.00  share 0.950725
+2026-09-11 03:41:15 vault    0xF5571c653B142B87BB552FB212e244bd80693f24
+2026-09-11 03:41:15 operator 0x39D2bae5EAedA9283535dDC98F1991c81eD5Cd7E
+2026-09-11 03:41:15 interval 30s  active 3  size 100 (x0.5 on 900s)  dead 6 ticks  momentum 3 ticks/20s  gas floor 0.5 STT  1 cycles
+2026-09-11 03:41:15 fv       ON  refuse over 0.1 of edge, skew up to 3 ticks toward fair; no model means book-only and a log line saying so
+2026-09-11 03:42:10 tiers    quoting 14400s, 900s only — 3600s and 86400s are left alone on the ledger's record
+2026-09-11 03:42:10 sampled  0 books in 0.0s; second look in 20s
+2026-09-11 03:42:14 cycle 1  NAV 8704.62  idle 8704.62  resting 0.00  share 0.950725
+2026-09-11 03:56:20 vault    0xF5571c653B142B87BB552FB212e244bd80693f24
+2026-09-11 03:56:20 operator 0x39D2bae5EAedA9283535dDC98F1991c81eD5Cd7E
+2026-09-11 03:56:20 interval 30s  active 3  size 100 (x0.5 on 900s)  dead 6 ticks  momentum 3 ticks/20s  gas floor 0.5 STT  1 cycles
+2026-09-11 03:56:20 fv       ON  refuse over 0.1 of edge, skew up to 3 ticks toward fair; no model means book-only and a log line saying so
+2026-09-11 03:58:12 tiers    quoting 14400s, 900s only — 3600s and 86400s are left alone on the ledger's record
+2026-09-11 03:58:13 sampled  0 books in 0.0s; second look in 20s
+2026-09-11 03:58:18 cycle 1  NAV 8704.62  idle 8704.62  resting 0.00  share 0.950725
