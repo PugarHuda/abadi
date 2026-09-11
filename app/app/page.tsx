@@ -56,7 +56,14 @@ export default function AppPage() {
             <div className="who" id="wallet">Not connected</div>
             <div className="net" id="network"></div>
           </div>
-          <button className="lead" id="connect" type="button">Connect wallet</button>
+          <div className="row">
+            <button className="lead" id="connect" type="button">Connect wallet</button>
+            {/* The page reconnects a wallet it has already been granted, silently, on every
+                load. That is the right default and it needs a way out, or "connected" becomes
+                a state you cannot leave from here. This forgets the wallet on this device; the
+                wallet's own permission is revoked in the wallet, and the button says so. */}
+            <button id="disconnect" type="button" hidden={true}>Disconnect</button>
+          </div>
         </div>
         {/* EIP-6963. Only rendered when more than one wallet announces itself; with one or none
              there is nothing to choose and this stays empty. */}

@@ -97,7 +97,7 @@
   ["app", "connect", "wallet", "network", "usdc", "stt", "shares", "worth", "nav", "share", "idle",
    "amount", "amountMax", "deposit", "depositForm", "withdrawAmount", "withdrawMax", "withdraw", "withdrawForm",
    "withdrawAll", "allPreview", "faucet", "log", "logEmpty", "slots", "guard", "status", "nowallet", "wake",
-   "freshness", "vaultAddr", "usdcAddr", "recent", "drawdown"]
+   "freshness", "vaultAddr", "usdcAddr", "recent", "drawdown", "disconnect"]
     .forEach(function (id) { els[id] = document.getElementById(id); });
   var wakeStt = els.wake.querySelector("[data-wake=stt]");
   var wakeVerdict = els.wake.querySelector("[data-wake=verdict]");
@@ -525,9 +525,11 @@
       els.connect.textContent = provider() ? "Connect wallet" : "No wallet found";
       els.connect.disabled = !provider();
       els.nowallet.hidden = !!provider();
+      els.disconnect.hidden = true;
       status(provider() ? "Connect a wallet to enable these." : "No wallet in this browser, so the actions are off. The numbers are still live.", "info");
       return;
     }
+    els.disconnect.hidden = false;
     els.wallet.textContent = short(state.account);
     els.network.textContent = state.chainOk ? "Somnia Shannon · 50312" : "Wrong network — switch to Somnia Shannon";
     els.connect.textContent = state.chainOk ? "Connected" : "Switch network";
@@ -542,6 +544,7 @@
   var LAST = "abadi.wallet";
   function remember(rdns) { try { if (rdns) localStorage.setItem(LAST, rdns); } catch (e) {} }
   function remembered() { try { return localStorage.getItem(LAST); } catch (e) { return null; } }
+  function forget() { try { localStorage.removeItem(LAST); } catch (e) {} }
 
   /* Reconnect without asking.
    *
@@ -717,6 +720,31 @@
 
   // ---------------------------------------------------------------- actions
   els.connect.addEventListener("click", connect);
+
+  /* Forget the wallet on this device.
+   *
+   * EIP-1193 has no disconnect: a dapp cannot revoke its own permission, only the wallet
+   * can. So this does the honest half — drops the account from the page, clears the
+   * remembered rdns so `restore()` will not put it back on the next load, and says where
+   * the real revocation lives. Without it, "connected" became a state with no exit, which
+   * is what silently reconnecting on every load creates.
+   *
+   * A pending confirmation is abandoned first, for the same reason `accountsChanged` does
+   * it: the captured share amount belongs to an account that is about to stop being the
+   * one on screen. */
+  els.disconnect.addEventListener("click", function () {
+    cancelConfirm();
+    state.account = null;
+    state.chainOk = false;
+    state.wallet = null;
+    state.usdc = 0n; state.stt = 0n; state.shares = 0n; state.worth = 0n;
+    forget();
+    ["usdc", "stt", "shares", "worth"].forEach(function (k) { els[k].textContent = "—"; });
+    paintWallet();
+    paintWallets();
+    say("Disconnected on this device. The wallet still lists this site as connected — remove it there to revoke.");
+    refresh();
+  });
 
   els.faucet.addEventListener("click", function () {
     run(function () {

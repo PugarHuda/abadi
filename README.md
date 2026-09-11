@@ -534,12 +534,18 @@ What separates a 4%-traded tier from a 70%-traded one is takers, not makers.
   8 quotable windows and none under 900s; with `MIN_TIER=60` two 60-second windows appear
   with 58 seconds left each.
 
-  **It is not armed, and the reasons are not squeamishness.** Whether quoting a
-  60-second window earns anything is unmeasured — this repository does not turn on a
-  strategy it has no record for. And the operator holds 38.97 STT against a measured
-  1.15 STT/day; going from ~200 windows a day to 2,880 is roughly a fourteen-fold jump in
-  transactions, which is about a day of gas. Arming it is a decision with a number
-  attached, which is the point of writing the number down.
+  **Armed on 2026-09-11, and the argument against it was partly wrong.** The case for
+  waiting was that ~200 windows a day becoming 2,880 is a fourteen-fold jump in gas — and
+  that assumed a bot running continuously. It does not: `scripts/keeper.cmd` sets
+  `CYCLES=1` and `ACTIVE=3`, so it is one cycle every fifteen minutes filling at most three
+  slots whatever tiers it is allowed to look at. The exposure is bounded by the schedule,
+  not by the tier list.
+
+  So it is on, with `60` **last** in `TIERS`: a 60-second window is taken only when nothing
+  better is quotable, which is the idle gap this section is about rather than a change to
+  what the vault prefers. What has *not* changed is that **profitability on 60-second
+  windows is unmeasured** — the record for it will be in `scripts/ledger.ts` like every
+  other claim here, and until there is one, there is nothing to say about it.
 
 - **Permissionless market creation — cut, on measurement.** Two addresses created every
   one of the last 3,000 markets, so the adapter for it stays a designed interface rather
