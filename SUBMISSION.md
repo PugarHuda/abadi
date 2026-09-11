@@ -175,8 +175,8 @@ you would rather post from an X account, create it first — the field takes up 
 > an average of −30% of basis with a −100% in them. The vault now crosses the book to buy
 > the missing side, so the pair is worth exactly 1: fourteen of those have cost −1% on
 > average, worst −3.5%, and it refused 126 times when getting flat was worse than standing
-> still. Across every vault the record is -2.27% realised, and the ledger says so on the
-> front page.
+> still. Across every vault the record is -3.41% realised on 28,994.67 of basis, and the
+> ledger says so on the front page.
 >
 > 149 unit tests, five stateful invariants, nine fork tests against the real venue, 103
 > browser tests, 97.28% line coverage and 43/43 functions on the vault. It also passes
@@ -245,7 +245,7 @@ hackathon page. Paste this:
 > Tighter on 138 of 148, wider on none. The book measurably improved because something was
 > resting in it.
 >
-> The ledger publishes the losses too: -498.19 realised on 21,931.45 of basis, 21% of
+> The ledger publishes the losses too: -989.83 realised on 28,994.67 of basis, 25% of
 > filled quotes adverse where the spread needs under ~9%. It's on the front page rather
 > than in a footnote.
 >

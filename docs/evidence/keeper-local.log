@@ -12237,3 +12237,16 @@ keeper exited 1 -- see the ALERT lines above
 2026-09-11 03:58:12 tiers    quoting 14400s, 900s only — 3600s and 86400s are left alone on the ledger's record
 2026-09-11 03:58:13 sampled  0 books in 0.0s; second look in 20s
 2026-09-11 03:58:18 cycle 1  NAV 8704.62  idle 8704.62  resting 0.00  share 0.950725
+2026-09-11 04:11:09 vault    0xF5571c653B142B87BB552FB212e244bd80693f24
+2026-09-11 04:11:09 operator 0x39D2bae5EAedA9283535dDC98F1991c81eD5Cd7E
+2026-09-11 04:11:09 interval 30s  active 3  size 100 (x0.5 on 900s)  dead 6 ticks  momentum 3 ticks/20s  gas floor 0.5 STT  1 cycles
+2026-09-11 04:11:09 fv       ON  refuse over 0.1 of edge, skew up to 3 ticks toward fair; no model means book-only and a log line saying so
+2026-09-11 04:12:07 tiers    quoting 14400s, 900s only — 3600s and 86400s are left alone on the ledger's record
+2026-09-11 04:12:07 sampled  2 books in 0.4s; second look in 20s
+2026-09-11 04:12:30 fv       ETH-0-11SEP26-0800/tUSDC  fair 0.548  spot 2448.61 strike 2446.59 (feed tick at tradingStart+0s)  sigma 31.9% on 239 M1 returns (half-life 120m, lambda 0.9942)  13651s left  d2 0.121  feed 1s old  book mid 0.593  edge 0.045
+2026-09-11 04:12:30 skip     ETH-0-11SEP26-0800/tUSDC  mid moved 4 ticks in 20s — trending, not quoting
+2026-09-11 04:12:31 fv       BTC-0-11SEP26-0800/tUSDC  fair 0.536  spot 76918.63 strike 76874.65 (feed tick at tradingStart+0s)  sigma 29.5% on 239 M1 returns (half-life 120m, lambda 0.9942)  13649s left  d2 0.090  feed 2s old  book mid 0.558  edge 0.023
+2026-09-11 04:12:31 quote    slot 0 BTC-0-11SEP26-0800/tUSDC  theirs 0.544/0.573  ours 0.543/0.567  size 100  escrow 97.60  (mid still, 1 ticks)  skew -3 ticks toward fair
+2026-09-11 04:12:35 quote    slot 0 9c75  worked  0xf9e33879456b500dc5bdf0a172426b64c4a5e903a3396fcc17b86a9696ed4485  gas 1015271
+2026-09-11 04:12:40 arm      08:05:15Z  worked  0xdfd23d81613fee4f34b5a68210d20c99a0392f4f62993195f97142e12258c0e5  gas 467072
+2026-09-11 04:12:44 cycle 1  NAV 8704.62  idle 8607.02  resting 97.60  share 0.950725

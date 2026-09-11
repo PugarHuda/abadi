@@ -46,10 +46,11 @@ two.
 - One leg filling while the market walks away from the other is the real cost. 26 such
   episodes carried to settlement averaged -30.12% of basis; 14 closed by crossing the book
   for the missing side averaged -0.98%. docs/evidence/completing-2026-09-06.md.
-- The vault running today was deployed on 2026-09-07 and reads 0.950725 as of 2026-09-11,
-  which is a loss and is published as one. The record: 224 episodes across 14 vaults,
-  -498.19 realised on 21,931.45 of basis (-2.27%), 21% of filled quotes adverse where the
-  spread needs under about 9%. docs/evidence/ledger-2026-09-07.md.
+- The vault running today was deployed on 2026-09-07 at par and reads 0.945995 per share as
+  of 2026-09-11, down 5.40%, which is a loss and is published as one. The record: 287
+  episodes across 14 vaults, -989.83 realised on 28,994.67 of basis (-3.41%), 25% of filled
+  quotes adverse where the spread needs under about 9%. Both figures are worse than they
+  were on 2026-09-07 (-2.27% and 21%). docs/evidence/ledger-2026-09-11.md.
 
 ## What the venue got back, and what came of it
 

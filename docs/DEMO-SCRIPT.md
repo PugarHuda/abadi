@@ -117,8 +117,8 @@ to be a day old — this table is the checklist for the next one, so it tracks t
 | Fork tests against the real venue | **9**, all passing — `node scripts/fork-test.ts` |
 | Coverage | 97.28% of lines, 43/43 functions on `LiquidityVault.sol` |
 | Per share | **1.000000** on the vault deployed 2026-09-07 — par on a new ERC-4626, NOT a return. Say the record instead. |
-| The record, all vaults | **−498.19 on 21,931.45 of basis (−2.27%)** · the retired vault ended at 0.962755 |
-| Realised, every closed episode | −498.19 on 21,931.45 (−2.27%) |
+| The record, all vaults | **−989.83 on 28,994.67 of basis (−3.41%)** · 287 episodes · read 2026-09-11 |
+| Realised, every closed episode | −989.83 on 28,994.67 (−3.41%) · 25% of filled quotes adverse |
 | Episodes | **224** across 14 vaults |
 | Fill shape | 172 complete · 47 one-sided · 2 no fill · 2 open — **21% adverse** |
 | One-sided: carried vs completed | 26 carried at −30.12%, worst −100% · **14 completed at −0.98%**, worst −3.47% — `docs/evidence/completing-2026-09-06.md` |

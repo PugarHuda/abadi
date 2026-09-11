@@ -300,15 +300,16 @@ bot skips arming and says so until then. `sweepNative` brings the reserve back o
 **Run against the venue, on Shannon**
 
 - Quoting inside the incumbent's spread, top of book, both legs filling into complete sets
-- **The vault running today reads 1.000000, and that is not a return.** It was deployed on
-  2026-09-07 and a new ERC-4626 starts at par; the record the price forgot is the one to read.
-  Across **224 episodes on 14 vaults**: 172 closed into a complete set, 47 one-sided, 2 with
-  neither leg filled, and **−498.19 realised on 21,931.45 of basis, −2.27%**. 21% of filled
-  quotes were adverse where the strategy needs under about 9%. The vault this one replaced
+- **The vault running today reads 0.945995 per share, and that is a loss.** It was deployed
+  on 2026-09-07 at par and has fallen 5.40% against the shares it issued. Across **287
+  episodes on 14 vaults**: 212 closed into a complete set, 70 one-sided, 2 with neither leg
+  filled, and **−989.83 realised on 28,994.67 of basis, −3.41%**. 25% of filled
+  quotes were adverse where the strategy needs under about 9%, and both of those numbers
+  have got worse since 2026-09-07, not better — −2.27% and 21% then. The vault this one replaced
   ended at per share **0.962755** against shares issued at par — **−3.7%** for anyone who had
   deposited, and it is still on chain with 54.30 of escrow open on it. `scripts/ledger.ts`
   reads every figure back off the chain across all fourteen addresses, so a redeploy does not
-  clear the history; it only resets the denominator of one of them. *Read 2026-09-07 15:10 UTC.*
+  clear the history; it only resets the denominator of one of them. *Read 2026-09-11 04:20 UTC — [`ledger-2026-09-11.md`](docs/evidence/ledger-2026-09-11.md).*
 
   It replaces a published **+2.37%**, which was the realised spread on the winning episodes
   only: the ledger accumulated into its complete-set branch alone, so one-sided episodes
