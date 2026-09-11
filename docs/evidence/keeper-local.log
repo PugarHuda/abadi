@@ -12606,3 +12606,27 @@ keeper exited 1 -- see the ALERT lines above
 2026-09-11 13:44:00 fv       BTC-0-11SEP26-1600/tUSDC  fair 0.797  spot 77806.40 strike 77014.29 (feed tick at tradingStart+0s)  sigma 76.1% on 239 M1 returns (half-life 120m, lambda 0.9942)  8161s left  d2 0.830  feed 1s old  book mid 0.800  edge 0.003
 2026-09-11 13:44:00 skip     BTC-0-11SEP26-1600/tUSDC  mid moved 15 ticks in 20s — trending, not quoting
 2026-09-11 13:44:03 cycle 1  NAV 9125.62  idle 9047.62  resting 78.00  share 0.942121
+2026-09-11 13:56:02 vault    0xF5571c653B142B87BB552FB212e244bd80693f24
+2026-09-11 13:56:02 operator 0x39D2bae5EAedA9283535dDC98F1991c81eD5Cd7E
+2026-09-11 13:56:02 interval 30s  active 3  size 100 (x0.5 on 900s)  dead 6 ticks  momentum 3 ticks/20s  gas floor 0.5 STT  1 cycles
+2026-09-11 13:56:02 fv       ON  refuse over 0.1 of edge, skew up to 3 ticks toward fair; no model means book-only and a log line saying so
+2026-09-11 13:56:56 skip     slot 0 a231  completing costs 0.975 on top of 0.200 = 1.175 the pair, over the 1.060 line — carrying the leg instead
+2026-09-11 13:57:01 tiers    quoting 14400s, 900s, 60s only — 3600s and 86400s are left alone on the ledger's record
+2026-09-11 13:57:01 sampled  1 books in 0.4s; second look in 6s
+2026-09-11 13:57:10 fv       BTC-0-11SEP26-1600/tUSDC  fair 0.960  spot 78752.30 strike 77014.29 (feed tick at tradingStart+0s)  sigma 83.2% on 239 M1 returns (half-life 120m, lambda 0.9942)  7371s left  d2 1.748  feed 2s old  book mid 0.939  edge 0.021
+2026-09-11 13:57:10 skip     BTC-0-11SEP26-1600/tUSDC  mid 0.939 — priced as near-certain, no two-sided trade here
+2026-09-11 13:57:13 cycle 1  NAV 9125.62  idle 9047.62  resting 78.00  share 0.942121
+2026-09-11 14:11:02 vault    0xF5571c653B142B87BB552FB212e244bd80693f24
+2026-09-11 14:11:02 operator 0x39D2bae5EAedA9283535dDC98F1991c81eD5Cd7E
+2026-09-11 14:11:02 interval 30s  active 3  size 100 (x0.5 on 900s)  dead 6 ticks  momentum 3 ticks/20s  gas floor 0.5 STT  1 cycles
+2026-09-11 14:11:02 fv       ON  refuse over 0.1 of edge, skew up to 3 ticks toward fair; no model means book-only and a log line saying so
+2026-09-11 14:12:02 skip     slot 0 a231  completing costs 0.968 on top of 0.200 = 1.168 the pair, over the 1.060 line — carrying the leg instead
+2026-09-11 14:12:07 tiers    quoting 14400s, 900s, 60s only — 3600s and 86400s are left alone on the ledger's record
+2026-09-11 14:12:08 sampled  3 books in 0.4s; second look in 6s
+2026-09-11 14:12:18 fv       BTC-0-11SEP26-1600/tUSDC  fair 0.965  spot 78861.24 strike 77014.29 (feed tick at tradingStart+0s)  sigma 91.0% on 239 M1 returns (half-life 108m, lambda 0.9936)  6463s left  d2 1.814  feed 1s old  book mid 0.935  edge 0.030
+2026-09-11 14:12:19 skip     BTC-0-11SEP26-1600/tUSDC  mid 0.935 — priced as near-certain, no two-sided trade here
+2026-09-11 14:12:20 fv       ETH-260443-11SEP26-1413/tUSDC  fair 0.461  spot 2603.64 strike 2604.43 (market record 260443/1e2)  sigma 278.7% on 239 M1 returns (half-life 15m, lambda 0.9548)  41s left  d2 -0.097  feed 2s old  book mid 0.570  edge 0.108
+2026-09-11 14:12:20 skip     ETH-260443-11SEP26-1413/tUSDC  book mid 0.570 vs fair 0.461 — 0.108 apart, over FV_MAX_EDGE 0.1; past this much disagreement the backtest says the book is right and we are not
+2026-09-11 14:12:20 fv       BTC-7884648-11SEP26-1413/tUSDC  fair 0.557  spot 78861.24 strike 78846.48 (market record 7884648/1e2)  sigma 115.2% on 239 M1 returns (half-life 15m, lambda 0.9548)  40s left  d2 0.144  feed 3s old  book mid 0.726  edge 0.168
+2026-09-11 14:12:20 skip     BTC-7884648-11SEP26-1413/tUSDC  book mid 0.726 vs fair 0.557 — 0.168 apart, over FV_MAX_EDGE 0.1; past this much disagreement the backtest says the book is right and we are not
+2026-09-11 14:12:25 cycle 1  NAV 9125.62  idle 9047.62  resting 78.00  share 0.942121

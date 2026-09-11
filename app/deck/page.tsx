@@ -97,7 +97,9 @@ export default function Deck() {
         <p className="dim"><code>settle()</code> is permissionless — proceeds go to the vault, never the caller, and a settled market leaves the live list so redemption has to be pulled. <code>flatten()</code> is operator-only while a market still trades, because cancelling a live quote destroys the spread; open to anyone once it can't.</p>
       </section>
       <section className="slide" data-i="8" tabIndex={0} aria-label="Slide 9 of 11">
-        <h2>Four assumptions died on contact with the chain.</h2>
+        {/* Eight, and it said four. The list grew and the heading did not, on the one slide
+            whose whole subject is counting things carefully. */}
+        <h2>Eight assumptions died on contact with the chain.</h2>
         <ul>
           <li><b>Prices scale to the collateral's decimals</b>, not 1e18 — and a wrong scale reverts as <code>PostOnlyWouldCross</code>, sending you to look at spreads instead of units.</li>
           <li><b>The spot <code>placeOrder</code> ABI exists on binary pools and always fails.</b> It compiles, type-checks, and reverts at runtime.</li>

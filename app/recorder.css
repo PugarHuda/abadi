@@ -7,6 +7,18 @@
  * from that: the ground is printed with a time grid, content sits in channels between
  * rules rather than in cards, and the only hue beyond the two pens is the alarm. */
 
+/* `hidden` is an attribute and CSS outranks it.
+ *
+ * The HTML default is `[hidden] { display: none }` at the lowest possible specificity, so
+ * ANY rule that sets `display` on the same element wins and the element stays on screen
+ * while `el.hidden` reads true. On 2026-09-11 `/app` shipped a Disconnect button that was
+ * `hidden` and painted anyway — on a page with no wallet, where every other control was
+ * disabled, it was the only thing a visitor could press. `#wallets` had it latently too.
+ *
+ * The JS on this site toggles `el.hidden` rather than inline styles, on purpose, so this
+ * one rule is what makes that idiom true. It is the only `!important` in the file. */
+[hidden] { display: none !important; }
+
 :root {
   --stock:      #F5F1E6;
   --stock-sunk: #EBE5D5;
@@ -144,7 +156,10 @@ a:hover { text-decoration-color: var(--alarm); }
 .lockup svg { width: 20px; height: 38px; display: block; }
 .wordmark, .lockup h1 {
   margin: 0;
-  font-size: clamp(30px, 5vw, 44px);
+  /* Was clamp(30px,5vw,44px) — 44px at 1440, where .thesis is 46px. A masthead the same
+     size as the page's headline is a masthead competing with it, and on the dashboard it
+     squeezed the dateline beside it into looking like a stray caption. */
+  font-size: clamp(24px, 2.4vw, 30px);
   font-weight: 700; font-stretch: 112%;
   letter-spacing: -0.03em; line-height: 0.92;
 }
@@ -188,7 +203,11 @@ a:hover { text-decoration-color: var(--alarm); }
   margin: calc(var(--chart) * 3) 0 var(--chart);
   padding-bottom: 8px;
   border-bottom: 2px solid var(--ink);
-  font-size: 20px; font-weight: 600; letter-spacing: -0.012em;
+  /* 20px was SMALLER than a browser's default unstyled <h2> at 24px. Twenty-four of this
+     file's twenty-eight sizes sat between 11 and 21px and nothing at all between 21 and 44,
+     so the page had one type step: body, and a headline. That reads as an unstyled document
+     however carefully the rest is chosen, and it is the whole of "feels like html native". */
+  font-size: 28px; font-weight: 600; letter-spacing: -0.016em;
 }
 .band span {
   font-size: 14px; font-weight: 400; color: var(--pencil); letter-spacing: 0;
@@ -237,7 +256,7 @@ small, .aside { color: var(--pencil); font-size: 14px; }
   font-size: clamp(16px, 2.1vw, 21px);
   font-weight: 500; letter-spacing: -0.01em; line-height: 1.25;
 }
-.figures dd small { font-family: var(--sans); font-size: 12.5px; color: var(--pencil); }
+.figures dd small { font-family: var(--sans); font-size: 13px; color: var(--pencil); }
 
 /* ----------------------------------------------------------------------------- the pens */
 
@@ -259,9 +278,9 @@ small, .aside { color: var(--pencil); font-size: 14px; }
 /* Mono is a measurement, not a costume for "technical". A table of sentences is
    sentences: it gets the sans. Only a table that is actually a readout — the ledger,
    the episode list — takes .data, and inside any table a figure cell takes .num. */
-table { border-collapse: collapse; width: 100%; font-family: var(--sans); font-size: 14.5px; line-height: 1.5; }
-table.data { font-family: var(--mono); font-size: 12.5px; }
-td.num, td .mono, td code, td .addr, td.who { font-family: var(--mono); font-size: 12.5px; }
+table { border-collapse: collapse; width: 100%; font-family: var(--sans); font-size: 13px; line-height: 1.5; }
+table.data { font-family: var(--mono); font-size: 13px; }
+td.num, td .mono, td code, td .addr, td.who { font-family: var(--mono); font-size: 13px; }
 th {
   font-family: var(--sans); font-size: 13px; font-weight: 500; font-stretch: 80%;
   color: var(--pencil); text-align: left;
@@ -344,8 +363,8 @@ input:focus-visible { border-color: var(--ink); }
   border-top: 1px solid var(--rule-major);
   font-size: 13px; color: var(--pencil);
 }
-.foot span:first-child { font-family: var(--mono); font-size: 12.5px; }
+.foot span:first-child { font-family: var(--mono); font-size: 13px; }
 
 /* ------------------------------------------------------------------------------ the mono */
 
-code, .addr, .mono { font-family: var(--mono); font-size: 12.5px; }
+code, .addr, .mono { font-family: var(--mono); font-size: 13px; }

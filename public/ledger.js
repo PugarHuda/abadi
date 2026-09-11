@@ -209,7 +209,9 @@
     var rows = q("[data-ledger=rows]");
     rows.textContent = "";
     var complete = 0, oneSided = 0, noFill = 0, pnl = 0n, basis = 0n;
-    all.sort(function (a, b) { return a.at < b.at ? -1 : 1; }).forEach(function (ep) {
+    // Newest first. It was oldest first, so the episode a reader came to see — today's —
+    // was at the bottom of 295 rows in a table with no sort and no jump.
+    all.sort(function (a, b) { return a.at < b.at ? 1 : -1; }).forEach(function (ep) {
       var m = value(ep), result, cls;
       if (m.state === "open") { result = "open"; cls = "open"; }
       else if (m.state === "unaccounted") { basis += ep.basis; result = "? · not determinable"; cls = "open"; }
@@ -251,6 +253,10 @@
     }
     set("[data-ledger=count]", window.ABADI.vaults.length + 1 + " vaults, oldest first");
     root.setAttribute("data-state", "live");
+    // The heading's span carries the wait while there is one; once the episodes are in, it
+    // goes back to describing what is on screen.
+    var cap = document.querySelector('[data-ledger="caption"]');
+    if (cap) cap.textContent = "every vault, every episode";
     heartbeat(all);
     chart(all);
   }

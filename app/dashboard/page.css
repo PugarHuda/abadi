@@ -20,6 +20,17 @@
      "error", so the honest-failure sentence was hidden on both panels. */
   [data-state="error"] .live-err,
   [data-state="unreachable"] .live-err { display: block; }
+
+  /* The wait had no style at all.
+   *
+   * `error` and `unreachable` were both painted; `loading` was not, and it is the state a
+   * reader actually meets. The ledger fires one explorer request per vault per endpoint —
+   * twenty-eight of them — so the flagship section of this page is six literal ellipses,
+   * an empty bordered frame and a headerless table for five to eight seconds. That reads
+   * as broken, not as loading. Dimmed, so the frame is visibly a placeholder. */
+  #ledger[data-state="loading"] .chart,
+  #ledger[data-state="loading"] .tablewrap,
+  #ledger[data-state="loading"] .figures { opacity: .45; }
   .live-slots { list-style: none; margin: 16px 0 0; padding: 14px 0 0; border-top: 1px solid var(--rule-major); font-family: var(--mono); font-size: 12px; color: var(--pencil); }
   .live-foot { margin: 16px 0 0; font-size: 13px; color: var(--pencil); max-width: 74ch; }
 
@@ -101,7 +112,15 @@
   .tip b { font-weight: 500; }
   .legend { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13px; color: var(--pencil); margin-top: 10px; }
 
-  .tablewrap { overflow-x: auto; margin: var(--chart) 0 0; }
+  /* Capped, because it grew to 295 rows and buried the argument.
+   *
+   * Measured 2026-09-11: the page went 3,973px to 14,894px once the ledger loaded, and
+   * about 11,000px of that — three quarters of the page — was this one table. Everything
+   * after it sat below 74% scroll depth, including the 0.00 directional-exposure readout
+   * and the calibration chart, which are the two things on this page worth reading. An
+   * append-only table is not a reason to push the conclusion off the screen. */
+  .tablewrap { overflow: auto; max-height: calc(var(--chart) * 18); margin: var(--chart) 0 0; }
+  .tablewrap thead th { position: sticky; top: 0; background: var(--stock); }
   .episodes { font-family: var(--mono); font-size: 12px; }
   .episodes th, .episodes td { white-space: nowrap; }
 

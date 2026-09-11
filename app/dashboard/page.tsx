@@ -104,7 +104,11 @@ export default function Dashboard() {
         </div>
 
         {/* ============ track record, live ============ */}
-        <h2 className="band">Track record, live from the chain <span>every vault, every episode</span></h2>
+        {/* The span says what is happening while it happens. It read "every vault, every
+            episode" over an empty frame for the five to eight seconds the explorer takes to
+            answer twenty-eight requests, which describes the result and not the wait.
+            `ledger.js` overwrites it with the original line once the reads land. */}
+        <h2 className="band">Track record, live from the chain <span data-ledger="caption">reading every episode from the explorer, in your browser…</span></h2>
 
         <div className="ledger-live" id="ledger" data-state="loading">
           <p className="live-err" data-ledger="error"></p>
