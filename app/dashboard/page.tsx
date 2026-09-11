@@ -94,8 +94,8 @@ export default function Dashboard() {
 
         <div className="verdict">
           <p>
-            Before Abadi quoted, this market was <code>0.742 / 0.772</code> — a spread of
-            <code>0.030</code>. After, it reads <code>0.744 / 0.769</code>, a spread of
+            Before Abadi quoted, this market was <code>0.742 / 0.772</code> — a spread of{" "}
+            <code>0.030</code>. After, it reads <code>0.744 / 0.769</code>, a spread of{" "}
             <code>0.025</code>. The incumbent quoter tightened in response.
           </p>
           <p>
@@ -170,7 +170,7 @@ export default function Dashboard() {
           </p>
           <p>
             That last sentence stopped being a design claim on the 27th. A later window ran the
-            same shape end to end — quoted, both legs filled, resolved, and
+            same shape end to end — quoted, both legs filled, resolved, and{" "}
             <code>settle()</code> redeemed <b>100.00</b> against a <b>97.60</b> basis. Net asset
             value did not move by a single unit across settlement, because a complete set was
             already marked at exactly what it redeems for.
@@ -212,7 +212,7 @@ export default function Dashboard() {
 
         <div className="verdict">
           <p>
-            Across every tier, up won as often as a coin. Pooled over 2,422 settled markets:
+            Across every tier, up won as often as a coin. Pooled over 2,422 settled markets:{" "}
             <code>49.96%</code>, four hundredths of a standard error from 50. The 24-hour tier
             looks tempting at 58.6% — it has 58 samples and a z of 1.31. That is noise, and
             reading it as signal is the mistake to avoid.

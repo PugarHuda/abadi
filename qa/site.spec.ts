@@ -295,6 +295,37 @@ test.describe("dashboard", () => {
   });
 });
 
+test.describe("prose", () => {
+  /* Two words run together because JSX ate the newline between them.
+   *
+   * Same defect as the collapsed `<pre>` blocks above and it reads as a typo rather than a
+   * bug, which is why it survived on the landing page: "the real risk a maker carries
+   * is<b>adverse selection</b>". A text line that ends in a letter and is followed
+   * immediately by an element starting with one has lost a space that the source has and
+   * the page does not. */
+  for (const path of ["/", "/app", "/dashboard", "/deck"]) {
+    test(`${path} has no words run together across a tag`, async ({ page }) => {
+      await page.goto(BASE + path, { waitUntil: "domcontentloaded" });
+      const joins = await page.evaluate(() => {
+        const out: string[] = [];
+        const it = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+        let n: Node | null;
+        while ((n = it.nextNode())) {
+          const t = n.nodeValue ?? "";
+          if (!/[A-Za-z0-9:,)]$/.test(t)) continue;
+          const el = n.nextSibling as HTMLElement | null;
+          if (!el || el.nodeType !== 1 || el.tagName === "BR") continue;
+          const s = el.textContent ?? "";
+          if (!/^[A-Za-z0-9(]/.test(s)) continue;
+          out.push(t.slice(-30).trim() + " ≡ " + s.slice(0, 30).trim());
+        }
+        return out;
+      });
+      expect(joins, "words run together — " + joins.join(" | ")).toEqual([]);
+    });
+  }
+});
+
 test.describe("deck", () => {
   test("shows exactly one slide at a time", async ({ page }) => {
     await page.goto(BASE + "/deck", { waitUntil: "networkidle" });

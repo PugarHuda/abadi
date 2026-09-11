@@ -121,6 +121,7 @@ export default function Deck() {
             <tr><td><code>flatten()</code> — merged early, 671s before expiry</td><td className="num tick">✓</td></tr>
             <tr><td>149 tests, five stateful invariants</td><td className="num tick">✓</td></tr>
             <tr><td>Keeper-free wake-up — the chain settled a window for us</td><td className="num tick">✓</td></tr>
+            <tr><td>Six defects landed in the venue&apos;s own <code>docs/gotchas.md</code></td><td className="num tick">✓</td></tr>
           </tbody>
         </table>
         <p><b>A handful of fills proves the mechanism, not the edge.</b> Adverse selection is the real risk a maker carries, and we met it twice in one afternoon — a leg taken while the market walked away from the other. NAV marks that leg at zero, so the loss lands on us and not on whoever deposits next. Measuring the frequency needs many quotes across many windows. The bot and the ledger exist so that number grows without anyone having to trust it.</p>

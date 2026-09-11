@@ -202,11 +202,37 @@ export default function Home() {
           </li>
         </ul>
 
+        {/* ============ what the venue got back ============ */}
+        {/* The rubric's Business & Ecosystem Impact bucket, and the only part of it that is
+          * not this project talking about itself. Both quotes are a Somnia collaborator on a
+          * pull request, and both are checkable: the first against their repository, the
+          * second against a public database with a timestamp on it. */}
+        <h2 className="band">What went back to the venue <span>and what came of it</span></h2>
+
+        <ul className="ran">
+          <li>
+            <span className="what">docs</span>
+            <span className="said">Sixteen defects filed on the venue&rsquo;s own tracker, six proposed as a
+            documentation section. <b>It is in their docs</b> &mdash; <i>&ldquo;All six reproduce. I re-measured
+            each against mainnet and Shannon&hellip; The section is yours.&rdquo;</i> Three of ours were already
+            out of date and their corrections are in the repo beside them.</span>
+            <span className="tx"><a href="https://github.com/somnia-chain/dreamdex-bot-kit/blob/main/docs/gotchas.md">gotchas.md</a></span>
+          </li>
+          <li>
+            <span className="what">4byte</span>
+            <span className="said">637 venue signatures published, so a DreamDEX revert decodes for
+            every team on Somnia. <b>Somebody used it</b>, unprompted &mdash; <i>&ldquo;already earning its keep:{" "}
+            <code>OnlyApprovedContracts()</code> is there from 6 Sep and decoded a revert for me in an
+            unrelated investigation this week.&rdquo;</i></span>
+            <span className="tx"><a href="https://www.4byte.directory/signatures/?bytes4_signature=0x3fb0ba2e">0x3fb0ba2e</a></span>
+          </li>
+        </ul>
+
         {/* ============ the honest part ============ */}
         <h2 className="band">What this is not <span>yet</span></h2>
 
         <p className="note">
-          A handful of fills proves the mechanism, not an edge. The real risk a maker carries is
+          A handful of fills proves the mechanism, not an edge. The real risk a maker carries is{" "}
           <b>adverse selection</b> &mdash; being filled on one side while the market walks away from the
           other. It happened to us twice in one afternoon. When it does, the vault is holding a
           direction, and NAV marks that leg at <b>zero</b> rather than at what it cost, so the loss

@@ -154,6 +154,16 @@ you would rather post from an X account, create it first — the field takes up 
 > 0.0175 with it: 28% narrower, tighter on 138 of 148, wider on none. Measured 2026-09-08,
 > all 148 scored and none refused, published in `docs/evidence/impact-2026-09-08.md`.
 >
+> **What the venue got back.** Sixteen reproducible SDK and venue defects filed on
+> `somnia-chain/dreamdex-bot-kit` (#26-#41). Six of them are now a section of the kit's own
+> `docs/gotchas.md` — a Somnia collaborator re-measured each against mainnet and Shannon,
+> corrected three of ours against newer contract behaviour, and landed it as *Event
+> Contracts (binary markets)*, entries 17-22. We also published 637 of the venue's
+> signatures to 4byte, so a DreamDEX revert decodes for every team on Somnia; the same
+> collaborator reported, unprompted, that it "decoded a revert for me in an unrelated
+> investigation this week". That is the one part of an ecosystem claim that is not
+> self-reported.
+>
 > **What we got wrong and fixed in public.** This project once published a +2.37% return.
 > The ledger was summing only the episodes that closed into a complete set, so it could not
 > produce a loss. We audited ourselves, published the correction, and rebuilt the ledger to
@@ -212,10 +222,21 @@ them disagrees with `forge test`. If you add tests before submitting, update all
 
 ## After you submit: the twenty minutes that are worth more than another test
 
-The rubric gives **20% to Business & Ecosystem Impact** and **15% to Presentation**, and
-this project currently has no presence outside its own repository at all: searching for it
-by name returns nothing, and no human on the Somnia side has ever seen it. Every other
-number here is already earned. This is the part that is not.
+The rubric gives **20% to Business & Ecosystem Impact** and **15% to Presentation**.
+
+That first sentence used to be followed by "this project has no presence outside its own
+repository at all", and on 2026-09-11 that stopped being true. A Somnia collaborator
+reviewed PR #42, re-measured all six entries against mainnet and Shannon, and landed the
+section in the kit's own `docs/gotchas.md` — and said, unprompted, that the 4byte upload
+had already decoded a revert for them in an unrelated investigation. **Both are on the
+landing page and in the README now**, because evidence that a venue used your work is the
+only part of an ecosystem claim that is not self-reported, and it was sitting in a closed
+pull request where no judge would ever look.
+
+What is still true: 0 stars, 0 forks, one holder of vault shares (the deployer), and one
+referral from DoraHacks in fourteen days. The repository was cloned 920 times by 248 unique
+cloners in that window and viewed by 2 people, which is a machine-read project, not a
+read one.
 
 **1. The hackathon's own Telegram** — `https://t.me/+XHq0F0JXMyhmMzM0`, linked from the
 hackathon page. Paste this:
@@ -233,10 +254,18 @@ hackathon page. Paste this:
 > filled quotes adverse where the spread needs under ~9%. It's on the front page rather
 > than in a footnote.
 >
-> Also filed 16 reproducible SDK and venue defects on dreamdex-bot-kit (https://github.com/somnia-chain/dreamdex-bot-kit/issues?q=is%3Aissue+Abadi) with tx hashes,
-> plus a PR adding the six binary-market ones to its gotchas doc (https://github.com/somnia-chain/dreamdex-bot-kit/pull/42),
-> and uploaded the venue's error table to the public signature databases — 637 signatures
-> newly registered, so its reverts decode in `cast 4byte` for everyone now, not just for us.
+> Two things went back to the venue rather than into my repo, and neither is me marking my
+> own homework:
+>
+> Sixteen reproducible defects filed on dreamdex-bot-kit (#26-#41). Six are now a section of
+> your own docs — a collaborator re-measured each against mainnet and Shannon, corrected
+> three of mine against newer contract behaviour, and landed it as "Event Contracts (binary
+> markets)", entries 17-22 in docs/gotchas.md.
+>
+> And 637 of the venue's signatures published to 4byte, so a DreamDEX revert decodes in
+> `cast 4byte` for every team on Somnia. It is already in use by somebody else: "already
+> earning its keep: OnlyApprovedContracts() is there from 6 Sep and decoded a revert for me
+> in an unrelated investigation this week."
 >
 > https://abadi-wheat.vercel.app · https://github.com/PugarHuda/abadi
 

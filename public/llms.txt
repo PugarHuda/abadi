@@ -35,7 +35,7 @@ two.
   address, the equity curve, and every episode the vault has run, decoded from the
   explorer in the reader's browser
 - /app — deposit, withdraw, mint test collateral
-- /deck — the argument in ten slides
+- /deck — the argument in eleven slides
 
 ## What it measured
 
@@ -46,15 +46,33 @@ two.
 - One leg filling while the market walks away from the other is the real cost. 26 such
   episodes carried to settlement averaged -30.12% of basis; 14 closed by crossing the book
   for the missing side averaged -0.98%. docs/evidence/completing-2026-09-06.md.
-- The vault running today was deployed on 2026-09-07 and reads 1.000000, which is par on a
-  new ERC-4626 and not a return. The record: 224 episodes across 14 vaults, -498.19 realised
-  on 21,931.45 of basis (-2.27%), 21% of filled quotes adverse where the spread needs under
-  about 9%. The vault it replaced ended at 0.962755. docs/evidence/ledger-2026-09-07.md.
+- The vault running today was deployed on 2026-09-07 and reads 0.950725 as of 2026-09-11,
+  which is a loss and is published as one. The record: 224 episodes across 14 vaults,
+  -498.19 realised on 21,931.45 of basis (-2.27%), 21% of filled quotes adverse where the
+  spread needs under about 9%. docs/evidence/ledger-2026-09-07.md.
+
+## What the venue got back, and what came of it
+
+- Sixteen reproducible SDK and venue defects filed on somnia-chain/dreamdex-bot-kit as
+  issues #26 through #41, one each.
+- Six of them are now a section of the venue's OWN documentation. A Somnia collaborator
+  re-measured every entry against mainnet and Shannon, corrected three against newer
+  contract behaviour, and landed it: docs/gotchas.md, "Event Contracts (binary markets)",
+  entries 17-22, each linking back to the issue carrying its reproduction. Their words on
+  PR #42: "All six reproduce... The section is yours."
+- 637 of the venue's function and error signatures published to 4byte.directory, so a
+  DreamDEX revert decodes in cast 4byte and Blockscout for every team on Somnia. It is in
+  use by someone other than this project: the same collaborator, unprompted, "already
+  earning its keep: OnlyApprovedContracts() is there from 6 Sep and decoded a revert for me
+  in an unrelated investigation this week." Signature 1214921, 0x3fb0ba2e, registered
+  2026-09-06.
+- This is the only part of this project's ecosystem claim that is not this project talking
+  about itself, and both halves are checkable without asking us.
 
 ## Repository
 
 https://github.com/PugarHuda/abadi — contracts in src/, the keeper in scripts/bot.ts, the
-site in web/, browser tests in qa/, and one file per thing that happened in docs/evidence/,
+site in app/ (Next.js App Router, static export), browser tests in qa/, and one file per thing that happened in docs/evidence/,
 including the things that went wrong and what they cost.
 
 ## Two things a reader should know before quoting this

@@ -572,11 +572,34 @@ and **all sixteen are filed on the venue's own tracker** as
 [somnia-chain/dreamdex-bot-kit#26 … #41](https://github.com/somnia-chain/dreamdex-bot-kit/issues?q=is%3Aissue+Abadi) — one issue each, so each can be closed on its
 own. A report that lives only in the reporter's repository has not been reported.
 
-Six of them are also proposed as a change to the kit itself:
-[**PR #42**](https://github.com/somnia-chain/dreamdex-bot-kit/pull/42) adds an *Event Contracts* section to its `docs/gotchas.md`. That file has
-sixteen entries and all sixteen are spot or perp, so a participant building on Event Contracts
-hits none of them and all six of these — the price scale, the module-pull at redemption, the
-book that freezes at expiry, and the beacon proxy behind every pool.
+### Six of them are in the kit's own documentation now
+
+[**PR #42**](https://github.com/somnia-chain/dreamdex-bot-kit/pull/42) proposed an *Event
+Contracts* section for the kit's `docs/gotchas.md`. That file had sixteen entries and all
+sixteen were spot or perp, so a participant building on Event Contracts hit none of them
+and all six of these — the price scale, the module-pull at redemption, the book that
+freezes at expiry, and the beacon proxy behind every pool.
+
+**It is in their docs.** A Somnia collaborator re-measured every entry against mainnet and
+Shannon, corrected three of them against newer contract behaviour, and landed the section:
+
+> Good report, and an unusually complete one. All six reproduce. I re-measured each against
+> mainnet and Shannon before writing them up, and five went in close to your wording. […]
+> Closing this in favour of our own PR, which is how we land community docs changes. The
+> section is yours, and the numbering, shape and most of the wording are unchanged.
+>
+> — [@emrestay on PR #42](https://github.com/somnia-chain/dreamdex-bot-kit/pull/42)
+
+`docs/gotchas.md` now opens its **Event Contracts (binary markets)** section with "every one
+of these was hit by a real vault quoting Event Contracts on Shannon. Each entry links to the
+issue carrying its reproduction" — entries 17 through 22, linking back to the issues above.
+
+Three of our six were **wrong by the time they were read**, and the corrections are worth
+more than the entries: #18 now reverts with no reason data at all rather than a named error,
+which is worse than what we reported; `trader.redeem` grants the operator for you unless you
+pass `autoApprove: false`; and `0x8afbce93` is `CloseNotCaptured()` in the current error
+table, undecodable for us only because the table we pinned was generated from an older
+commit. A report is a claim about a moving chain, and this is what checking one looks like.
 
 ### What went back to the chain rather than into this repo
 
@@ -591,8 +614,18 @@ newly registered 637   already known 241   refused 0     (4byte.directory)
 forge selectors upload --all                             (OpenChain / Sourcify)
 ```
 
-A revert from a DreamDEX pool now decodes in `cast 4byte`, Foundry traces and Blockscout for
-every team on Somnia, not just for this one. `0xcfb9cfb3` was nothing this morning and is
+**Somebody used it.** Unprompted, in the review of PR #42, three weeks before anyone had a
+reason to be kind about it:
+
+> The 4byte registration is real and already earning its keep: `OnlyApprovedContracts()` is
+> there from 6 Sep and decoded a revert for me in an unrelated investigation this week.
+>
+> — [@emrestay](https://github.com/somnia-chain/dreamdex-bot-kit/pull/42)
+
+[4byte confirms it](https://www.4byte.directory/api/v1/signatures/?text_signature=OnlyApprovedContracts()):
+signature 1214921, `0x3fb0ba2e`, registered 2026-09-06T15:45:57Z — the timestamp of the run
+above. A revert from a DreamDEX pool now decodes in `cast 4byte`, Foundry traces and
+Blockscout for every team on Somnia, not just for this one. `0xcfb9cfb3` was nothing this morning and is
 `AccountNotFlat()` tonight. Two selectors still decode to nothing and that is documented too
 — they are missing from the venue's own generated error table, which is
 [`docs/evidence/selectors-2026-09-06.md`](docs/evidence/selectors-2026-09-06.md) and SDK
