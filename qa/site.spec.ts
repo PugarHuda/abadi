@@ -295,6 +295,30 @@ test.describe("dashboard", () => {
   });
 });
 
+test.describe("masthead", () => {
+  /* The page you are on must not be a link to itself.
+   *
+   * `/app` offered "Open the app" while you were on `/app`, marked `aria-current` for a
+   * screen reader and identical to everyone else. Pressing it reloads the page, and this
+   * page keeps its wallet connection in memory, so the one route where a pointless reload
+   * costs something was the one route that invited it. */
+  // `/deck` is deliberately chrome-less: it carries a `.deckbar` transport, not the
+  // masthead, so there is no nav on it to link anywhere.
+  for (const path of ["/", "/app", "/dashboard"]) {
+    test(`${path} does not link to itself`, async ({ page }) => {
+      await page.goto(BASE + path, { waitUntil: "domcontentloaded" });
+      const selfLinks = await page.evaluate(
+        (p) => Array.from(document.querySelectorAll(".nav a"))
+          .map((a) => new URL((a as HTMLAnchorElement).href).pathname.replace(/\/$/, "") || "/")
+          .filter((h) => h === p),
+        path,
+      );
+      expect(selfLinks, `the nav links back to ${path} from ${path}`).toEqual([]);
+      await expect(page.locator('.nav [aria-current="page"]')).toHaveCount(1);
+    });
+  }
+});
+
 test.describe("prose", () => {
   /* Two words run together because JSX ate the newline between them.
    *
@@ -312,7 +336,7 @@ test.describe("prose", () => {
         let n: Node | null;
         while ((n = it.nextNode())) {
           const t = n.nodeValue ?? "";
-          if (!/[A-Za-z0-9:,)]$/.test(t)) continue;
+          if (!/[A-Za-z0-9:,)—–;]$/.test(t)) continue;
           const el = n.nextSibling as HTMLElement | null;
           if (!el || el.nodeType !== 1 || el.tagName === "BR") continue;
           const s = el.textContent ?? "";

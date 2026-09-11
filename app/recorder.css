@@ -149,7 +149,9 @@ a:hover { text-decoration-color: var(--alarm); }
   letter-spacing: -0.03em; line-height: 0.92;
 }
 .nav { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
-.nav a {
+/* The current page is a <span>, not an <a>. Same box, no pointer, no hover: it marks
+   where you are instead of offering to take you there. */
+.nav a, .nav .here {
   font-size: 15px; font-weight: 500;
   padding: 8px 12px;
   text-decoration: none;
@@ -157,7 +159,7 @@ a:hover { text-decoration-color: var(--alarm); }
   transition: background-color 140ms ease-out, border-color 140ms ease-out;
 }
 .nav a:hover { background: var(--stock-sunk); }
-.nav a[aria-current="page"] { border-color: var(--ctl-line); }
+.nav [aria-current="page"] { border-color: var(--ctl-line); color: var(--pencil); cursor: default; }
 .nav a.go {
   background: var(--ink); color: var(--stock); border-color: var(--ink);
 }

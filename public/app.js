@@ -399,7 +399,13 @@
    * and the heading says when they were read. */
   function refresh() {
     if (document.visibilityState === "hidden") return Promise.resolve();
-    return loadVault().then(loadWake).then(loadAccount).then(loadRecent).then(function () {
+    /* Not chained onto the reads above, and that is the point. It reads the EXPLORER while
+       they read the RPC, so a chain read that fails must not decide whether the history
+       panel ever resolves — chained, any rejection above left it on "Reading the chain…"
+       for good, which is the exact failure this site has now had three times. It owns its
+       own catch, so it cannot reject this one either. */
+    loadRecent();
+    return loadVault().then(loadWake).then(loadAccount).then(function () {
       state.readAt = new Date();
       els.app.setAttribute("data-stale", "false");
       els.freshness.textContent = "read from the chain every 30 seconds";
@@ -435,6 +441,13 @@
   });
   window.dispatchEvent(new Event("eip6963:requestProvider"));
 
+  /** The rdns of an announced provider, so a connection made without the chooser is still
+   *  remembered for next load. Null for the legacy `window.ethereum` injection. */
+  function walletRdns(p) {
+    var w = announced.filter(function (x) { return x.provider === p; })[0];
+    return w && w.info && w.info.rdns;
+  }
+
   /** The wallet the visitor picked, else the only one announced, else the legacy injection. */
   function provider() {
     if (state.wallet) return state.wallet;
@@ -462,6 +475,7 @@
       b.appendChild(document.createTextNode(w.info.name));
       b.addEventListener("click", function () {
         state.wallet = w.provider;
+        remember(w.info && w.info.rdns);
         paintWallets();
         connect();
       });
@@ -512,11 +526,49 @@
     setBusy(false);
   }
 
+  /* Which wallet was used last, by its EIP-6963 rdns. Not a secret and not a session: it
+     only decides which announced provider to ask "are we already connected?" on the next
+     load, so that a visitor with three wallets installed is not asked about the wrong one.
+     Storage is wrapped because a browser set to block site data throws on access. */
+  var LAST = "abadi.wallet";
+  function remember(rdns) { try { if (rdns) localStorage.setItem(LAST, rdns); } catch (e) {} }
+  function remembered() { try { return localStorage.getItem(LAST); } catch (e) { return null; } }
+
+  /* Reconnect without asking.
+   *
+   * `eth_requestAccounts` prompts. `eth_accounts` does not: it answers with the accounts
+   * this origin has ALREADY been granted, and with an empty array otherwise. This page only
+   * ever called the first one, so every reload — including pressing a nav link back to this
+   * same page — started at "Not connected" with a wallet that had never revoked anything,
+   * and the only way back was a second approval the visitor had already given.
+   *
+   * Nothing here can prompt, so it is safe to run on load: a visitor who has not connected
+   * sees exactly what they saw before. */
+  function restore() {
+    var pick = remembered();
+    var w = pick && announced.filter(function (x) { return x.info && x.info.rdns === pick; })[0];
+    var p = (w && w.provider) || provider();
+    if (!p || !p.request) return Promise.resolve();
+    return p.request({ method: "eth_accounts" })
+      .then(function (accs) {
+        if (!accs || !accs.length) return;
+        if (w) state.wallet = w.provider;
+        state.account = accs[0];
+        return chainId().then(function (id) {
+          state.chainOk = id === CHAIN_ID;
+          paintWallet();
+          paintWallets();
+          return refresh();
+        });
+      })
+      .catch(function () { /* a wallet that will not answer is simply not connected */ });
+  }
+
   function connect() {
     var p = provider();
     if (!p) { say("No EIP-1193 wallet in this browser. Install one, then reload."); return; }
     p.request({ method: "eth_requestAccounts" })
-      .then(function (accs) { state.account = accs[0]; return ensureChain(); })
+      .then(function (accs) { state.account = accs[0]; remember(walletRdns(p)); return ensureChain(); })
       .then(function () { state.chainOk = true; paintWallet(); paintWallets(); say("Connected " + short(state.account) + " on Somnia Shannon."); return refresh(); })
       .catch(function (e) { state.chainOk = false; paintWallet(); say("Wallet: " + (e && e.message ? e.message : String(e))); });
   }
@@ -765,6 +817,10 @@
 
   paintWallet();
   refresh();
+  /* One turn of the event loop after load, so every EIP-6963 wallet has answered the
+     request dispatched above and `announced` is populated. `restore()` cannot prompt, so
+     the worst case is that it finds nothing and the page stays exactly as it is. */
+  setTimeout(restore, 0);
   setInterval(refresh, 30000);
   // The subscription is re-read every 30s with everything else; the countdown between
   // those reads is arithmetic on a number already in hand, so it costs no request.

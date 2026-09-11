@@ -40,17 +40,25 @@ export default function SiteHeader({
         <h1 className="wordmark">abadi</h1>
       </a>
       {children}
+      {/* The page you are on is not a link.
+        *
+        * `aria-current` alone told a screen reader and nobody else, so on `/app` the nav
+        * still offered "Open the app" — an invitation to go where you already are. Pressing
+        * it reloads the page, and a reload drops the wallet connection, so the one page
+        * where that costs something was the one page that offered it. It reads as a
+        * different destination and behaves as a logout. */}
       <nav className="nav" aria-label="Site">
-        {LINKS.map((l) => (
-          <a
-            key={l.href}
-            href={l.href}
-            className={l.go ? "go" : undefined}
-            aria-current={l.href === current ? "page" : undefined}
-          >
-            {l.label}
-          </a>
-        ))}
+        {LINKS.map((l) =>
+          l.href === current ? (
+            <span key={l.href} className="here" aria-current="page">
+              {l.go ? "The app" : l.label}
+            </span>
+          ) : (
+            <a key={l.href} href={l.href} className={l.go ? "go" : undefined}>
+              {l.label}
+            </a>
+          ),
+        )}
       </nav>
     </header>
   );

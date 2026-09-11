@@ -27,6 +27,27 @@ export default function AppPage() {
 
         <main id="app" data-busy="false" tabIndex={-1}>
 
+        {/* What this is and what happens after you press Deposit.
+          *
+          * The page opened on a wallet panel and never said either. Somebody who had used it
+          * asked "after I deposit, then what?" — which is the only question a depositor has,
+          * and four screens of correct ERC-4626 detail did not answer it. */}
+        <p className="lede">
+          This vault is a market maker. You put tUSDC in; a bot quotes both sides of DreamDEX
+          up/down windows with it, every fifteen minutes, without you. When both sides of a
+          quote fill it holds one Up and one Down — a pair worth exactly <b>1</b> at
+          settlement whichever way the window goes — and it paid less than 1 for them. The
+          difference is the spread, earned without ever taking a view.
+        </p>
+        <p className="note">
+          <b>So after you deposit, you do nothing.</b> Your shares are worth their slice of
+          NAV at every moment, and you withdraw whenever the vault has idle collateral. The
+          risk is one leg filling while the market walks away from the other: the vault then
+          holds a direction, NAV marks it at zero, and the shares fall. That is happening —{" "}
+          <b>25% of filled quotes have gone adverse and the share price is down 5.40%</b>.
+          It is testnet money, and <a href="/dashboard">the working</a> shows every episode.
+        </p>
+
         <h2>Wallet <span>Somnia Shannon testnet, chain 50312</span></h2>
         <div className="panel wallet">
           <div>
