@@ -291,3 +291,129 @@ deployment, and the retired address joins the twelve the ledger already walks �
 not reset, only the denominator of one vault. **The BUIDL cites the repo and the site, both of
 which follow `.vault-addr`, so the submission needs no edit.** The film's live panel shows the
 address it was filmed against, which is why it was re-recorded.
+
+---
+
+## Paste-ready, 2026-09-11
+
+Every figure below was read on 2026-09-11. Re-read them if this sits unposted for a day:
+`npm run ledger` for the record, `node scripts/attest.ts` for MATCH.
+
+### A. Three things the BUIDL card does not name
+
+The card carries the measurement and the venue contribution. It does not name the SDK
+feedback report or the deck — **both are listed in the rules as optional deliverables** —
+and it does not name the dashboard, which is the first link this file tells a judge to
+click. Append to the description:
+
+```
+Optional deliverables, since the form has no field for them:
+
+- Feedback report on the SDK and docs: docs/SDK-FEEDBACK.md in the repo. Sixteen defects,
+  each with reproduction steps and transaction hashes, each filed on the venue's own
+  tracker as dreamdex-bot-kit #26-#41. Six are now a section of the kit's own
+  docs/gotchas.md.
+- Presentation deck: https://abadi-wheat.vercel.app/deck
+- The working, live from the chain: https://abadi-wheat.vercel.app/dashboard - the order
+  book with this vault's own quote tagged in it by owner address, the equity curve, and
+  every episode the vault has run, decoded in the reader's browser.
+```
+
+### B. X — a thread, from @BangDropID
+
+Tag **@Somnia_Network** and **@dreamDEXSomnia**. Both are live accounts; Somnia has 421K
+followers and posts about this hackathon. The account has never mentioned this project.
+
+```
+1/ I built a market maker for @dreamDEXSomnia Event Contracts on @Somnia_Network and then
+did the one thing nobody does: measured what it did to the book.
+
+Every window it ever quoted, rebuilt twice from the venue's own order rows - with my
+orders and without.
+```
+
+```
+2/ Spread 0.0245 without it. 0.0175 with it.
+
+28% tighter. 138 of 148 windows improved, 0 got worse, none refused.
+
+Not a backtest. The venue's own rows, at the instant each quote landed.
+```
+
+```
+3/ The vault is DOWN 5.40%. -989.83 realised on 28,994.67 of basis, 25% of filled quotes
+adverse where the strategy needs under 9%.
+
+That's on the front page, not in a footnote. A record you only publish when it's green
+isn't a record.
+```
+
+```
+4/ Sixteen SDK defects filed on the venue's tracker. Six are in their own docs now -
+a Somnia collaborator re-measured each against mainnet and Shannon and landed the
+section.
+
+637 of the venue's signatures published to 4byte, so its reverts decode for every team
+on the chain.
+```
+
+```
+5/ Their words, not mine:
+
+"All six reproduce... The section is yours."
+
+"The 4byte registration is real and already earning its keep: OnlyApprovedContracts() is
+there from 6 Sep and decoded a revert for me in an unrelated investigation this week."
+
+https://abadi-wheat.vercel.app
+```
+
+### C. Somnia Discord — `discord.gg/somnia`
+
+The rules name "featured placement in the Somnia Discord showcase series" as a prize, so
+this is the channel that decides it. Find the builders/showcase channel rather than
+general.
+
+```
+Built Abadi for the Event Contracts hackathon - an ERC-4626 vault that market-makes
+DreamDEX windows holding no inventory. Two opposite-side buys cross with no seller, the
+pool mints the pair, and a complete set is worth exactly 1 either way the window resolves.
+
+The part I'd point at isn't the vault, it's the measurement: I rebuilt every window it
+ever quoted from the venue's own Order rows, twice, with our orders and without. Spread
+0.0245 without, 0.0175 with - 28% tighter, 138 of 148 improved, none worse.
+
+It's also down 5.40% and the ledger says so on the front page.
+
+Sixteen defects went back to dreamdex-bot-kit (#26-#41); six are in your docs/gotchas.md
+now, and the 4byte upload has already decoded a revert for someone on your side.
+
+https://abadi-wheat.vercel.app - https://github.com/PugarHuda/abadi
+```
+
+### D. A comment on PR #42
+
+Not posted by the agent: it writes in your name to a named person. It is worth posting
+because the thread is where the corrections landed and nothing there says they were
+absorbed.
+
+```
+Thank you - the three corrections are in our repo now, and two of them changed what we
+believed rather than how we worded it.
+
+#18 reverting with no reason data at all is worse than what we reported, and we have
+stopped describing it as a named error. The autoApprove: false detail on trader.redeem
+was a genuine gap in our understanding of the SDK path. And CloseNotCaptured() being in
+the current contractErrorsAbi explains a whole afternoon: we pinned the table from an
+older commit and concluded the database could not ingest custom errors at all, which was
+wrong and is corrected in our evidence file.
+
+Glad OnlyApprovedContracts() was useful. If a re-run of the selector upload against
+0.29.0 would help, say the word - it is one command and the two that still decode to
+nothing are only missing because of the pin.
+```
+
+### E. Telegram — `t.me/+XHq0F0JXMyhmMzM0`
+
+The version earlier in this file predates the venue contribution landing. Use B/5 or C.
+
