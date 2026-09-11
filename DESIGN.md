@@ -289,9 +289,33 @@ anyway, and pretending otherwise would be bookkeeping rather than judgement.
   time grid and the second pen's hatch: it is the texture the world is made of, and it
   carries the Up/Down distinction that colour alone is not allowed to carry.
 
+Two more are waived **per page**, not site-wide, and each one carries its reason in the
+config rather than here, because a waiver a reader has to go looking for is a waiver
+nobody checks:
+
+- **`low-contrast` on `/app`** — the detector samples pixels, so it reads the anti-aliased
+  edge of a control as a colour pair and returns blends that appear in no stylesheet. Two
+  runs against the same unchanged page reported `#5e635f on #bcbbb0` and then
+  `#5d635f on #bdbbb0`. Re-measured off the computed DOM on 2026-09-11: eleven distinct
+  foreground/background/size combinations inside `#app`, none below the threshold, worst
+  5.42:1. axe-core checks the same page against the DOM in CI.
+- **`content-hidden-at-rest` on `/deck`** — a true positive on the metric and a false one
+  on the diagnosis. 97% of that page's text (6,499 of 6,667 characters) is hidden at rest
+  because it is eleven slides and one shows at a time. The rule is looking for copy a
+  reveal animation never un-hid; the checks that distinguish the two are named in the
+  config and asserted in `qa/site.spec.ts`.
+
+**This section said "exactly two" while the config ignored three**, and the third was
+`content-hidden-at-rest` — the only **error**-severity finding the file suppressed, as a
+bare line with no reason, for two weeks. It has been moved to a per-page waiver that
+cannot be written without one. A count in prose beside a list in JSON will drift; when
+this is next edited, read the config.
+
 Everything else the detector found was fixed rather than waived, including three
 `border-left: 3px` rails, a carriage that animated `width` and `left` against this file's
-own rule, and an order-book depth bar dark enough to fail 4.5:1 under its own price.
+own rule, an order-book depth bar dark enough to fail 4.5:1 under its own price, and — on
+2026-09-11, for about ten minutes — a loading state dimmed with `opacity: .45`, which this
+file forbids two sections above and the detector caught as twelve findings at 1.0:1.
 
 ## Do's and Don'ts
 

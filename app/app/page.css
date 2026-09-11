@@ -23,7 +23,10 @@
     display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px;
     margin: calc(var(--chart) * 2.5) 0 var(--chart);
     padding-bottom: 8px; border-bottom: 2px solid var(--ink);
-    font-size: 20px; font-weight: 600; letter-spacing: -0.012em;
+    /* Matches `.band` in recorder.css. Both were 20px — under a browser's unstyled <h2> at
+       24px — and this one was missed when that was raised, which is the drift a shared
+       stylesheet exists to stop. */
+    font-size: 28px; font-weight: 600; letter-spacing: -0.016em;
   }
   /* Same reason: an aside in pencil beside a heading sits on the bare ground, and the
      ground is striped. The band's own paper keeps it on one colour. */

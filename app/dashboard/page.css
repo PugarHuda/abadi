@@ -21,16 +21,16 @@
   [data-state="error"] .live-err,
   [data-state="unreachable"] .live-err { display: block; }
 
-  /* The wait had no style at all.
+  /* The wait had no style at all — `error` and `unreachable` were both painted, `loading`
+   * was not, and it is the state a reader meets: the ledger fires one explorer request per
+   * vault per endpoint, twenty-eight of them, so this section is six ellipses and an empty
+   * frame for five to eight seconds and reads as broken rather than busy.
    *
-   * `error` and `unreachable` were both painted; `loading` was not, and it is the state a
-   * reader actually meets. The ledger fires one explorer request per vault per endpoint —
-   * twenty-eight of them — so the flagship section of this page is six literal ellipses,
-   * an empty bordered frame and a headerless table for five to eight seconds. That reads
-   * as broken, not as loading. Dimmed, so the frame is visibly a placeholder. */
-  #ledger[data-state="loading"] .chart,
-  #ledger[data-state="loading"] .tablewrap,
-  #ledger[data-state="loading"] .figures { opacity: .45; }
+   * It was fixed with `opacity: .45` on the figures for about ten minutes, which this
+   * world already forbids and the detector caught immediately: twelve low-contrast
+   * findings at 1.0:1, because a dimmed label is a label nobody can read. The rule is in
+   * DESIGN.md and it exists for exactly this. The heading's own span carries the wait
+   * instead — words, at full contrast. */
   .live-slots { list-style: none; margin: 16px 0 0; padding: 14px 0 0; border-top: 1px solid var(--rule-major); font-family: var(--mono); font-size: 12px; color: var(--pencil); }
   .live-foot { margin: 16px 0 0; font-size: 13px; color: var(--pencil); max-width: 74ch; }
 

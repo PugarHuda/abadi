@@ -1,7 +1,6 @@
 {
   "detector": {
     "ignoreRules": [
-      "content-hidden-at-rest",
       "cream-palette",
       "repeating-stripes-gradient"
     ],
@@ -13,13 +12,22 @@
         "createdAt": "2026-08-28T05:05:45.097Z"
       },
       {
+        "rule": "content-hidden-at-rest",
+        "value": "*",
+        "files": [
+          "*/deck"
+        ],
+        "createdAt": "2026-09-11T14:20:00.000Z",
+        "reason": "A slide deck, measured rather than asserted. /deck is eleven .slide sections, all position:absolute, with every non-current slide at opacity:0 and visibility:hidden - so 97% of the page's text (6,499 of 6,667 characters) is hidden at rest and the rule is a TRUE POSITIVE on its metric. What it infers from that is wrong here: it looks for copy a reveal animation never un-hid, and this is one slide showing at a time. Checked before waiving: zero focusable elements inside a non-current slide, so nothing off-screen can be tabbed into; deep links #2, #5, #9 and #11 each land on the right slide from a cold load; ArrowRight and the next button bring a slide to opacity 1 within the .34s transition; the counter tracks. qa/site.spec.ts asserts exactly one .slide.on, that both ends disable their button, that a hash deep link opens its slide, and that no pre block collapsed. This entry was a bare line in ignoreRules with no reason for two weeks, and it is the only error-severity finding this file suppresses - which is precisely the one that should have to say why. Scoped to /deck only."
+      },
+      {
         "rule": "low-contrast",
         "value": "*",
         "files": [
           "*/app"
         ],
         "createdAt": "2026-09-07T03:47:17.325Z",
-        "reason": "Pixel sampler crossing a control's edge, not a real ratio. /app's primary buttons are stock on ink (about 13:1) and its secondary text is 9.1:1; the detector reads the rendered image, so a sample that straddles a dark button's anti-aliased boundary on a stock-sunk panel returns 3.2-4.4:1 and the reported colours are always blends that appear in no stylesheet (#5e635f on #bcbbb0 = ink at 59% over ink at 22% over stock-sunk). axe-core runs the WCAG colour-contrast rule against the DOM on this page in qa/a11y.spec.ts and reports it clean, and qa/a11y.spec.ts also asserts the busy state cannot be shown with opacity. Scoped to this page only."
+        "reason": "Pixel sampler crossing a control's edge, not a real ratio. /app's primary buttons are stock on ink (about 13:1) and its secondary text is 9.1:1; the detector reads the rendered image, so a sample that straddles a dark button's anti-aliased boundary on a stock-sunk panel returns 3.2-4.4:1 and the reported colours are always blends that appear in no stylesheet (#5e635f on #bcbbb0 = ink at 59% over ink at 22% over stock-sunk). Re-measured 2026-09-11 off the computed DOM: eleven distinct foreground/background/size combinations inside #app, none below threshold, worst 5.42:1. Two detector runs against the same unchanged page reported different blends (#5e635f on #bcbbb0, then #5d635f on #bdbbb0), which is an unstable sample rather than a stylesheet pair. axe-core runs the WCAG colour-contrast rule against the DOM on this page in qa/a11y.spec.ts and reports it clean, and qa/a11y.spec.ts also asserts the busy state cannot be shown with opacity. Scoped to this page only."
       }
     ]
   }
